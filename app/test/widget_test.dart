@@ -1,30 +1,35 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kangoos_core/kangoos_core.dart';
 
 import 'package:kangoos_app/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('create a snippet and see it in the list', (tester) async {
+    final database = KangoosDatabase.memory();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(KangoosApp(database: database));
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
+    expect(find.text('No snippets yet. Tap + to add one.'), findsOneWidget);
+
     await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Title'),
+      'Reverse a string',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Code'),
+      'input.split("").reversed.join()',
+    );
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reverse a string'), findsOneWidget);
+
+    await database.close();
+    await tester.pump(const Duration(milliseconds: 200));
   });
 }
