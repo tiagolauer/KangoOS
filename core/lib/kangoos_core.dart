@@ -1,8 +1,4 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
 library;
 
-export 'src/core_base.dart';
-
-// TODO: Export any libraries intended for clients of this package.
+export 'src/database/database.dart';
+export 'src/database/tables/snippets_table.dart';
