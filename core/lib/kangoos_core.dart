@@ -1,5 +1,6 @@
 library;
 
+export 'src/chat/rag_chat.dart';
 export 'src/database/database.dart';
 export 'src/database/tables/snippets_table.dart';
 export 'src/embedding/embedding_provider.dart';

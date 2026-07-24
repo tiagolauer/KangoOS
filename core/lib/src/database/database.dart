@@ -50,6 +50,8 @@ class KangoosDatabase extends _$KangoosDatabase {
         .get();
   }
 
+  Future<List<Snippet>> allSnippets() => select(snippets).get();
+
   Future<List<Snippet>> snippetsWithEmbedding() =>
       (select(snippets)..where((row) => row.embedding.isNotNull())).get();
 

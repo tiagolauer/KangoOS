@@ -1,0 +1,21 @@
+services:
+  kangoos-server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      KANGOOS_API_TOKEN: ${KANGOOS_API_TOKEN:?set a random secret token}
+      KANGOOS_LLM_PROVIDER: ${KANGOOS_LLM_PROVIDER:-ollama}
+      KANGOOS_LLM_MODEL: ${KANGOOS_LLM_MODEL:-llama3}
+      KANGOOS_LLM_API_KEY: ${KANGOOS_LLM_API_KEY:-}
+      KANGOOS_OLLAMA_BASE_URL: ${KANGOOS_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      KANGOOS_EMBEDDING_MODEL: ${KANGOOS_EMBEDDING_MODEL:-nomic-embed-text}
+    volumes:
+      - kangoos-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  kangoos-data:

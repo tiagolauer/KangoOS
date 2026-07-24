@@ -24,7 +24,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  static const _maxContextSnippets = 5;
+  late final _ragChat = RagChat(database: widget.database, semanticSearch: widget.semanticSearch);
 
   final _history = <LlmMessage>[];
   final _inputController = TextEditingController();
@@ -37,32 +37,6 @@ class _ChatScreenState extends State<ChatScreen> {
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Future<List<Snippet>> _retrieveContext(String query) async {
-    try {
-      final matches = await widget.semanticSearch.search(query, limit: _maxContextSnippets);
-      if (matches.isNotEmpty) return matches.map((match) => match.snippet).toList();
-    } catch (_) {}
-    final matches = await widget.database.searchByKeyword(query);
-    return matches.take(_maxContextSnippets).toList();
-  }
-
-  String _buildSystemPrompt(List<Snippet> context) {
-    final buffer = StringBuffer(
-      'You are the KangoOS assistant. Answer using the snippets below when '
-      'relevant. If none are relevant, say so and answer generally.',
-    );
-    for (final snippet in context) {
-      buffer.writeln();
-      buffer.writeln('---');
-      buffer.writeln('Title: ${snippet.title}');
-      if (snippet.language != null && snippet.language!.isNotEmpty) {
-        buffer.writeln('Language: ${snippet.language}');
-      }
-      buffer.writeln(snippet.content);
-    }
-    return buffer.toString();
   }
 
   Future<void> _send() async {
@@ -79,6 +53,8 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
+    final priorHistory = List<LlmMessage>.of(_history);
+
     setState(() {
       _error = null;
       _history.add(LlmMessage(role: LlmRole.user, content: text));
@@ -88,17 +64,16 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToEnd();
 
-    final context = await _retrieveContext(text);
     final buildProvider = widget.providerBuilder ?? (s) => s.buildProvider();
     final provider = buildProvider(settings);
-    final requestMessages = [
-      LlmMessage(role: LlmRole.system, content: _buildSystemPrompt(context)),
-      ..._history.sublist(0, _history.length - 1),
-    ];
 
     final buffer = StringBuffer();
     try {
-      await for (final chunk in provider.chat(requestMessages)) {
+      await for (final chunk in _ragChat.reply(
+        provider: provider,
+        history: priorHistory,
+        userMessage: text,
+      )) {
         buffer.write(chunk);
         setState(() {
           _history[_history.length - 1] =

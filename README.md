@@ -12,11 +12,12 @@ Open source alternative to [Pieces OS](https://pieces.app/): a snippet manager w
 
 ```
 KangoOS/
-├── app/    # Flutter desktop app (Windows/Linux/macOS)
-└── core/   # KangoOS Core — pure Dart package (snippets, search, storage, LLM adapter)
+├── app/     # Flutter desktop app (Windows/Linux/macOS)
+├── core/    # KangoOS Core — pure Dart package (snippets, search, storage, LLM adapter)
+└── server/  # Self-hosted HTTP server (Shelf) — exposes core over the network, see server/README.md
 ```
 
-`app` depends on `core` via a path dependency (`../core`). The same `core` runs embedded in the app (standalone mode) or exposed over HTTP (future self-hosted mode).
+`app` and `server` both depend on `core` via a path dependency (`../core`). The same `core` runs embedded in the app (standalone mode) or behind the HTTP server (self-hosted mode) — either way it's the same snippet storage, semantic search and RAG chat logic.
 
 ## MVP scope
 
@@ -25,12 +26,15 @@ KangoOS/
 - Contextual chat over saved snippets (RAG)
 - LLM provider configuration (local Ollama or third-party API key)
 
-Out of MVP scope (future roadmap): automatic context capture (timeline/LTM), VS Code extension, browser extension, mobile app, plugin system.
+- Self-hosted HTTP server (Docker) for sharing snippets/chat across clients
+
+Out of scope for now (future roadmap): automatic context capture (timeline/LTM), VS Code extension, browser extension, mobile app, plugin system.
 
 ## Stack
 
 - **UI**: Flutter (desktop)
 - **Core**: pure Dart
+- **Server**: [Shelf](https://pub.dev/packages/shelf) (self-hosted, Docker)
 - **Storage**: [drift](https://drift.simonbinder.eu/) (type-safe SQLite, native FTS)
 
 ## Development
@@ -39,6 +43,8 @@ Out of MVP scope (future roadmap): automatic context capture (timeline/LTM), VS 
 cd core && dart pub get
 cd ../app && flutter pub get && flutter run -d windows
 ```
+
+Self-hosted server: see [server/README.md](server/README.md).
 
 ## License
 

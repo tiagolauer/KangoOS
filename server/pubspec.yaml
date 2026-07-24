@@ -1,0 +1,17 @@
+name: kangoos_server
+description: KangoOS self-hosted HTTP server -- exposes kangoos_core over HTTP for shared access across clients.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.1
+dependencies:
+  drift: ^2.31.0
+  kangoos_core:
+    path: ../core
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+dev_dependencies:
+  http: ^1.6.0
+  lints: ^5.1.1
+  test: ^1.26.3
