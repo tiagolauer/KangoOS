@@ -1,5 +1,5 @@
 name: kangoos_core
-description: Core engine do KangoOS — snippets, busca, storage e LLM adapter.
+description: KangoOS core engine — snippets, search, storage and LLM adapter.
 version: 0.1.0
 # repository: https://github.com/<org>/KangoOS
 

@@ -1,45 +1,45 @@
 # KangoOS
 
-Alternativa open source ao [Pieces OS](https://pieces.app/): gerenciador de snippets com chat contextual (RAG), self-hosted, dados 100% do usuário.
+Open source alternative to [Pieces OS](https://pieces.app/): a snippet manager with contextual chat (RAG), self-hosted, 100% user-owned data.
 
-## Diferencial
+## Why
 
-- **Self-hosted**: roda local por padrão; servidor próprio (Docker) opcional pra sync entre dispositivos.
-- **LLM local-first**: [Ollama](https://ollama.com/) por padrão, com fallback opcional pra OpenAI/Anthropic/Gemini via API key do usuário.
-- **Licença AGPL-3.0**: uso e modificação livres, inclusive como serviço, desde que o código-fonte modificado também seja disponibilizado.
+- **Self-hosted**: runs locally by default; optional self-hosted server (Docker) for multi-device sync.
+- **Local-first LLM**: [Ollama](https://ollama.com/) by default, with optional fallback to OpenAI/Anthropic/Gemini via user-supplied API key.
+- **AGPL-3.0 licensed**: free to use and modify, including as a service, as long as modified source stays available.
 
-## Estrutura do repositório
+## Repository structure
 
 ```
 KangoOS/
-├── app/    # App Flutter (desktop: Windows/Linux/macOS)
-└── core/   # KangoOS Core — package Dart puro (snippets, busca, storage, LLM adapter)
+├── app/    # Flutter desktop app (Windows/Linux/macOS)
+└── core/   # KangoOS Core — pure Dart package (snippets, search, storage, LLM adapter)
 ```
 
-`app` depende de `core` via path dependency (`../core`). O mesmo `core` roda embutido no app (modo standalone) ou exposto via servidor HTTP (modo self-hosted, futuro).
+`app` depends on `core` via a path dependency (`../core`). The same `core` runs embedded in the app (standalone mode) or exposed over HTTP (future self-hosted mode).
 
-## Escopo do MVP
+## MVP scope
 
-- CRUD de snippets com tags automáticas (via LLM)
-- Busca full-text + semântica (embeddings locais)
-- Chat contextual sobre os snippets salvos (RAG)
-- Configuração de provider LLM (Ollama local ou API key de terceiros)
+- Snippet CRUD with automatic tagging (via LLM)
+- Full-text + semantic search (local embeddings)
+- Contextual chat over saved snippets (RAG)
+- LLM provider configuration (local Ollama or third-party API key)
 
-Fora do MVP (roadmap futuro): captura automática de contexto (timeline/LTM), extensão VS Code, extensão de browser, app mobile, sistema de plugins.
+Out of MVP scope (future roadmap): automatic context capture (timeline/LTM), VS Code extension, browser extension, mobile app, plugin system.
 
 ## Stack
 
 - **UI**: Flutter (desktop)
-- **Core**: Dart puro
-- **Storage**: [drift](https://drift.simonbinder.eu/) (SQLite type-safe, FTS nativo)
+- **Core**: pure Dart
+- **Storage**: [drift](https://drift.simonbinder.eu/) (type-safe SQLite, native FTS)
 
-## Desenvolvimento
+## Development
 
 ```bash
 cd core && dart pub get
 cd ../app && flutter pub get && flutter run -d windows
 ```
 
-## Licença
+## License
 
 [AGPL-3.0](LICENSE)
