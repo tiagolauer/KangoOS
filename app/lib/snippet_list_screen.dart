@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import 'settings_repository.dart';
+import 'settings_screen.dart';
 import 'snippet_editor_screen.dart';
 
 class SnippetListScreen extends StatefulWidget {
@@ -26,6 +28,15 @@ class _SnippetListScreenState extends State<SnippetListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('KangoOS'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'LLM settings',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => SettingsScreen(repository: SettingsRepository()),
+            )),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
