@@ -16,7 +16,17 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(snippets, snippets.embedding);
+          }
+        },
+      );
 
   Future<int> createSnippet(SnippetsCompanion entry) =>
       into(snippets).insert(entry);
@@ -39,4 +49,10 @@ class KangoosDatabase extends _$KangoosDatabase {
           ..where((row) => row.title.like(pattern) | row.content.like(pattern)))
         .get();
   }
+
+  Future<List<Snippet>> snippetsWithEmbedding() =>
+      (select(snippets)..where((row) => row.embedding.isNotNull())).get();
+
+  Future<List<Snippet>> snippetsMissingEmbedding() =>
+      (select(snippets)..where((row) => row.embedding.isNull())).get();
 }

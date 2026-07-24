@@ -7,17 +7,24 @@ import 'package:path_provider/path_provider.dart';
 
 import 'snippet_list_screen.dart';
 
+const defaultEmbeddingModel = 'nomic-embed-text';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supportDir = await getApplicationSupportDirectory();
   final database = KangoosDatabase.native(File(p.join(supportDir.path, 'kangoos.db')));
-  runApp(KangoosApp(database: database));
+  final semanticSearch = SemanticSearch(
+    database: database,
+    embeddingProvider: OllamaEmbeddingProvider(model: defaultEmbeddingModel),
+  );
+  runApp(KangoosApp(database: database, semanticSearch: semanticSearch));
 }
 
 class KangoosApp extends StatelessWidget {
-  const KangoosApp({super.key, required this.database});
+  const KangoosApp({super.key, required this.database, required this.semanticSearch});
 
   final KangoosDatabase database;
+  final SemanticSearch semanticSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +34,7 @@ class KangoosApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: SnippetListScreen(database: database),
+      home: SnippetListScreen(database: database, semanticSearch: semanticSearch),
     );
   }
 }

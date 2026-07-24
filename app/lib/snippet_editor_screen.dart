@@ -1,11 +1,19 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 class SnippetEditorScreen extends StatefulWidget {
-  const SnippetEditorScreen({super.key, required this.database, this.snippet});
+  const SnippetEditorScreen({
+    super.key,
+    required this.database,
+    required this.semanticSearch,
+    this.snippet,
+  });
 
   final KangoosDatabase database;
+  final SemanticSearch semanticSearch;
   final Snippet? snippet;
 
   @override
@@ -42,22 +50,27 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
         .where((tag) => tag.isNotEmpty)
         .toList();
 
+    late final Snippet saved;
     if (_isEditing) {
-      await widget.database.updateSnippet(widget.snippet!.copyWith(
+      saved = widget.snippet!.copyWith(
         title: title,
         content: content,
         language: Value(language.isEmpty ? null : language),
         tags: tags,
         updatedAt: DateTime.now(),
-      ));
+      );
+      await widget.database.updateSnippet(saved);
     } else {
-      await widget.database.createSnippet(SnippetsCompanion.insert(
+      final id = await widget.database.createSnippet(SnippetsCompanion.insert(
         title: title,
         content: content,
         language: Value(language.isEmpty ? null : language),
         tags: Value(tags),
       ));
+      saved = (await widget.database.getSnippetById(id))!;
     }
+
+    unawaited(widget.semanticSearch.indexSnippet(saved).catchError((_) {}));
 
     if (mounted) Navigator.of(context).pop();
   }

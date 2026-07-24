@@ -18,10 +18,23 @@ class _FakeProvider implements LlmProvider {
   Stream<String> chat(List<LlmMessage> messages) => Stream.fromIterable(chunks);
 }
 
+class _FakeEmbeddingProvider implements EmbeddingProvider {
+  @override
+  String get id => 'fake';
+
+  @override
+  Future<List<double>> embed(String text) async => const [1, 0, 0];
+}
+
 void main() {
   late KangoosDatabase database;
+  late SemanticSearch semanticSearch;
 
-  setUp(() => database = KangoosDatabase.memory());
+  setUp(() {
+    database = KangoosDatabase.memory();
+    semanticSearch =
+        SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
+  });
   tearDown(() => database.close());
 
   testWidgets('shows an error when the api key is missing', (tester) async {
@@ -32,7 +45,11 @@ void main() {
     final repository = SettingsRepository();
 
     await tester.pumpWidget(MaterialApp(
-      home: ChatScreen(database: database, settingsRepository: repository),
+      home: ChatScreen(
+        database: database,
+        semanticSearch: semanticSearch,
+        settingsRepository: repository,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -53,6 +70,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: ChatScreen(
         database: database,
+        semanticSearch: semanticSearch,
         settingsRepository: repository,
         providerBuilder: (_) => _FakeProvider(['Hel', 'lo']),
       ),

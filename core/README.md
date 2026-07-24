@@ -39,3 +39,21 @@ await for (final chunk in ollama.chat([
 ```
 
 Gemini is not implemented yet — add when needed.
+
+## Semantic search
+
+`SemanticSearch` indexes snippets via an `EmbeddingProvider` and ranks by cosine similarity. Only `OllamaEmbeddingProvider` is implemented (Anthropic has no embeddings endpoint; OpenAI's is not wired up yet):
+
+```dart
+final search = SemanticSearch(
+  database: db,
+  embeddingProvider: OllamaEmbeddingProvider(model: 'nomic-embed-text'),
+);
+
+await search.indexSnippet(snippet); // after create/update
+await search.indexMissing(); // backfill snippets saved before indexing existed
+
+final matches = await search.search('reverse a string'); // List<SemanticMatch>
+```
+
+Embeddings are stored as a JSON-encoded `List<double>` in the `snippets.embedding` column (nullable — snippets without one are simply excluded from semantic search).

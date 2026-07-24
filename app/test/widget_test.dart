@@ -4,11 +4,23 @@ import 'package:kangoos_core/kangoos_core.dart';
 
 import 'package:kangoos_app/main.dart';
 
+class _FakeEmbeddingProvider implements EmbeddingProvider {
+  @override
+  String get id => 'fake';
+
+  @override
+  Future<List<double>> embed(String text) async => const [1, 0, 0];
+}
+
 void main() {
   testWidgets('create a snippet and see it in the list', (tester) async {
     final database = KangoosDatabase.memory();
+    final semanticSearch =
+        SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
 
-    await tester.pumpWidget(KangoosApp(database: database));
+    await tester.pumpWidget(
+      KangoosApp(database: database, semanticSearch: semanticSearch),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('No snippets yet. Tap + to add one.'), findsOneWidget);

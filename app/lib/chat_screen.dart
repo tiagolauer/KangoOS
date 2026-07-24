@@ -7,11 +7,13 @@ class ChatScreen extends StatefulWidget {
   const ChatScreen({
     super.key,
     required this.database,
+    required this.semanticSearch,
     required this.settingsRepository,
     this.providerBuilder,
   });
 
   final KangoosDatabase database;
+  final SemanticSearch semanticSearch;
   final SettingsRepository settingsRepository;
 
   /// Overridable for tests; defaults to [LlmSettings.buildProvider].
@@ -38,6 +40,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<List<Snippet>> _retrieveContext(String query) async {
+    try {
+      final matches = await widget.semanticSearch.search(query, limit: _maxContextSnippets);
+      if (matches.isNotEmpty) return matches.map((match) => match.snippet).toList();
+    } catch (_) {}
     final matches = await widget.database.searchByKeyword(query);
     return matches.take(_maxContextSnippets).toList();
   }
