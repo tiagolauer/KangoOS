@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import 'chat_screen.dart';
 import 'settings_repository.dart';
 import 'settings_screen.dart';
 import 'snippet_editor_screen.dart';
@@ -29,6 +30,16 @@ class _SnippetListScreenState extends State<SnippetListScreen> {
       appBar: AppBar(
         title: const Text('KangoOS'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Chat',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ChatScreen(
+                database: widget.database,
+                settingsRepository: SettingsRepository(),
+              ),
+            )),
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'LLM settings',
