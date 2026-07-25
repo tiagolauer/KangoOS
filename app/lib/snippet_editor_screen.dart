@@ -4,16 +4,20 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import 'theme/kangoos_theme.dart';
+
 class SnippetEditorScreen extends StatefulWidget {
   const SnippetEditorScreen({
     super.key,
     required this.database,
     required this.semanticSearch,
+    required this.onDone,
     this.snippet,
   });
 
   final KangoosDatabase database;
   final SemanticSearch semanticSearch;
+  final VoidCallback onDone;
   final Snippet? snippet;
 
   @override
@@ -72,18 +76,23 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
 
     unawaited(widget.semanticSearch.indexSnippet(saved).catchError((_) {}));
 
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) widget.onDone();
   }
 
   Future<void> _delete() async {
     await widget.database.deleteSnippet(widget.snippet!.id);
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) widget.onDone();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          onPressed: widget.onDone,
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back',
+        ),
         title: Text(_isEditing ? 'Edit snippet' : 'New snippet'),
         actions: [
           if (_isEditing)
@@ -129,7 +138,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
                 alignLabelWithHint: true,
               ),
               maxLines: 14,
-              style: const TextStyle(fontFamily: 'monospace'),
+              style: const TextStyle(fontFamilyFallback: KangoosTheme.monoFallback),
             ),
           ],
         ),

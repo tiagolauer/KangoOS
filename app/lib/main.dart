@@ -7,7 +7,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'capture/capture_settings_repository.dart';
 import 'capture/window_capture_service.dart';
-import 'snippet_list_screen.dart';
+import 'home/app_shell.dart';
+import 'theme/kangoos_theme.dart';
 
 const defaultEmbeddingModel = 'nomic-embed-text';
 
@@ -46,11 +47,10 @@ class KangoosApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'KangoOS',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
-      home: SnippetListScreen(
+      theme: KangoosTheme.light,
+      darkTheme: KangoosTheme.dark,
+      themeMode: ThemeMode.system,
+      home: AppShell(
         database: database,
         semanticSearch: semanticSearch,
         captureSettingsRepository: captureSettingsRepository,

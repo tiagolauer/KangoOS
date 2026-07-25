@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+import 'package:kangoos_core/kangoos_core.dart';
+
+import '../capture/capture_settings_repository.dart';
+import '../settings_repository.dart';
+import '../snippet_editor_screen.dart';
+import 'chat_home_panel.dart';
+import 'sidebar.dart';
+
+class AppShell extends StatefulWidget {
+  const AppShell({
+    super.key,
+    required this.database,
+    required this.semanticSearch,
+    required this.captureSettingsRepository,
+  });
+
+  final KangoosDatabase database;
+  final SemanticSearch semanticSearch;
+  final CaptureSettingsRepository captureSettingsRepository;
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  final _settingsRepository = SettingsRepository();
+  Snippet? _editingSnippet;
+  var _editing = false;
+
+  void _openEditor([Snippet? snippet]) {
+    setState(() {
+      _editingSnippet = snippet;
+      _editing = true;
+    });
+  }
+
+  void _closeEditor() {
+    setState(() {
+      _editing = false;
+      _editingSnippet = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Row(
+        children: [
+          Sidebar(
+            database: widget.database,
+            semanticSearch: widget.semanticSearch,
+            onSelectSnippet: _openEditor,
+            onCreateSnippet: () => _openEditor(),
+          ),
+          Expanded(
+            child: _editing
+                ? SnippetEditorScreen(
+                    key: ValueKey(_editingSnippet?.id ?? 'new'),
+                    database: widget.database,
+                    semanticSearch: widget.semanticSearch,
+                    snippet: _editingSnippet,
+                    onDone: _closeEditor,
+                  )
+                : ChatHomePanel(
+                    database: widget.database,
+                    semanticSearch: widget.semanticSearch,
+                    settingsRepository: _settingsRepository,
+                    captureSettingsRepository: widget.captureSettingsRepository,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
