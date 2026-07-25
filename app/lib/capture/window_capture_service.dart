@@ -48,6 +48,11 @@ class WindowCaptureService {
 
   Future<void> tick() async {
     final settings = await settingsRepository.load();
+    if (settings.retentionDays > 0) {
+      await database.purgeActivitiesOlderThan(
+        DateTime.now().subtract(Duration(days: settings.retentionDays)),
+      );
+    }
     if (settings.paused) return;
 
     final snapshot = readWindow();

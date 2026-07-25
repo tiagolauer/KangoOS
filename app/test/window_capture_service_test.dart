@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -77,5 +78,47 @@ void main() {
     await service.tick();
 
     expect(await database.watchRecentActivities().first, isEmpty);
+  });
+
+  test('tick purges activity older than the configured retention', () async {
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'old.exe',
+      windowTitle: 'Old',
+      capturedAt: Value(DateTime.now().subtract(const Duration(days: 40))),
+    ));
+
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(paused: true, retentionDays: 30));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () => null,
+    );
+
+    await service.tick();
+
+    expect(await database.watchRecentActivities().first, isEmpty);
+  });
+
+  test('tick keeps history when retention is set to forever', () async {
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'old.exe',
+      windowTitle: 'Old',
+      capturedAt: Value(DateTime.now().subtract(const Duration(days: 400))),
+    ));
+
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(paused: true, retentionDays: 0));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () => null,
+    );
+
+    await service.tick();
+
+    expect(await database.watchRecentActivities().first, hasLength(1));
   });
 }

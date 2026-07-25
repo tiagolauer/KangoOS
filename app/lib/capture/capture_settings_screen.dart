@@ -76,6 +76,23 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
             onChanged: (enabled) => _apply(_settings.copyWith(paused: !enabled)),
           ),
           const SizedBox(height: 16),
+          Text('Keep history for', style: Theme.of(context).textTheme.titleMedium),
+          const Text('Older activity is purged automatically.'),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _settings.retentionDays,
+            decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+            items: const [
+              DropdownMenuItem(value: 7, child: Text('7 days')),
+              DropdownMenuItem(value: 30, child: Text('30 days')),
+              DropdownMenuItem(value: 90, child: Text('90 days')),
+              DropdownMenuItem(value: 0, child: Text('Forever')),
+            ],
+            onChanged: (value) {
+              if (value != null) _apply(_settings.copyWith(retentionDays: value));
+            },
+          ),
+          const SizedBox(height: 16),
           Text('Excluded apps', style: Theme.of(context).textTheme.titleMedium),
           const Text('Never captured, e.g. a password manager or banking app.'),
           const SizedBox(height: 8),

@@ -34,4 +34,23 @@ void main() {
 
     expect((await repository.load()).excludedApps, isEmpty);
   });
+
+  testWidgets('changing retention persists', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = CaptureSettingsRepository();
+
+    await tester.pumpWidget(MaterialApp(
+      home: CaptureSettingsScreen(repository: repository),
+    ));
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).retentionDays, defaultRetentionDays);
+
+    await tester.tap(find.byType(DropdownButtonFormField<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Forever').last);
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).retentionDays, 0);
+  });
 }
