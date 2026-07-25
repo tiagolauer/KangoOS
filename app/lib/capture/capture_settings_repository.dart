@@ -7,23 +7,25 @@ class CaptureSettings {
     this.paused = false,
     this.excludedApps = const [],
     this.retentionDays = defaultRetentionDays,
+    this.captureVisibleText = false,
   });
 
   final bool paused;
   final List<String> excludedApps;
-
-  /// Activities older than this are purged. 0 means keep forever.
   final int retentionDays;
+  final bool captureVisibleText;
 
   CaptureSettings copyWith({
     bool? paused,
     List<String>? excludedApps,
     int? retentionDays,
+    bool? captureVisibleText,
   }) {
     return CaptureSettings(
       paused: paused ?? this.paused,
       excludedApps: excludedApps ?? this.excludedApps,
       retentionDays: retentionDays ?? this.retentionDays,
+      captureVisibleText: captureVisibleText ?? this.captureVisibleText,
     );
   }
 }
@@ -32,6 +34,7 @@ class CaptureSettingsRepository {
   static const _pausedKey = 'capture_paused';
   static const _excludedAppsKey = 'capture_excluded_apps';
   static const _retentionDaysKey = 'capture_retention_days';
+  static const _captureVisibleTextKey = 'capture_visible_text';
 
   Future<CaptureSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -39,6 +42,7 @@ class CaptureSettingsRepository {
       paused: prefs.getBool(_pausedKey) ?? false,
       excludedApps: prefs.getStringList(_excludedAppsKey) ?? const [],
       retentionDays: prefs.getInt(_retentionDaysKey) ?? defaultRetentionDays,
+      captureVisibleText: prefs.getBool(_captureVisibleTextKey) ?? false,
     );
   }
 
@@ -47,5 +51,6 @@ class CaptureSettingsRepository {
     await prefs.setBool(_pausedKey, settings.paused);
     await prefs.setStringList(_excludedAppsKey, settings.excludedApps);
     await prefs.setInt(_retentionDaysKey, settings.retentionDays);
+    await prefs.setBool(_captureVisibleTextKey, settings.captureVisibleText);
   }
 }

@@ -69,11 +69,22 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
             title: const Text('Capture active window'),
             subtitle: const Text(
               'Records the app and window title every few seconds while '
-              'KangoOS is open. No content is captured, only what app/window '
-              'was active.',
+              'KangoOS is open.',
             ),
             value: !_settings.paused,
             onChanged: (enabled) => _apply(_settings.copyWith(paused: !enabled)),
+          ),
+          SwitchListTile(
+            title: const Text('Capture visible text (experimental)'),
+            subtitle: const Text(
+              'Also records the text you were focused on (e.g. what a text '
+              'field contains), via Windows UI Automation. Runs in a separate '
+              'helper process so a crash there never affects KangoOS, but it '
+              'means this may silently capture nothing on some systems.',
+            ),
+            value: _settings.captureVisibleText,
+            onChanged: (enabled) =>
+                _apply(_settings.copyWith(captureVisibleText: enabled)),
           ),
           const SizedBox(height: 16),
           Text('Keep history for', style: Theme.of(context).textTheme.titleMedium),

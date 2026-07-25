@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:ffi/ffi.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:path/path.dart' as p;
 import 'package:win32/win32.dart';
 
 import 'capture_settings_repository.dart';
+
+const uiaHelperTimeout = Duration(seconds: 3);
 
 class WindowSnapshot {
   const WindowSnapshot({required this.appName, required this.windowTitle});
@@ -22,14 +26,16 @@ class WindowCaptureService {
     required this.settingsRepository,
     this.pollInterval = const Duration(seconds: 5),
     WindowSnapshot? Function()? readWindow,
-  }) : readWindow = readWindow ?? readForegroundWindow;
+    Future<String?> Function()? captureVisibleText,
+  })  : readWindow = readWindow ?? readForegroundWindow,
+        captureVisibleText = captureVisibleText ?? _captureVisibleTextViaHelper;
 
   final KangoosDatabase database;
   final CaptureSettingsRepository settingsRepository;
   final Duration pollInterval;
 
-  /// Overridable for tests; defaults to the real [readForegroundWindow].
   final WindowSnapshot? Function() readWindow;
+  final Future<String?> Function() captureVisibleText;
 
   Timer? _timer;
   String? _lastKey;
@@ -63,10 +69,41 @@ class WindowCaptureService {
     if (key == _lastKey) return;
     _lastKey = key;
 
+    final visibleText =
+        settings.captureVisibleText ? await captureVisibleText() : null;
+
     await database.logActivity(ActivitiesCompanion.insert(
       appName: snapshot.appName,
       windowTitle: snapshot.windowTitle,
+      capturedText: Value(visibleText),
     ));
+  }
+
+  static Future<String?> _captureVisibleTextViaHelper() async {
+    try {
+      final process = await Process.start(
+        'dart',
+        ['run', 'bin/uia_capture.dart'],
+        workingDirectory: Directory.current.path,
+      );
+      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+      final stderrDrained = process.stderr.drain<void>();
+
+      final exitCode = await process.exitCode.timeout(
+        uiaHelperTimeout,
+        onTimeout: () {
+          process.kill();
+          return -1;
+        },
+      );
+      await stderrDrained;
+      if (exitCode != 0) return null;
+
+      final text = (await stdoutFuture).trim();
+      return text.isEmpty ? null : text;
+    } catch (_) {
+      return null;
+    }
   }
 
   static WindowSnapshot? readForegroundWindow() {

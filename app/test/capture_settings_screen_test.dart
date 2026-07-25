@@ -16,7 +16,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'keepass.exe');
@@ -52,5 +52,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect((await repository.load()).retentionDays, 0);
+  });
+
+  testWidgets('enabling visible text capture persists', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = CaptureSettingsRepository();
+
+    await tester.pumpWidget(MaterialApp(
+      home: CaptureSettingsScreen(repository: repository),
+    ));
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).captureVisibleText, isFalse);
+
+    await tester.tap(find.byType(Switch).last);
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).captureVisibleText, isTrue);
   });
 }

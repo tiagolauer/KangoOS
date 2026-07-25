@@ -121,4 +121,58 @@ void main() {
 
     expect(await database.watchRecentActivities().first, hasLength(1));
   });
+
+  test('tick attaches visible text only when the setting is enabled',
+      () async {
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(captureVisibleText: true));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () =>
+          const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
+      captureVisibleText: () async => 'typed content',
+    );
+
+    await service.tick();
+
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedText, 'typed content');
+  });
+
+  test('tick leaves capturedText null when the setting is disabled',
+      () async {
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: CaptureSettingsRepository(),
+      readWindow: () =>
+          const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
+      captureVisibleText: () async =>
+          throw StateError('should not be called when disabled'),
+    );
+
+    await service.tick();
+
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedText, isNull);
+  });
+
+  test('tick leaves capturedText null when the helper fails', () async {
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(captureVisibleText: true));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () =>
+          const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
+      captureVisibleText: () async => null,
+    );
+
+    await service.tick();
+
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedText, isNull);
+  });
 }
