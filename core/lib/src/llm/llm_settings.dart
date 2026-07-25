@@ -1,9 +1,10 @@
 import 'llm_provider.dart';
 import 'providers/anthropic_provider.dart';
+import 'providers/gemini_provider.dart';
 import 'providers/ollama_provider.dart';
 import 'providers/openai_provider.dart';
 
-enum LlmProviderKind { ollama, anthropic, openAi }
+enum LlmProviderKind { ollama, anthropic, openAi, gemini }
 
 class LlmSettings {
   const LlmSettings({
@@ -11,6 +12,7 @@ class LlmSettings {
     this.model = '',
     this.apiKey = '',
     this.baseUrl = '',
+    this.reasoningEffort = ReasoningEffort.balanced,
   });
 
   static const defaults = LlmSettings(
@@ -23,17 +25,23 @@ class LlmSettings {
   final String apiKey;
   final String baseUrl;
 
+  /// Ignored by [LlmProviderKind.ollama] — local models have no standardized
+  /// reasoning-effort API to target.
+  final ReasoningEffort reasoningEffort;
+
   LlmSettings copyWith({
     LlmProviderKind? provider,
     String? model,
     String? apiKey,
     String? baseUrl,
+    ReasoningEffort? reasoningEffort,
   }) {
     return LlmSettings(
       provider: provider ?? this.provider,
       model: model ?? this.model,
       apiKey: apiKey ?? this.apiKey,
       baseUrl: baseUrl ?? this.baseUrl,
+      reasoningEffort: reasoningEffort ?? this.reasoningEffort,
     );
   }
 
@@ -45,9 +53,23 @@ class LlmSettings {
           baseUrl: baseUrl.isEmpty ? 'http://localhost:11434' : baseUrl,
         );
       case LlmProviderKind.anthropic:
-        return AnthropicProvider(apiKey: apiKey, model: model);
+        return AnthropicProvider(
+          apiKey: apiKey,
+          model: model,
+          reasoningEffort: reasoningEffort,
+        );
       case LlmProviderKind.openAi:
-        return OpenAiProvider(apiKey: apiKey, model: model);
+        return OpenAiProvider(
+          apiKey: apiKey,
+          model: model,
+          reasoningEffort: reasoningEffort,
+        );
+      case LlmProviderKind.gemini:
+        return GeminiProvider(
+          apiKey: apiKey,
+          model: model,
+          reasoningEffort: reasoningEffort,
+        );
     }
   }
 }

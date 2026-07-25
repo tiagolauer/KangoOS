@@ -16,7 +16,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'keepass.exe');
@@ -29,10 +29,29 @@ void main() {
     expect(saved.paused, isTrue);
     expect(saved.excludedApps, ['keepass.exe']);
 
+    await tester.ensureVisible(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
 
     expect((await repository.load()).excludedApps, isEmpty);
+  });
+
+  testWidgets('toggling browser URL capture persists', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = CaptureSettingsRepository();
+
+    await tester.pumpWidget(MaterialApp(
+      home: CaptureSettingsScreen(repository: repository),
+    ));
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).captureBrowserUrls, isFalse);
+
+    await tester.tap(find.byType(Switch).last);
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).captureBrowserUrls, isTrue);
   });
 
   testWidgets('changing retention persists', (tester) async {

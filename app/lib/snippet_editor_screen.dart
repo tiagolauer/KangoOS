@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
 
 class SnippetEditorScreen extends StatefulWidget {
@@ -11,25 +12,38 @@ class SnippetEditorScreen extends StatefulWidget {
     super.key,
     required this.database,
     required this.semanticSearch,
+    required this.settingsRepository,
     required this.onDone,
     this.snippet,
+    this.tagger = const SnippetTagger(),
+    this.providerBuilder,
   });
 
   final KangoosDatabase database;
   final SemanticSearch semanticSearch;
+  final SettingsRepository settingsRepository;
   final VoidCallback onDone;
   final Snippet? snippet;
+  final SnippetTagger tagger;
+
+  /// Overridable for tests; defaults to [LlmSettings.buildProvider].
+  final LlmProvider Function(LlmSettings settings)? providerBuilder;
 
   @override
   State<SnippetEditorScreen> createState() => _SnippetEditorScreenState();
 }
 
 class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
-  late final _titleController = TextEditingController(text: widget.snippet?.title);
-  late final _languageController = TextEditingController(text: widget.snippet?.language);
-  late final _tagsController =
-      TextEditingController(text: (widget.snippet?.tags ?? const []).join(', '));
-  late final _contentController = TextEditingController(text: widget.snippet?.content);
+  late final _titleController =
+      TextEditingController(text: widget.snippet?.title);
+  late final _languageController =
+      TextEditingController(text: widget.snippet?.language);
+  late final _tagsController = TextEditingController(
+      text: (widget.snippet?.tags ?? const []).join(', '));
+  late final _contentController =
+      TextEditingController(text: widget.snippet?.content);
+
+  var _suggestingTags = false;
 
   bool get _isEditing => widget.snippet != null;
 
@@ -79,6 +93,48 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
     if (mounted) widget.onDone();
   }
 
+  Future<void> _suggestTags() async {
+    final content = _contentController.text.trim();
+    if (content.isEmpty || _suggestingTags) return;
+
+    setState(() => _suggestingTags = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final settings = await widget.settingsRepository.load();
+      if (settings.model.isEmpty) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('Set a model in LLM settings first.')));
+        return;
+      }
+      if (settings.provider != LlmProviderKind.ollama &&
+          settings.apiKey.isEmpty) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('Set an API key in LLM settings first.')));
+        return;
+      }
+
+      final buildProvider = widget.providerBuilder ?? (s) => s.buildProvider();
+      final tags = await widget.tagger.suggestTags(
+        provider: buildProvider(settings),
+        title: _titleController.text.trim(),
+        content: content,
+        language: _languageController.text.trim(),
+      );
+
+      if (tags.isEmpty) {
+        messenger
+            .showSnackBar(const SnackBar(content: Text('No tags suggested.')));
+        return;
+      }
+      setState(() => _tagsController.text = tags.join(', '));
+    } catch (e) {
+      messenger
+          .showSnackBar(SnackBar(content: Text('Tag suggestion failed: $e')));
+    } finally {
+      if (mounted) setState(() => _suggestingTags = false);
+    }
+  }
+
   Future<void> _delete() async {
     await widget.database.deleteSnippet(widget.snippet!.id);
     if (mounted) widget.onDone();
@@ -101,7 +157,8 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
               icon: const Icon(Icons.delete_outline),
               tooltip: 'Delete',
             ),
-          IconButton(onPressed: _save, icon: const Icon(Icons.check), tooltip: 'Save'),
+          IconButton(
+              onPressed: _save, icon: const Icon(Icons.check), tooltip: 'Save'),
         ],
       ),
       body: Padding(
@@ -118,14 +175,29 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _languageController,
-                    decoration: const InputDecoration(labelText: 'Language (optional)'),
+                    decoration:
+                        const InputDecoration(labelText: 'Language (optional)'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
                     controller: _tagsController,
-                    decoration: const InputDecoration(labelText: 'Tags (comma-separated)'),
+                    decoration: InputDecoration(
+                      labelText: 'Tags (comma-separated)',
+                      suffixIcon: IconButton(
+                        icon: _suggestingTags
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_awesome, size: 20),
+                        tooltip: 'Suggest tags via LLM',
+                        onPressed: _suggestingTags ? null : _suggestTags,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -138,7 +210,8 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
                 alignLabelWithHint: true,
               ),
               maxLines: 14,
-              style: const TextStyle(fontFamilyFallback: KangoosTheme.monoFallback),
+              style: const TextStyle(
+                  fontFamilyFallback: KangoosTheme.monoFallback),
             ),
           ],
         ),

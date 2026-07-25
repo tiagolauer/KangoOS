@@ -18,8 +18,8 @@ void main() {
   testWidgets('create a snippet and see it in the list', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final database = KangoosDatabase.memory();
-    final semanticSearch =
-        SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
+    final semanticSearch = SemanticSearch(
+        database: database, embeddingProvider: _FakeEmbeddingProvider());
 
     await tester.pumpWidget(
       KangoosApp(

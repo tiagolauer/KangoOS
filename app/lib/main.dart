@@ -5,9 +5,11 @@ import 'package:kangoos_core/kangoos_core.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'capture/activity_summary_service.dart';
 import 'capture/capture_settings_repository.dart';
 import 'capture/window_capture_service.dart';
 import 'home/app_shell.dart';
+import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
 
 const defaultEmbeddingModel = 'nomic-embed-text';
@@ -15,13 +17,18 @@ const defaultEmbeddingModel = 'nomic-embed-text';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supportDir = await getApplicationSupportDirectory();
-  final database = KangoosDatabase.native(File(p.join(supportDir.path, 'kangoos.db')));
+  final database =
+      KangoosDatabase.native(File(p.join(supportDir.path, 'kangoos.db')));
   final semanticSearch = SemanticSearch(
     database: database,
     embeddingProvider: OllamaEmbeddingProvider(model: defaultEmbeddingModel),
   );
   final captureSettingsRepository = CaptureSettingsRepository();
-  WindowCaptureService(database: database, settingsRepository: captureSettingsRepository)
+  WindowCaptureService(
+          database: database, settingsRepository: captureSettingsRepository)
+      .start();
+  ActivitySummaryService(
+          database: database, settingsRepository: SettingsRepository())
       .start();
 
   runApp(KangoosApp(

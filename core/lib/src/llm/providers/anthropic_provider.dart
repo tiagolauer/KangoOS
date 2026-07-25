@@ -10,16 +10,23 @@ class AnthropicProvider implements LlmProvider {
     required this.apiKey,
     required this.model,
     this.maxTokens = 4096,
+    this.reasoningEffort = ReasoningEffort.balanced,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String apiKey;
   final String model;
   final int maxTokens;
+  final ReasoningEffort reasoningEffort;
   final http.Client _client;
 
   static const _endpoint = 'https://api.anthropic.com/v1/messages';
   static const _apiVersion = '2023-06-01';
+
+  /// Anthropic has no separate "fast" lever beyond model/token choice, so
+  /// only `thinking` changes behavior here — `fast` and `balanced` both
+  /// skip extended thinking.
+  static const _thinkingBudgetTokens = 8000;
 
   @override
   String get id => 'anthropic';
@@ -31,6 +38,7 @@ class AnthropicProvider implements LlmProvider {
         .map((m) => m.content)
         .join('\n');
     final conversation = messages.where((m) => m.role != LlmRole.system);
+    final thinking = reasoningEffort == ReasoningEffort.thinking;
 
     final request = http.Request('POST', Uri.parse(_endpoint))
       ..headers.addAll({
@@ -40,9 +48,14 @@ class AnthropicProvider implements LlmProvider {
       })
       ..body = jsonEncode({
         'model': model,
-        'max_tokens': maxTokens,
+        'max_tokens': thinking ? maxTokens + _thinkingBudgetTokens : maxTokens,
         'stream': true,
         if (system.isNotEmpty) 'system': system,
+        if (thinking)
+          'thinking': {
+            'type': 'enabled',
+            'budget_tokens': _thinkingBudgetTokens
+          },
         'messages': conversation
             .map((m) => {
                   'role': m.role == LlmRole.user ? 'user' : 'assistant',

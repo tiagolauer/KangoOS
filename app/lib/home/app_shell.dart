@@ -25,8 +25,21 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   final _settingsRepository = SettingsRepository();
+  late final _summarizer = ActivitySummarizer(database: widget.database);
   Snippet? _editingSnippet;
   var _editing = false;
+
+  Future<SummaryResult> _generateDayRecap() async {
+    final settings = await _settingsRepository.load();
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    return _summarizer.summarize(
+      provider: settings.buildProvider(),
+      kind: SummaryKind.dayRecap,
+      start: startOfDay,
+      end: now,
+    );
+  }
 
   void _openEditor([Snippet? snippet]) {
     setState(() {
@@ -52,6 +65,7 @@ class _AppShellState extends State<AppShell> {
             semanticSearch: widget.semanticSearch,
             onSelectSnippet: _openEditor,
             onCreateSnippet: () => _openEditor(),
+            onGenerateDayRecap: _generateDayRecap,
           ),
           Expanded(
             child: _editing
@@ -59,6 +73,7 @@ class _AppShellState extends State<AppShell> {
                     key: ValueKey(_editingSnippet?.id ?? 'new'),
                     database: widget.database,
                     semanticSearch: widget.semanticSearch,
+                    settingsRepository: _settingsRepository,
                     snippet: _editingSnippet,
                     onDone: _closeEditor,
                   )

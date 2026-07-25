@@ -44,7 +44,8 @@ void main() {
     final service = WindowCaptureService(
       database: database,
       settingsRepository: repository,
-      readWindow: () => const WindowSnapshot(appName: 'a.exe', windowTitle: 'A'),
+      readWindow: () =>
+          const WindowSnapshot(appName: 'a.exe', windowTitle: 'A'),
     );
 
     await service.tick();
@@ -88,7 +89,8 @@ void main() {
     ));
 
     final repository = CaptureSettingsRepository();
-    await repository.save(const CaptureSettings(paused: true, retentionDays: 30));
+    await repository
+        .save(const CaptureSettings(paused: true, retentionDays: 30));
 
     final service = WindowCaptureService(
       database: database,
@@ -101,6 +103,47 @@ void main() {
     expect(await database.watchRecentActivities().first, isEmpty);
   });
 
+  test('tick records the browser URL when captureBrowserUrls is on', () async {
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(captureBrowserUrls: true));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () =>
+          const WindowSnapshot(appName: 'chrome.exe', windowTitle: 'Docs'),
+      browserUrlReader: (appName) async => 'https://example.com',
+    );
+
+    await service.tick();
+
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedText, 'https://example.com');
+  });
+
+  test('tick does not call browserUrlReader when captureBrowserUrls is off',
+      () async {
+    final repository = CaptureSettingsRepository();
+    var called = false;
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () =>
+          const WindowSnapshot(appName: 'chrome.exe', windowTitle: 'Docs'),
+      browserUrlReader: (appName) async {
+        called = true;
+        return 'https://example.com';
+      },
+    );
+
+    await service.tick();
+
+    expect(called, isFalse);
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedText, isNull);
+  });
+
   test('tick keeps history when retention is set to forever', () async {
     await database.logActivity(ActivitiesCompanion.insert(
       appName: 'old.exe',
@@ -109,7 +152,8 @@ void main() {
     ));
 
     final repository = CaptureSettingsRepository();
-    await repository.save(const CaptureSettings(paused: true, retentionDays: 0));
+    await repository
+        .save(const CaptureSettings(paused: true, retentionDays: 0));
 
     final service = WindowCaptureService(
       database: database,

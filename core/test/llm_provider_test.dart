@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:kangoos_core/kangoos_core.dart';
@@ -71,5 +73,90 @@ void main() {
     final chunks = await provider.chat(userMessages).toList();
 
     expect(chunks.join(), 'Hello');
+  });
+
+  test(
+      'OpenAiProvider omits reasoning_effort for balanced but sends it for fast/thinking',
+      () async {
+    Map<String, dynamic>? lastBody;
+    final client = MockClient((request) async {
+      lastBody = jsonDecode(request.body) as Map<String, dynamic>;
+      return http.Response('data: [DONE]\n\n', 200);
+    });
+
+    await OpenAiProvider(apiKey: 'k', model: 'gpt-5', client: client)
+        .chat(userMessages)
+        .drain<void>();
+    expect(lastBody!.containsKey('reasoning_effort'), isFalse);
+
+    await OpenAiProvider(
+      apiKey: 'k',
+      model: 'gpt-5',
+      reasoningEffort: ReasoningEffort.thinking,
+      client: client,
+    ).chat(userMessages).drain<void>();
+    expect(lastBody!['reasoning_effort'], 'high');
+  });
+
+  test('AnthropicProvider enables extended thinking only for the thinking mode',
+      () async {
+    Map<String, dynamic>? lastBody;
+    final client = MockClient((request) async {
+      lastBody = jsonDecode(request.body) as Map<String, dynamic>;
+      return http.Response('data: {"type":"message_stop"}\n\n', 200);
+    });
+
+    await AnthropicProvider(
+            apiKey: 'k', model: 'claude-opus-4-8', client: client)
+        .chat(userMessages)
+        .drain<void>();
+    expect(lastBody!.containsKey('thinking'), isFalse);
+    expect(lastBody!['max_tokens'], 4096);
+
+    await AnthropicProvider(
+      apiKey: 'k',
+      model: 'claude-opus-4-8',
+      reasoningEffort: ReasoningEffort.thinking,
+      client: client,
+    ).chat(userMessages).drain<void>();
+    expect(lastBody!['thinking'], {'type': 'enabled', 'budget_tokens': 8000});
+    expect(lastBody!['max_tokens'], 4096 + 8000);
+  });
+
+  test('GeminiProvider streams text parts and maps system messages separately',
+      () async {
+    Map<String, dynamic>? lastBody;
+    final client = MockClient((request) async {
+      expect(request.url.toString(), contains('streamGenerateContent'));
+      expect(request.url.toString(), contains('key=test-key'));
+      lastBody = jsonDecode(request.body) as Map<String, dynamic>;
+      return http.Response(
+        'data: {"candidates":[{"content":{"parts":[{"text":"Hel"}]}}]}\n\n'
+        'data: {"candidates":[{"content":{"parts":[{"text":"lo"}]}}]}\n\n',
+        200,
+      );
+    });
+
+    final provider = GeminiProvider(
+        apiKey: 'test-key', model: 'gemini-2.5-flash', client: client);
+    final chunks = await provider.chat(const [
+      LlmMessage(role: LlmRole.system, content: 'be terse'),
+      LlmMessage(role: LlmRole.user, content: 'hi'),
+    ]).toList();
+
+    expect(chunks.join(), 'Hello');
+    expect(lastBody!['systemInstruction'], {
+      'parts': [
+        {'text': 'be terse'}
+      ],
+    });
+    expect(lastBody!['contents'], [
+      {
+        'role': 'user',
+        'parts': [
+          {'text': 'hi'}
+        ],
+      }
+    ]);
   });
 }

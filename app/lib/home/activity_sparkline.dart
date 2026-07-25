@@ -7,45 +7,105 @@ List<int> bucketActivityByHour(List<Activity> activities, {DateTime? now}) {
   final buckets = List<int>.filled(24, 0);
   for (final activity in activities) {
     final local = activity.capturedAt.toLocal();
-    if (local.year == today.year && local.month == today.month && local.day == today.day) {
+    if (local.year == today.year &&
+        local.month == today.month &&
+        local.day == today.day) {
       buckets[local.hour]++;
     }
   }
   return buckets;
 }
 
+/// Today's activity as an area chart, with a time-of-day axis and a live
+/// indicator dot at the current time — green while capture is running,
+/// gray while paused.
 class ActivitySparkline extends StatelessWidget {
-  const ActivitySparkline({super.key, required this.hourlyCounts});
+  const ActivitySparkline({
+    super.key,
+    required this.hourlyCounts,
+    this.isCapturing = true,
+    this.now,
+  });
 
   final List<int> hourlyCounts;
+  final bool isCapturing;
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final hasData = hourlyCounts.any((count) => count > 0);
-    return SizedBox(
-      height: 72,
-      child: hasData
-          ? CustomPaint(
-              size: Size.infinite,
-              painter: _SparklinePainter(
-                counts: hourlyCounts,
-                lineColor: colors.primary,
-                fillColor: colors.primary.withValues(alpha: 0.14),
-              ),
-            )
-          : Center(
-              child: Text(
-                'Activity will show up here as you work.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
+    final resolvedNow = now ?? DateTime.now();
+    final nowFraction =
+        (resolvedNow.hour * 60 + resolvedNow.minute) / (24 * 60);
+    final liveColor = isCapturing ? colors.primary : colors.onSurfaceVariant;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 72,
+          child: hasData
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        CustomPaint(
+                          size: Size.infinite,
+                          painter: _SparklinePainter(
+                            counts: hourlyCounts,
+                            lineColor: colors.primary,
+                            fillColor: colors.primary.withValues(alpha: 0.14),
+                          ),
+                        ),
+                        Positioned(
+                          left: nowFraction * constraints.maxWidth - 4,
+                          top: 12,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: liveColor,
+                              border:
+                                  Border.all(color: colors.surface, width: 1.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                )
+              : Center(
+                  child: Text(
+                    'Activity will show up here as you work.',
+                    style: textTheme.bodySmall,
+                  ),
+                ),
+        ),
+        if (hasData) ...[
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('12am', style: textTheme.bodySmall),
+              Text('6am', style: textTheme.bodySmall),
+              Text('12pm', style: textTheme.bodySmall),
+              Text('6pm', style: textTheme.bodySmall),
+              Text('12am', style: textTheme.bodySmall),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }
 
 class _SparklinePainter extends CustomPainter {
-  _SparklinePainter({required this.counts, required this.lineColor, required this.fillColor});
+  _SparklinePainter(
+      {required this.counts, required this.lineColor, required this.fillColor});
 
   final List<int> counts;
   final Color lineColor;
@@ -84,9 +144,6 @@ class _SparklinePainter extends CustomPainter {
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round,
     );
-
-    final endPoint = pointAt(counts.length - 1);
-    canvas.drawCircle(endPoint, 3.5, Paint()..color = lineColor);
   }
 
   @override
