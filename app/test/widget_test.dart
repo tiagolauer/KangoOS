@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:kangoos_app/capture/capture_settings_repository.dart';
 import 'package:kangoos_app/main.dart';
 
 class _FakeEmbeddingProvider implements EmbeddingProvider {
@@ -14,12 +16,17 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
 
 void main() {
   testWidgets('create a snippet and see it in the list', (tester) async {
+    SharedPreferences.setMockInitialValues({});
     final database = KangoosDatabase.memory();
     final semanticSearch =
         SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
 
     await tester.pumpWidget(
-      KangoosApp(database: database, semanticSearch: semanticSearch),
+      KangoosApp(
+        database: database,
+        semanticSearch: semanticSearch,
+        captureSettingsRepository: CaptureSettingsRepository(),
+      ),
     );
     await tester.pumpAndSettle();
 

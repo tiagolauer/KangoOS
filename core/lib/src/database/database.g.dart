@@ -414,18 +414,332 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
   }
 }
 
+class $ActivitiesTable extends Activities
+    with TableInfo<$ActivitiesTable, Activity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ActivitiesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _appNameMeta =
+      const VerificationMeta('appName');
+  @override
+  late final GeneratedColumn<String> appName = GeneratedColumn<String>(
+      'app_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _windowTitleMeta =
+      const VerificationMeta('windowTitle');
+  @override
+  late final GeneratedColumn<String> windowTitle = GeneratedColumn<String>(
+      'window_title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _capturedTextMeta =
+      const VerificationMeta('capturedText');
+  @override
+  late final GeneratedColumn<String> capturedText = GeneratedColumn<String>(
+      'captured_text', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _capturedAtMeta =
+      const VerificationMeta('capturedAt');
+  @override
+  late final GeneratedColumn<DateTime> capturedAt = GeneratedColumn<DateTime>(
+      'captured_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, appName, windowTitle, capturedText, capturedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'activities';
+  @override
+  VerificationContext validateIntegrity(Insertable<Activity> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('app_name')) {
+      context.handle(_appNameMeta,
+          appName.isAcceptableOrUnknown(data['app_name']!, _appNameMeta));
+    } else if (isInserting) {
+      context.missing(_appNameMeta);
+    }
+    if (data.containsKey('window_title')) {
+      context.handle(
+          _windowTitleMeta,
+          windowTitle.isAcceptableOrUnknown(
+              data['window_title']!, _windowTitleMeta));
+    } else if (isInserting) {
+      context.missing(_windowTitleMeta);
+    }
+    if (data.containsKey('captured_text')) {
+      context.handle(
+          _capturedTextMeta,
+          capturedText.isAcceptableOrUnknown(
+              data['captured_text']!, _capturedTextMeta));
+    }
+    if (data.containsKey('captured_at')) {
+      context.handle(
+          _capturedAtMeta,
+          capturedAt.isAcceptableOrUnknown(
+              data['captured_at']!, _capturedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Activity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Activity(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      appName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}app_name'])!,
+      windowTitle: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}window_title'])!,
+      capturedText: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}captured_text']),
+      capturedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}captured_at'])!,
+    );
+  }
+
+  @override
+  $ActivitiesTable createAlias(String alias) {
+    return $ActivitiesTable(attachedDatabase, alias);
+  }
+}
+
+class Activity extends DataClass implements Insertable<Activity> {
+  final int id;
+  final String appName;
+  final String windowTitle;
+  final String? capturedText;
+  final DateTime capturedAt;
+  const Activity(
+      {required this.id,
+      required this.appName,
+      required this.windowTitle,
+      this.capturedText,
+      required this.capturedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['app_name'] = Variable<String>(appName);
+    map['window_title'] = Variable<String>(windowTitle);
+    if (!nullToAbsent || capturedText != null) {
+      map['captured_text'] = Variable<String>(capturedText);
+    }
+    map['captured_at'] = Variable<DateTime>(capturedAt);
+    return map;
+  }
+
+  ActivitiesCompanion toCompanion(bool nullToAbsent) {
+    return ActivitiesCompanion(
+      id: Value(id),
+      appName: Value(appName),
+      windowTitle: Value(windowTitle),
+      capturedText: capturedText == null && nullToAbsent
+          ? const Value.absent()
+          : Value(capturedText),
+      capturedAt: Value(capturedAt),
+    );
+  }
+
+  factory Activity.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Activity(
+      id: serializer.fromJson<int>(json['id']),
+      appName: serializer.fromJson<String>(json['appName']),
+      windowTitle: serializer.fromJson<String>(json['windowTitle']),
+      capturedText: serializer.fromJson<String?>(json['capturedText']),
+      capturedAt: serializer.fromJson<DateTime>(json['capturedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'appName': serializer.toJson<String>(appName),
+      'windowTitle': serializer.toJson<String>(windowTitle),
+      'capturedText': serializer.toJson<String?>(capturedText),
+      'capturedAt': serializer.toJson<DateTime>(capturedAt),
+    };
+  }
+
+  Activity copyWith(
+          {int? id,
+          String? appName,
+          String? windowTitle,
+          Value<String?> capturedText = const Value.absent(),
+          DateTime? capturedAt}) =>
+      Activity(
+        id: id ?? this.id,
+        appName: appName ?? this.appName,
+        windowTitle: windowTitle ?? this.windowTitle,
+        capturedText:
+            capturedText.present ? capturedText.value : this.capturedText,
+        capturedAt: capturedAt ?? this.capturedAt,
+      );
+  Activity copyWithCompanion(ActivitiesCompanion data) {
+    return Activity(
+      id: data.id.present ? data.id.value : this.id,
+      appName: data.appName.present ? data.appName.value : this.appName,
+      windowTitle:
+          data.windowTitle.present ? data.windowTitle.value : this.windowTitle,
+      capturedText: data.capturedText.present
+          ? data.capturedText.value
+          : this.capturedText,
+      capturedAt:
+          data.capturedAt.present ? data.capturedAt.value : this.capturedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Activity(')
+          ..write('id: $id, ')
+          ..write('appName: $appName, ')
+          ..write('windowTitle: $windowTitle, ')
+          ..write('capturedText: $capturedText, ')
+          ..write('capturedAt: $capturedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, appName, windowTitle, capturedText, capturedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Activity &&
+          other.id == this.id &&
+          other.appName == this.appName &&
+          other.windowTitle == this.windowTitle &&
+          other.capturedText == this.capturedText &&
+          other.capturedAt == this.capturedAt);
+}
+
+class ActivitiesCompanion extends UpdateCompanion<Activity> {
+  final Value<int> id;
+  final Value<String> appName;
+  final Value<String> windowTitle;
+  final Value<String?> capturedText;
+  final Value<DateTime> capturedAt;
+  const ActivitiesCompanion({
+    this.id = const Value.absent(),
+    this.appName = const Value.absent(),
+    this.windowTitle = const Value.absent(),
+    this.capturedText = const Value.absent(),
+    this.capturedAt = const Value.absent(),
+  });
+  ActivitiesCompanion.insert({
+    this.id = const Value.absent(),
+    required String appName,
+    required String windowTitle,
+    this.capturedText = const Value.absent(),
+    this.capturedAt = const Value.absent(),
+  })  : appName = Value(appName),
+        windowTitle = Value(windowTitle);
+  static Insertable<Activity> custom({
+    Expression<int>? id,
+    Expression<String>? appName,
+    Expression<String>? windowTitle,
+    Expression<String>? capturedText,
+    Expression<DateTime>? capturedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (appName != null) 'app_name': appName,
+      if (windowTitle != null) 'window_title': windowTitle,
+      if (capturedText != null) 'captured_text': capturedText,
+      if (capturedAt != null) 'captured_at': capturedAt,
+    });
+  }
+
+  ActivitiesCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? appName,
+      Value<String>? windowTitle,
+      Value<String?>? capturedText,
+      Value<DateTime>? capturedAt}) {
+    return ActivitiesCompanion(
+      id: id ?? this.id,
+      appName: appName ?? this.appName,
+      windowTitle: windowTitle ?? this.windowTitle,
+      capturedText: capturedText ?? this.capturedText,
+      capturedAt: capturedAt ?? this.capturedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (appName.present) {
+      map['app_name'] = Variable<String>(appName.value);
+    }
+    if (windowTitle.present) {
+      map['window_title'] = Variable<String>(windowTitle.value);
+    }
+    if (capturedText.present) {
+      map['captured_text'] = Variable<String>(capturedText.value);
+    }
+    if (capturedAt.present) {
+      map['captured_at'] = Variable<DateTime>(capturedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActivitiesCompanion(')
+          ..write('id: $id, ')
+          ..write('appName: $appName, ')
+          ..write('windowTitle: $windowTitle, ')
+          ..write('capturedText: $capturedText, ')
+          ..write('capturedAt: $capturedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KangoosDatabase extends GeneratedDatabase {
   _$KangoosDatabase(QueryExecutor e) : super(e);
   $KangoosDatabaseManager get managers => $KangoosDatabaseManager(this);
   late final $SnippetsTable snippets = $SnippetsTable(this);
+  late final $ActivitiesTable activities = $ActivitiesTable(this);
   late final Index snippetsUpdatedAtIdx = Index('snippets_updated_at_idx',
       'CREATE INDEX snippets_updated_at_idx ON snippets (updated_at)');
+  late final Index activitiesCapturedAtIdx = Index('activities_captured_at_idx',
+      'CREATE INDEX activities_captured_at_idx ON activities (captured_at)');
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [snippets, snippetsUpdatedAtIdx];
+      [snippets, activities, snippetsUpdatedAtIdx, activitiesCapturedAtIdx];
 }
 
 typedef $$SnippetsTableCreateCompanionBuilder = SnippetsCompanion Function({
@@ -636,10 +950,172 @@ typedef $$SnippetsTableProcessedTableManager = ProcessedTableManager<
     (Snippet, BaseReferences<_$KangoosDatabase, $SnippetsTable, Snippet>),
     Snippet,
     PrefetchHooks Function()>;
+typedef $$ActivitiesTableCreateCompanionBuilder = ActivitiesCompanion Function({
+  Value<int> id,
+  required String appName,
+  required String windowTitle,
+  Value<String?> capturedText,
+  Value<DateTime> capturedAt,
+});
+typedef $$ActivitiesTableUpdateCompanionBuilder = ActivitiesCompanion Function({
+  Value<int> id,
+  Value<String> appName,
+  Value<String> windowTitle,
+  Value<String?> capturedText,
+  Value<DateTime> capturedAt,
+});
+
+class $$ActivitiesTableFilterComposer
+    extends Composer<_$KangoosDatabase, $ActivitiesTable> {
+  $$ActivitiesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get appName => $composableBuilder(
+      column: $table.appName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get windowTitle => $composableBuilder(
+      column: $table.windowTitle, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get capturedText => $composableBuilder(
+      column: $table.capturedText, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get capturedAt => $composableBuilder(
+      column: $table.capturedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$ActivitiesTableOrderingComposer
+    extends Composer<_$KangoosDatabase, $ActivitiesTable> {
+  $$ActivitiesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get appName => $composableBuilder(
+      column: $table.appName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get windowTitle => $composableBuilder(
+      column: $table.windowTitle, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get capturedText => $composableBuilder(
+      column: $table.capturedText,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get capturedAt => $composableBuilder(
+      column: $table.capturedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$ActivitiesTableAnnotationComposer
+    extends Composer<_$KangoosDatabase, $ActivitiesTable> {
+  $$ActivitiesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get appName =>
+      $composableBuilder(column: $table.appName, builder: (column) => column);
+
+  GeneratedColumn<String> get windowTitle => $composableBuilder(
+      column: $table.windowTitle, builder: (column) => column);
+
+  GeneratedColumn<String> get capturedText => $composableBuilder(
+      column: $table.capturedText, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get capturedAt => $composableBuilder(
+      column: $table.capturedAt, builder: (column) => column);
+}
+
+class $$ActivitiesTableTableManager extends RootTableManager<
+    _$KangoosDatabase,
+    $ActivitiesTable,
+    Activity,
+    $$ActivitiesTableFilterComposer,
+    $$ActivitiesTableOrderingComposer,
+    $$ActivitiesTableAnnotationComposer,
+    $$ActivitiesTableCreateCompanionBuilder,
+    $$ActivitiesTableUpdateCompanionBuilder,
+    (Activity, BaseReferences<_$KangoosDatabase, $ActivitiesTable, Activity>),
+    Activity,
+    PrefetchHooks Function()> {
+  $$ActivitiesTableTableManager(_$KangoosDatabase db, $ActivitiesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ActivitiesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ActivitiesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ActivitiesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> appName = const Value.absent(),
+            Value<String> windowTitle = const Value.absent(),
+            Value<String?> capturedText = const Value.absent(),
+            Value<DateTime> capturedAt = const Value.absent(),
+          }) =>
+              ActivitiesCompanion(
+            id: id,
+            appName: appName,
+            windowTitle: windowTitle,
+            capturedText: capturedText,
+            capturedAt: capturedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String appName,
+            required String windowTitle,
+            Value<String?> capturedText = const Value.absent(),
+            Value<DateTime> capturedAt = const Value.absent(),
+          }) =>
+              ActivitiesCompanion.insert(
+            id: id,
+            appName: appName,
+            windowTitle: windowTitle,
+            capturedText: capturedText,
+            capturedAt: capturedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$ActivitiesTableProcessedTableManager = ProcessedTableManager<
+    _$KangoosDatabase,
+    $ActivitiesTable,
+    Activity,
+    $$ActivitiesTableFilterComposer,
+    $$ActivitiesTableOrderingComposer,
+    $$ActivitiesTableAnnotationComposer,
+    $$ActivitiesTableCreateCompanionBuilder,
+    $$ActivitiesTableUpdateCompanionBuilder,
+    (Activity, BaseReferences<_$KangoosDatabase, $ActivitiesTable, Activity>),
+    Activity,
+    PrefetchHooks Function()>;
 
 class $KangoosDatabaseManager {
   final _$KangoosDatabase _db;
   $KangoosDatabaseManager(this._db);
   $$SnippetsTableTableManager get snippets =>
       $$SnippetsTableTableManager(_db, _db.snippets);
+  $$ActivitiesTableTableManager get activities =>
+      $$ActivitiesTableTableManager(_db, _db.activities);
 }

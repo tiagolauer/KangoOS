@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:kangoos_app/capture/capture_settings_repository.dart';
 import 'package:kangoos_app/snippet_list_screen.dart';
 
 class _FakeEmbeddingProvider implements EmbeddingProvider {
@@ -14,6 +16,7 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
 
 void main() {
   testWidgets('semantic toggle finds an indexed snippet', (tester) async {
+    SharedPreferences.setMockInitialValues({});
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
     final semanticSearch =
@@ -26,7 +29,11 @@ void main() {
     await semanticSearch.indexSnippet((await database.getSnippetById(id))!);
 
     await tester.pumpWidget(MaterialApp(
-      home: SnippetListScreen(database: database, semanticSearch: semanticSearch),
+      home: SnippetListScreen(
+        database: database,
+        semanticSearch: semanticSearch,
+        captureSettingsRepository: CaptureSettingsRepository(),
+      ),
     ));
     await tester.pumpAndSettle();
 

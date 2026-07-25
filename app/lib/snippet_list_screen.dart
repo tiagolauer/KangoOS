@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import 'capture/activity_timeline_screen.dart';
+import 'capture/capture_settings_repository.dart';
 import 'chat_screen.dart';
 import 'settings_repository.dart';
 import 'settings_screen.dart';
@@ -11,10 +13,12 @@ class SnippetListScreen extends StatefulWidget {
     super.key,
     required this.database,
     required this.semanticSearch,
+    required this.captureSettingsRepository,
   });
 
   final KangoosDatabase database;
   final SemanticSearch semanticSearch;
+  final CaptureSettingsRepository captureSettingsRepository;
 
   @override
   State<SnippetListScreen> createState() => _SnippetListScreenState();
@@ -54,6 +58,16 @@ class _SnippetListScreenState extends State<SnippetListScreen> {
             icon: const Icon(Icons.auto_awesome_outlined),
             tooltip: 'Index snippets for semantic search',
             onPressed: _indexMissing,
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Activity',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ActivityTimelineScreen(
+                database: widget.database,
+                captureSettingsRepository: widget.captureSettingsRepository,
+              ),
+            )),
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
