@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -128,7 +129,8 @@ void main() {
     Map<String, dynamic>? lastBody;
     final client = MockClient((request) async {
       expect(request.url.toString(), contains('streamGenerateContent'));
-      expect(request.url.toString(), contains('key=test-key'));
+      expect(request.url.toString(), isNot(contains('test-key')));
+      expect(request.headers['x-goog-api-key'], 'test-key');
       lastBody = jsonDecode(request.body) as Map<String, dynamic>;
       return http.Response(
         'data: {"candidates":[{"content":{"parts":[{"text":"Hel"}]}}]}\n\n'
@@ -158,5 +160,61 @@ void main() {
         ],
       }
     ]);
+  });
+
+  group('HTTP errors surface as LlmException', () {
+    final providers = <String, LlmProvider Function(http.Client)>{
+      'ollama': (client) => OllamaProvider(model: 'llama3', client: client),
+      'anthropic': (client) =>
+          AnthropicProvider(apiKey: 'bad', model: 'm', client: client),
+      'openai': (client) =>
+          OpenAiProvider(apiKey: 'bad', model: 'm', client: client),
+      'gemini': (client) =>
+          GeminiProvider(apiKey: 'bad', model: 'm', client: client),
+    };
+
+    providers.forEach((name, build) {
+      test('$name reports a 401 instead of an empty stream', () {
+        final client = MockClient((request) async => http.Response(
+              '{"error":{"message":"invalid api key"}}',
+              401,
+            ));
+
+        expect(
+          build(client).chat(userMessages).toList(),
+          throwsA(isA<LlmException>()
+              .having((e) => e.statusCode, 'statusCode', 401)
+              .having((e) => e.message, 'message', 'invalid api key')
+              .having((e) => e.provider, 'provider', name)),
+        );
+      });
+    });
+
+    test('a non-JSON error body is passed through as text', () {
+      final client =
+          MockClient((request) async => http.Response('Bad Gateway', 502));
+
+      expect(
+        OllamaProvider(model: 'llama3', client: client)
+            .chat(userMessages)
+            .toList(),
+        throwsA(isA<LlmException>()
+            .having((e) => e.message, 'message', 'Bad Gateway')),
+      );
+    });
+  });
+
+  test('a stalled stream times out instead of hanging', () {
+    final client = MockClient.streaming((request, bodyStream) async =>
+        http.StreamedResponse(StreamController<List<int>>().stream, 200));
+
+    expect(
+      OllamaProvider(
+        model: 'llama3',
+        timeout: const Duration(milliseconds: 50),
+        client: client,
+      ).chat(userMessages).toList(),
+      throwsA(isA<TimeoutException>()),
+    );
   });
 }

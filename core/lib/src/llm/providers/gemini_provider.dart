@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../llm_http.dart';
 import '../llm_provider.dart';
 import '../sse.dart';
 
@@ -10,12 +11,14 @@ class GeminiProvider implements LlmProvider {
     required this.apiKey,
     required this.model,
     this.reasoningEffort = ReasoningEffort.balanced,
+    this.timeout = defaultLlmTimeout,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String apiKey;
   final String model;
   final ReasoningEffort reasoningEffort;
+  final Duration timeout;
   final http.Client _client;
 
   static const _baseUrl =
@@ -32,10 +35,10 @@ class GeminiProvider implements LlmProvider {
         .join('\n');
     final conversation = messages.where((m) => m.role != LlmRole.system);
 
-    final uri =
-        Uri.parse('$_baseUrl/$model:streamGenerateContent?alt=sse&key=$apiKey');
+    final uri = Uri.parse('$_baseUrl/$model:streamGenerateContent?alt=sse');
     final request = http.Request('POST', uri)
       ..headers['Content-Type'] = 'application/json'
+      ..headers['x-goog-api-key'] = apiKey
       ..body = jsonEncode({
         if (system.isNotEmpty)
           'systemInstruction': {
@@ -57,8 +60,13 @@ class GeminiProvider implements LlmProvider {
           },
       });
 
-    final response = await _client.send(request);
-    await for (final data in sseDataLines(response.stream)) {
+    final response = await sendLlmRequest(
+      client: _client,
+      request: request,
+      provider: id,
+      timeout: timeout,
+    );
+    await for (final data in sseDataLines(response.stream.timeout(timeout))) {
       final event = jsonDecode(data) as Map<String, dynamic>;
       final candidates = event['candidates'] as List?;
       if (candidates == null || candidates.isEmpty) continue;
