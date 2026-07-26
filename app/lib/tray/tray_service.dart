@@ -6,9 +6,14 @@ import 'package:window_manager/window_manager.dart';
 import '../capture/capture_settings_repository.dart';
 
 class TrayService with TrayListener, WindowListener {
-  TrayService({required this.captureSettingsRepository});
+  TrayService({
+    required this.captureSettingsRepository,
+    this.onSaveClipboardAsSnippet,
+  });
 
   final CaptureSettingsRepository captureSettingsRepository;
+
+  final Future<void> Function()? onSaveClipboardAsSnippet;
 
   static bool get isSupported => Platform.isWindows;
 
@@ -36,6 +41,13 @@ class TrayService with TrayListener, WindowListener {
     await trayManager.setContextMenu(Menu(items: [
       MenuItem(key: 'show', label: 'Show KangoOS', onClick: (_) => _show()),
       MenuItem.separator(),
+      if (onSaveClipboardAsSnippet != null)
+        MenuItem(
+          key: 'quick_capture',
+          label: 'Save clipboard as snippet',
+          onClick: (_) => onSaveClipboardAsSnippet!(),
+        ),
+      if (onSaveClipboardAsSnippet != null) MenuItem.separator(),
       MenuItem(
         key: 'toggle_pause',
         label: settings.paused ? 'Resume capture' : 'Pause capture',
