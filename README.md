@@ -8,6 +8,10 @@ Open source alternative to [Pieces OS](https://pieces.app/): a snippet manager w
 - **Local-first LLM**: [Ollama](https://ollama.com/) by default, with optional fallback to OpenAI/Anthropic/Gemini via user-supplied API key.
 - **AGPL-3.0 licensed**: free to use and modify, including as a service, as long as modified source stays available.
 
+## Platform support
+
+**Windows is the supported target for 1.0** — it's the only platform the app is built, run and verified on (see the CI `windows-build` job, which produces the released binary). The cross-platform code (activity capture, browser-URL reading, keychain, tray) is written for Linux and macOS too, but those builds are **experimental**: not packaged, not CI-built, and not verified end to end. Linux additionally needs `libayatana-appindicator3-dev`, `libssl-dev` and libsecret at build time. Treat non-Windows as build-it-yourself until a later release.
+
 ## Repository structure
 
 ```
