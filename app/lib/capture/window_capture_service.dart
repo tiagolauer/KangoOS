@@ -32,7 +32,9 @@ class WindowCaptureService {
     Future<String?> Function()? captureScreenText,
     Future<String?> Function(String appName)? browserUrlReader,
     Future<String?> Function()? clipboardReader,
-  })  : readWindow = readWindow ?? defaultWindowReader(),
+    void Function(Object error, StackTrace stackTrace)? onError,
+  })  : onError = onError ?? _reportError,
+        readWindow = readWindow ?? defaultWindowReader(),
         captureVisibleText =
             captureVisibleText ?? _captureVisibleTextViaHelper,
         captureScreenText = captureScreenText ?? _captureScreenTextViaHelper,
@@ -56,8 +58,11 @@ class WindowCaptureService {
 
   final Future<String?> Function() clipboardReader;
 
+  final void Function(Object error, StackTrace stackTrace) onError;
+
   Timer? _timer;
   String? _lastKey;
+  bool _ticking = false;
 
   static bool get isSupported =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -82,7 +87,19 @@ class WindowCaptureService {
 
   void start() {
     if (!isSupported || _timer != null) return;
-    _timer = Timer.periodic(pollInterval, (_) => tick());
+    _timer = Timer.periodic(pollInterval, (_) => tickSafely());
+  }
+
+  Future<void> tickSafely() async {
+    if (_ticking) return;
+    _ticking = true;
+    try {
+      await tick();
+    } catch (error, stackTrace) {
+      onError(error, stackTrace);
+    } finally {
+      _ticking = false;
+    }
   }
 
   void stop() {
@@ -101,7 +118,7 @@ class WindowCaptureService {
 
     final snapshot = readWindow();
     if (snapshot == null) return;
-    if (settings.excludedApps.contains(snapshot.appName)) return;
+    if (isExcluded(snapshot.appName, settings.excludedApps)) return;
 
     final key = '${snapshot.appName}|${snapshot.windowTitle}';
     if (key == _lastKey) return;
@@ -125,6 +142,16 @@ class WindowCaptureService {
       capturedClipboard: Value(clipboard),
       capturedScreenText: Value(screenText),
     ));
+  }
+
+  static bool isExcluded(String appName, List<String> excludedApps) {
+    final normalized = appName.trim().toLowerCase();
+    return excludedApps
+        .any((excluded) => excluded.trim().toLowerCase() == normalized);
+  }
+
+  static void _reportError(Object error, StackTrace stackTrace) {
+    stderr.writeln('Activity capture tick failed: $error\n$stackTrace');
   }
 
   static Future<String?> _readClipboard() async {
