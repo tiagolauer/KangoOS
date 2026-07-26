@@ -8,7 +8,8 @@ void main() {
   });
 
   test('applies defaults when only the token is set', () {
-    final config = EnvConfig.fromEnvironment(const {'KANGOOS_API_TOKEN': 'secret'});
+    final config =
+        EnvConfig.fromEnvironment(const {'KANGOOS_API_TOKEN': 'secret'});
 
     expect(config.apiToken, 'secret');
     expect(config.dbPath, 'kangoos.db');

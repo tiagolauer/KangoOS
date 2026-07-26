@@ -1,3 +1,4 @@
+import '../activity/activity_span.dart';
 import '../database/database.dart';
 import '../llm/llm_provider.dart';
 import '../search/semantic_search.dart';
@@ -10,6 +11,7 @@ class RagChat {
     this.maxContextSnippets = 5,
     this.maxContextActivities = 30,
     this.maxContextSummaries = 5,
+    this.maxHistoryMessages = 20,
     this.onSemanticSearchError,
   });
 
@@ -18,6 +20,7 @@ class RagChat {
   final int maxContextSnippets;
   final int maxContextActivities;
   final int maxContextSummaries;
+  final int maxHistoryMessages;
 
   final void Function(Object error)? onSemanticSearchError;
 
@@ -36,11 +39,11 @@ class RagChat {
 
   Future<List<Activity>> retrieveActivity(DateRange range) async {
     final activities = await database.activitiesBetween(
-        range.start, range.end.add(_queryBoundarySlack));
-    final recent = activities.length > maxContextActivities
-        ? activities.sublist(activities.length - maxContextActivities)
-        : activities;
-    return recent.reversed.toList();
+      range.start,
+      range.end.add(_queryBoundarySlack),
+      limit: maxContextActivities,
+    );
+    return activities.reversed.toList();
   }
 
   Future<List<ActivitySummary>> retrieveRecentSummaries() =>
@@ -81,8 +84,14 @@ class RagChat {
     if (activities.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('--- Captured activity (${_describeRange(activityRange)}) ---');
+      final spans = {
+        for (final span in activitySpans(activities.reversed.toList(),
+            until: activityRange.end))
+          span.activity.id: span.duration,
+      };
       for (final activity in activities) {
-        buffer.write('[${_time(activity.capturedAt)}] '
+        buffer.write('[${_time(activity.capturedAt)} '
+            '${formatActivityDuration(spans[activity.id] ?? Duration.zero)}] '
             '${activity.appName} — ${activity.windowTitle}');
         if (activity.capturedUrl != null) buffer.write(' (${activity.capturedUrl})');
         if (activity.capturedClipboard != null) {
@@ -119,12 +128,15 @@ class RagChat {
     final activityRange = parseTemporalRange(userMessage);
     final activities = await retrieveActivity(activityRange);
     final summaries = await retrieveRecentSummaries();
+    final recentHistory = history.length > maxHistoryMessages
+        ? history.sublist(history.length - maxHistoryMessages)
+        : history;
     final requestMessages = [
       LlmMessage(
         role: LlmRole.system,
         content: buildSystemPrompt(snippets, activities, summaries, activityRange),
       ),
-      ...history,
+      ...recentHistory,
       LlmMessage(role: LlmRole.user, content: userMessage),
     ];
     yield* provider.chat(requestMessages);

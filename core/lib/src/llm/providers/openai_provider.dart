@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../llm_http.dart';
 import '../llm_provider.dart';
 import '../sse.dart';
 
@@ -10,12 +11,14 @@ class OpenAiProvider implements LlmProvider {
     required this.apiKey,
     required this.model,
     this.reasoningEffort = ReasoningEffort.balanced,
+    this.timeout = defaultLlmTimeout,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String apiKey;
   final String model;
   final ReasoningEffort reasoningEffort;
+  final Duration timeout;
   final http.Client _client;
 
   static const _endpoint = 'https://api.openai.com/v1/chat/completions';
@@ -43,8 +46,13 @@ class OpenAiProvider implements LlmProvider {
             .toList(),
       });
 
-    final response = await _client.send(request);
-    await for (final data in sseDataLines(response.stream)) {
+    final response = await sendLlmRequest(
+      client: _client,
+      request: request,
+      provider: id,
+      timeout: timeout,
+    );
+    await for (final data in sseDataLines(response.stream.timeout(timeout))) {
       final json = jsonDecode(data) as Map<String, dynamic>;
       final choices = json['choices'] as List;
       final delta = choices.first['delta'] as Map<String, dynamic>;

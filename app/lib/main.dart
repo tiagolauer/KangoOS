@@ -12,13 +12,12 @@ import 'capture/capture_settings_repository.dart';
 import 'capture/whisper_model_repository.dart';
 import 'capture/window_capture_service.dart';
 import 'database_encryption.dart';
+import 'embedding/settings_embedding_provider.dart';
 import 'home/app_shell.dart';
 import 'quick_capture_service.dart';
 import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
 import 'tray/tray_service.dart';
-
-const defaultEmbeddingModel = 'nomic-embed-text';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,9 +37,11 @@ Future<void> main() async {
     return;
   }
 
+  final settingsRepository = SettingsRepository();
   final semanticSearch = SemanticSearch(
     database: database,
-    embeddingProvider: OllamaEmbeddingProvider(model: defaultEmbeddingModel),
+    embeddingProvider:
+        SettingsEmbeddingProvider(repository: settingsRepository),
   );
   final captureSettingsRepository = CaptureSettingsRepository();
   final needsCaptureConsent =
@@ -52,7 +53,7 @@ Future<void> main() async {
           database: database, settingsRepository: captureSettingsRepository)
       .start();
   ActivitySummaryService(
-          database: database, settingsRepository: SettingsRepository())
+          database: database, settingsRepository: settingsRepository)
       .start();
   AudioCaptureService(
     database: database,

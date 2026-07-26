@@ -272,7 +272,10 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   Future<void> _importSnippets() async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final exchange = SnippetExchange(database: widget.database);
+    final exchange = SnippetExchange(
+      database: widget.database,
+      semanticSearch: widget.semanticSearch,
+    );
     try {
       final file = await openFile(
         acceptedTypeGroups: const [
@@ -384,6 +387,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             builder: (_) => SyncSettingsScreen(
               repository: _syncSettingsRepository,
               database: widget.database,
+              semanticSearch: widget.semanticSearch,
             ),
           )),
           onExportSnippets: _exportSnippets,
@@ -516,14 +520,20 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           const SizedBox(height: 28),
           Text("TODAY'S ACTIVITY", style: textTheme.labelSmall),
           const SizedBox(height: 8),
-          StreamBuilder<List<Activity>>(
-            stream: widget.database.watchRecentActivities(limit: 500),
-            builder: (context, snapshot) {
-              final hourly = bucketActivityByHour(snapshot.data ?? const []);
-              return ActivitySparkline(
-                  hourlyCounts: hourly, isCapturing: _capturing);
-            },
-          ),
+          Builder(builder: (context) {
+            final now = DateTime.now();
+            final startOfDay = DateTime(now.year, now.month, now.day);
+            return StreamBuilder<List<Activity>>(
+              stream: widget.database.watchActivitiesBetween(
+                  startOfDay, startOfDay.add(const Duration(days: 1))),
+              builder: (context, snapshot) {
+                final hourly =
+                    bucketActivityMinutesByHour(snapshot.data ?? const []);
+                return ActivitySparkline(
+                    hourlyMinutes: hourly, isCapturing: _capturing);
+              },
+            );
+          }),
         ],
       ),
     );

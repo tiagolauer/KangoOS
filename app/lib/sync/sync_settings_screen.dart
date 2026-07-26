@@ -9,10 +9,12 @@ class SyncSettingsScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.database,
+    this.semanticSearch,
   });
 
   final SyncSettingsRepository repository;
   final KangoosDatabase database;
+  final SemanticSearch? semanticSearch;
 
   @override
   State<SyncSettingsScreen> createState() => _SyncSettingsScreenState();
@@ -77,6 +79,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         database: widget.database,
         baseUrl: Uri.parse(url),
         apiToken: token,
+        semanticSearch: widget.semanticSearch,
       );
       final result = await client.sync();
       setState(() => _status = l10n.syncSucceeded(

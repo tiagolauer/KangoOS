@@ -49,6 +49,26 @@ jobs:
       - run: flutter analyze
       - run: flutter test
 
+  windows-tests:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.6.1
+      - run: dart pub get
+        working-directory: core
+      - run: dart analyze
+        working-directory: core
+      - run: dart test
+        working-directory: core
+      - run: dart pub get
+        working-directory: server
+      - run: dart analyze
+        working-directory: server
+      - run: dart test
+        working-directory: server
+
   windows-build:
     runs-on: windows-2022
     defaults:
@@ -63,6 +83,8 @@ jobs:
       - run: choco install openssl -y --no-progress
         working-directory: .
       - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
       - run: flutter build windows --release
       - uses: actions/upload-artifact@v4
         with:

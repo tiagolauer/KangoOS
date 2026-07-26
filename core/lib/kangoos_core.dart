@@ -1,9 +1,11 @@
 library;
 
+export 'src/activity/activity_span.dart';
 export 'src/capture/quick_capture.dart';
 export 'src/chat/rag_chat.dart';
 export 'src/chat/temporal_query.dart';
 export 'src/database/database.dart';
+export 'src/database/snippet_json.dart';
 export 'src/database/tables/activities_table.dart';
 export 'src/database/tables/activity_summaries_table.dart';
 export 'src/database/tables/conversations_table.dart';
@@ -11,6 +13,7 @@ export 'src/database/tables/snippets_table.dart';
 export 'src/embedding/embedding_provider.dart';
 export 'src/exchange/snippet_exchange.dart';
 export 'src/embedding/providers/ollama_embedding_provider.dart';
+export 'src/llm/llm_http.dart';
 export 'src/llm/llm_provider.dart';
 export 'src/llm/llm_settings.dart';
 export 'src/llm/providers/anthropic_provider.dart';
