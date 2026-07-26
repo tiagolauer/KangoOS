@@ -2,15 +2,17 @@ import 'package:kangoos_core/kangoos_core.dart';
 import 'package:kangoos_server/kangoos_server.dart';
 import 'package:test/test.dart';
 
+const _token = '0123456789abcdef0123456789abcdef';
+
 void main() {
   test('throws when KANGOOS_API_TOKEN is missing', () {
     expect(() => EnvConfig.fromEnvironment(const {}), throwsStateError);
   });
 
   test('applies defaults when only the token is set', () {
-    final config = EnvConfig.fromEnvironment(const {'KANGOOS_API_TOKEN': 'secret'});
+    final config = EnvConfig.fromEnvironment(const {'KANGOOS_API_TOKEN': _token});
 
-    expect(config.apiToken, 'secret');
+    expect(config.apiToken, _token);
     expect(config.dbPath, 'kangoos.db');
     expect(config.port, 8080);
     expect(config.embeddingModel, 'nomic-embed-text');
@@ -20,7 +22,7 @@ void main() {
 
   test('reads every override from the environment', () {
     final config = EnvConfig.fromEnvironment(const {
-      'KANGOOS_API_TOKEN': 'secret',
+      'KANGOOS_API_TOKEN': _token,
       'KANGOOS_DB_PATH': '/data/kangoos.db',
       'KANGOOS_LLM_PROVIDER': 'anthropic',
       'KANGOOS_LLM_MODEL': 'claude-opus-4-8',
@@ -39,10 +41,17 @@ void main() {
     expect(config.port, 9090);
   });
 
+  test('throws when the token is shorter than the minimum', () {
+    expect(
+      () => EnvConfig.fromEnvironment(const {'KANGOOS_API_TOKEN': 'short'}),
+      throwsStateError,
+    );
+  });
+
   test('throws on an unknown provider name', () {
     expect(
       () => EnvConfig.fromEnvironment(const {
-        'KANGOOS_API_TOKEN': 'secret',
+        'KANGOOS_API_TOKEN': _token,
         'KANGOOS_LLM_PROVIDER': 'not-a-provider',
       }),
       throwsStateError,

@@ -71,6 +71,18 @@
   "serverUrl": "Server URL",
   "serverApiToken": "API token",
   "syncNow": "Sync now",
+  "syncInvalidUrl": "That is not a valid server URL. Use something like https://kango.example.com.",
+  "syncUnsupportedScheme": "Only http and https server URLs are supported.",
+  "syncInsecureTitle": "Send the token over plain HTTP?",
+  "syncInsecureBody": "{host} is not on this machine, and http sends your API token and every snippet in cleartext. Anyone on the network path can read them. Use https, or a tunnel such as Tailscale or WireGuard.",
+  "@syncInsecureBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "syncInsecureContinue": "Sync anyway",
   "syncSetUrlAndTokenFirst": "Set a server URL and API token first.",
   "syncSucceeded": "Synced: {pushed} pushed, {pulled} pulled, {updated} updated, {deleted} deleted.",
   "@syncSucceeded": {

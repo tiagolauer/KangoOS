@@ -8,7 +8,7 @@ Self-hosted HTTP server exposing [`kangoos_core`](../core) — the same snippet 
 KANGOOS_API_TOKEN=$(openssl rand -hex 32) docker compose up --build
 ```
 
-`KANGOOS_API_TOKEN` is required — the compose file refuses to start without it. Every request (except `/health`) must send it back as `Authorization: Bearer <token>`.
+`KANGOOS_API_TOKEN` is required and must be at least 32 characters — the server refuses to start otherwise. Every request (except `/health`) must send it back as `Authorization: Bearer <token>`.
 
 By default the server talks to Ollama on the Docker host (`http://host.docker.internal:11434`) for both chat and embeddings. Override any setting via environment variables — see the table below.
 
@@ -17,14 +17,18 @@ By default the server talks to Ollama on the Docker host (`http://host.docker.in
 ```bash
 cd server
 dart pub get
-KANGOOS_API_TOKEN=dev-token dart run bin/server.dart
+KANGOOS_API_TOKEN=$(openssl rand -hex 32) dart run bin/server.dart
 ```
+
+## Put it behind TLS
+
+The server speaks plain HTTP and has no TLS support of its own. It binds `0.0.0.0`, and both the bearer token and every snippet body travel in cleartext, so anything beyond `localhost` belongs behind a reverse proxy that terminates TLS (Caddy, nginx, Traefik) or inside a private tunnel (Tailscale, WireGuard). The app warns before syncing to a plain `http://` host that is not on the local machine.
 
 ## Configuration
 
 | Variable | Default | Notes |
 |---|---|---|
-| `KANGOOS_API_TOKEN` | — | **Required.** Server refuses to start without it. |
+| `KANGOOS_API_TOKEN` | — | **Required**, minimum 32 characters. Generate with `openssl rand -hex 32`. |
 | `KANGOOS_DB_PATH` | `kangoos.db` | SQLite file path. Mount a volume here in Docker. |
 | `KANGOOS_LLM_PROVIDER` | `ollama` | `ollama`, `anthropic`, or `openAi`. |
 | `KANGOOS_LLM_MODEL` | `llama3` | Model id for the chosen provider. |

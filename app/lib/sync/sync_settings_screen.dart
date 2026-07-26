@@ -3,6 +3,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import 'sync_settings_repository.dart';
+import 'sync_url.dart';
 
 class SyncSettingsScreen extends StatefulWidget {
   const SyncSettingsScreen({
@@ -66,6 +67,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       return;
     }
 
+    final check = checkSyncUrl(url);
+    switch (check) {
+      case SyncUrlRejected(problem: final problem):
+        setState(() => _status = _urlProblemMessage(l10n, problem));
+        return;
+      case SyncUrlInsecure(uri: final uri):
+        if (!await _confirmInsecureSync(l10n, uri)) return;
+      case SyncUrlUsable():
+        break;
+    }
+
     await widget.repository
         .save(SyncSettings(serverUrl: url, apiToken: token));
     setState(() {
@@ -90,6 +102,38 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     } finally {
       if (mounted) setState(() => _syncing = false);
     }
+  }
+
+  String _urlProblemMessage(AppLocalizations l10n, SyncUrlProblem problem) {
+    switch (problem) {
+      case SyncUrlProblem.empty:
+        return l10n.syncSetUrlAndTokenFirst;
+      case SyncUrlProblem.notAUrl:
+        return l10n.syncInvalidUrl;
+      case SyncUrlProblem.unsupportedScheme:
+        return l10n.syncUnsupportedScheme;
+    }
+  }
+
+  Future<bool> _confirmInsecureSync(AppLocalizations l10n, Uri uri) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.syncInsecureTitle),
+        content: Text(l10n.syncInsecureBody(uri.host)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.syncInsecureContinue),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 
   @override
