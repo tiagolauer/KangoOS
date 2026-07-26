@@ -43,4 +43,35 @@ void main() {
     expect(messages, hasLength(1));
     expect(messages.single.content, 'in a');
   });
+
+  test('watchConversationSummaries previews the first user message, newest first, '
+      'and excludes empty conversations', () async {
+    final empty = await database.createConversation();
+    final a = await database.createConversation();
+    await database.appendMessage(a, LlmRole.user, 'first question in a');
+    await database.appendMessage(a, LlmRole.assistant, 'answer');
+    final b = await database.createConversation();
+    await database.appendMessage(b, LlmRole.user, 'first question in b');
+
+    final summaries = await database.watchConversationSummaries().first;
+
+    expect(summaries.map((s) => s.id), [b, a]);
+    expect(summaries[0].preview, 'first question in b');
+    expect(summaries[1].preview, 'first question in a');
+    expect(summaries[1].messageCount, 2);
+    expect(summaries.map((s) => s.id), isNot(contains(empty)));
+  });
+
+  test('deleteConversation removes the conversation and its messages', () async {
+    final a = await database.createConversation();
+    await database.appendMessage(a, LlmRole.user, 'q');
+    final b = await database.createConversation();
+    await database.appendMessage(b, LlmRole.user, 'keep me');
+
+    await database.deleteConversation(a);
+
+    expect(await database.messagesForConversation(a), isEmpty);
+    final summaries = await database.watchConversationSummaries().first;
+    expect(summaries.map((s) => s.id), [b]);
+  });
 }

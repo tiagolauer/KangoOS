@@ -225,6 +225,37 @@ END;
             ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
           .get();
 
+  Stream<List<ConversationSummary>> watchConversationSummaries() {
+    return customSelect(
+      'SELECT c.id AS id, '
+      '(SELECT m.content FROM conversation_messages m '
+      "WHERE m.conversation_id = c.id AND m.role = 'user' "
+      'ORDER BY m.id ASC LIMIT 1) AS preview, '
+      '(SELECT COUNT(*) FROM conversation_messages m '
+      'WHERE m.conversation_id = c.id) AS message_count, '
+      '(SELECT MAX(m.id) FROM conversation_messages m '
+      'WHERE m.conversation_id = c.id) AS last_message_id '
+      'FROM conversations c '
+      'WHERE message_count > 0 '
+      'ORDER BY last_message_id DESC',
+      readsFrom: {conversations, conversationMessages},
+    ).watch().map((rows) => rows
+        .map((row) => ConversationSummary(
+              id: row.read<int>('id'),
+              preview: row.read<String?>('preview') ?? '',
+              messageCount: row.read<int>('message_count'),
+            ))
+        .toList());
+  }
+
+  Future<void> deleteConversation(int conversationId) => transaction(() async {
+        await (delete(conversationMessages)
+              ..where((row) => row.conversationId.equals(conversationId)))
+            .go();
+        await (delete(conversations)..where((row) => row.id.equals(conversationId)))
+            .go();
+      });
+
   Future<int> deleteActivity(int id) =>
       (delete(activities)..where((row) => row.id.equals(id))).go();
 

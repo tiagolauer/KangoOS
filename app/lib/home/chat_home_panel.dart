@@ -190,6 +190,38 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     });
   }
 
+  Future<void> _loadConversationById(int id) async {
+    final messages = await widget.database.messagesForConversation(id);
+    if (!mounted) return;
+    setState(() {
+      _conversationId = id;
+      _error = null;
+      _history
+        ..clear()
+        ..addAll(
+            messages.map((m) => LlmMessage(role: m.role, content: m.content)));
+    });
+    _scrollToEnd();
+  }
+
+  Future<void> _openHistory() async {
+    final selectedId = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => ConversationHistorySheet(
+        database: widget.database,
+        currentConversationId: _conversationId,
+      ),
+    );
+    if (selectedId != null) await _loadConversationById(selectedId);
+    if (_conversationId != null &&
+        (await widget.database.messagesForConversation(_conversationId!))
+            .isEmpty &&
+        mounted) {
+      _startNewChat();
+    }
+  }
+
   void _shuffleFreeformSuggestions() {
     setState(() {
       final pool = List<String>.of(_freeformPool)..shuffle(_random);
@@ -282,6 +314,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
         _Header(
           showNewChat: _started,
           onNewChat: _startNewChat,
+          onOpenHistory: _openHistory,
           onIndexMissing: _indexMissing,
           onOpenCaptureSettings: () async {
             await Navigator.of(context).push(MaterialPageRoute(
@@ -432,6 +465,7 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.showNewChat,
     required this.onNewChat,
+    required this.onOpenHistory,
     required this.onIndexMissing,
     required this.onOpenCaptureSettings,
     required this.onOpenLlmSettings,
@@ -440,6 +474,7 @@ class _Header extends StatelessWidget {
 
   final bool showNewChat;
   final VoidCallback onNewChat;
+  final VoidCallback onOpenHistory;
   final VoidCallback onIndexMissing;
   final VoidCallback onOpenCaptureSettings;
   final VoidCallback onOpenLlmSettings;
@@ -465,6 +500,11 @@ class _Header extends StatelessWidget {
               onPressed: onNewChat,
             ),
           IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Chat history',
+            onPressed: onOpenHistory,
+          ),
+          IconButton(
             icon: const Icon(Icons.auto_awesome_outlined),
             tooltip: 'Index snippets for semantic search',
             onPressed: onIndexMissing,
@@ -485,6 +525,73 @@ class _Header extends StatelessWidget {
             onPressed: onOpenLlmSettings,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ConversationHistorySheet extends StatelessWidget {
+  const ConversationHistorySheet({
+    required this.database,
+    required this.currentConversationId,
+  });
+
+  final KangoosDatabase database;
+  final int? currentConversationId;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.6),
+        child: StreamBuilder<List<ConversationSummary>>(
+          stream: database.watchConversationSummaries(),
+          builder: (context, snapshot) {
+            final conversations = snapshot.data;
+            if (conversations == null) {
+              return const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (conversations.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text('No saved conversations yet.',
+                    style: textTheme.bodyMedium),
+              );
+            }
+            return ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 8),
+              itemCount: conversations.length,
+              itemBuilder: (context, index) {
+                final conversation = conversations[index];
+                return ListTile(
+                  selected: conversation.id == currentConversationId,
+                  leading: const Icon(Icons.chat_bubble_outline),
+                  title: Text(
+                    conversation.preview.isEmpty
+                        ? 'Untitled chat'
+                        : conversation.preview,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text('${conversation.messageCount} messages'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Delete',
+                    onPressed: () =>
+                        database.deleteConversation(conversation.id),
+                  ),
+                  onTap: () => Navigator.of(context).pop(conversation.id),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

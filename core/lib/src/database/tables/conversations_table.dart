@@ -8,6 +8,18 @@ class Conversations extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+class ConversationSummary {
+  const ConversationSummary({
+    required this.id,
+    required this.preview,
+    required this.messageCount,
+  });
+
+  final int id;
+  final String preview;
+  final int messageCount;
+}
+
 class LlmRoleConverter extends TypeConverter<LlmRole, String> {
   const LlmRoleConverter();
 
