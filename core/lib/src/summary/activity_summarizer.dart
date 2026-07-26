@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 
+import '../activity/activity_span.dart';
 import '../database/database.dart';
 import '../database/tables/activity_summaries_table.dart';
 import '../llm/llm_provider.dart';
@@ -22,10 +23,16 @@ class SummaryFailure extends SummaryResult {
   final SummaryError error;
 }
 
+const defaultMaxPromptActivities = 200;
+
 class ActivitySummarizer {
-  ActivitySummarizer({required this.database});
+  ActivitySummarizer({
+    required this.database,
+    this.maxPromptActivities = defaultMaxPromptActivities,
+  });
 
   final KangoosDatabase database;
+  final int maxPromptActivities;
 
   Future<SummaryResult> summarize({
     required LlmProvider provider,
@@ -38,7 +45,7 @@ class ActivitySummarizer {
       return const SummaryFailure(SummaryError.noActivity);
     }
 
-    final prompt = _buildPrompt(activities);
+    final prompt = _buildPrompt(activities, end);
     final buffer = StringBuffer();
     try {
       await for (final chunk
@@ -70,15 +77,27 @@ class ActivitySummarizer {
     ));
   }
 
-  String _buildPrompt(List<Activity> activities) {
+  String _buildPrompt(List<Activity> activities, DateTime end) {
     final buffer = StringBuffer(
       'Summarize the developer activity below in 2-4 concise sentences, grouped by '
-      "what was worked on. Only use what's listed — do not invent details.",
+      "what was worked on. Only use what's listed — do not invent details. "
+      'Each line ends with how long that window stayed in focus.',
     );
-    for (final activity in activities) {
+
+    final spans = activitySpans(activities, until: end);
+    final dropped = spans.length - maxPromptActivities;
+    final shown = dropped > 0 ? spans.sublist(spans.length - maxPromptActivities) : spans;
+    if (dropped > 0) {
       buffer.writeln();
       buffer.write(
-          '- ${activity.capturedAt.toLocal()} · ${activity.appName} · ${activity.windowTitle}');
+          '($dropped earlier entries omitted; the most recent ${shown.length} follow.)');
+    }
+
+    for (final span in shown) {
+      buffer.writeln();
+      buffer.write('- ${span.activity.capturedAt.toLocal()} · '
+          '${span.activity.appName} · ${span.activity.windowTitle} · '
+          '${formatActivityDuration(span.duration)}');
     }
     return buffer.toString();
   }

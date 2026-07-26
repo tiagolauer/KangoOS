@@ -1,5 +1,6 @@
 library;
 
+export 'src/activity/activity_span.dart';
 export 'src/chat/rag_chat.dart';
 export 'src/chat/temporal_query.dart';
 export 'src/database/database.dart';

@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
-/// Buckets today's activity into 24 hourly counts (index 0 = midnight).
-List<int> bucketActivityByHour(List<Activity> activities, {DateTime? now}) {
-  final today = now ?? DateTime.now();
-  final buckets = List<int>.filled(24, 0);
-  for (final activity in activities) {
-    final local = activity.capturedAt.toLocal();
-    if (local.year == today.year &&
-        local.month == today.month &&
-        local.day == today.day) {
-      buckets[local.hour]++;
+/// Buckets today's activity into 24 hourly totals of focused minutes
+/// (index 0 = midnight), splitting a span that crosses an hour boundary.
+List<double> bucketActivityMinutesByHour(List<Activity> activities,
+    {DateTime? now}) {
+  final current = now ?? DateTime.now();
+  final buckets = List<double>.filled(24, 0);
+  final spans = activitySpans(activities, until: current);
+
+  for (final span in spans) {
+    var cursor = span.activity.capturedAt.toLocal();
+    var remaining = span.duration;
+    while (remaining > Duration.zero && cursor.day == current.day) {
+      final nextHour = DateTime(cursor.year, cursor.month, cursor.day)
+          .add(Duration(hours: cursor.hour + 1));
+      final untilNextHour = nextHour.difference(cursor);
+      final slice = remaining < untilNextHour ? remaining : untilNextHour;
+      buckets[cursor.hour] += slice.inSeconds / Duration.secondsPerMinute;
+      remaining -= slice;
+      cursor = cursor.add(slice);
+      if (cursor.hour == 0 && slice == untilNextHour) break;
     }
   }
   return buckets;
@@ -22,12 +32,12 @@ List<int> bucketActivityByHour(List<Activity> activities, {DateTime? now}) {
 class ActivitySparkline extends StatelessWidget {
   const ActivitySparkline({
     super.key,
-    required this.hourlyCounts,
+    required this.hourlyMinutes,
     this.isCapturing = true,
     this.now,
   });
 
-  final List<int> hourlyCounts;
+  final List<double> hourlyMinutes;
   final bool isCapturing;
   final DateTime? now;
 
@@ -35,7 +45,7 @@ class ActivitySparkline extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final hasData = hourlyCounts.any((count) => count > 0);
+    final hasData = hourlyMinutes.any((minutes) => minutes > 0);
     final resolvedNow = now ?? DateTime.now();
     final nowFraction =
         (resolvedNow.hour * 60 + resolvedNow.minute) / (24 * 60);
@@ -55,7 +65,7 @@ class ActivitySparkline extends StatelessWidget {
                         CustomPaint(
                           size: Size.infinite,
                           painter: _SparklinePainter(
-                            counts: hourlyCounts,
+                            minutes: hourlyMinutes,
                             lineColor: colors.primary,
                             fillColor: colors.primary.withValues(alpha: 0.14),
                           ),
@@ -105,25 +115,28 @@ class ActivitySparkline extends StatelessWidget {
 
 class _SparklinePainter extends CustomPainter {
   _SparklinePainter(
-      {required this.counts, required this.lineColor, required this.fillColor});
+      {required this.minutes,
+      required this.lineColor,
+      required this.fillColor});
 
-  final List<int> counts;
+  final List<double> minutes;
   final Color lineColor;
   final Color fillColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final maxCount = counts.reduce((a, b) => a > b ? a : b).clamp(1, 1 << 30);
-    final stepX = size.width / (counts.length - 1);
+    final busiestHour =
+        minutes.reduce((a, b) => a > b ? a : b).clamp(1.0, double.infinity);
+    final stepX = size.width / (minutes.length - 1);
 
     Offset pointAt(int index) {
-      final normalized = counts[index] / maxCount;
+      final normalized = minutes[index] / busiestHour;
       final y = size.height - (normalized * size.height * 0.85) - 4;
       return Offset(stepX * index, y);
     }
 
     final line = Path()..moveTo(pointAt(0).dx, pointAt(0).dy);
-    for (var i = 1; i < counts.length; i++) {
+    for (var i = 1; i < minutes.length; i++) {
       final previous = pointAt(i - 1);
       final current = pointAt(i);
       final midX = (previous.dx + current.dx) / 2;
@@ -148,5 +161,5 @@ class _SparklinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SparklinePainter oldDelegate) =>
-      oldDelegate.counts != counts || oldDelegate.lineColor != lineColor;
+      oldDelegate.minutes != minutes || oldDelegate.lineColor != lineColor;
 }
