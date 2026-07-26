@@ -33,7 +33,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,8 +74,31 @@ class KangoosDatabase extends _$KangoosDatabase {
           if (from < 11) {
             await m.createTable(deletedSnippets);
           }
+          if (from < 12) {
+            await _convertEmbeddingsToBinary();
+          }
         },
       );
+
+  Future<void> _convertEmbeddingsToBinary() async {
+    await customStatement(
+        'ALTER TABLE snippets RENAME COLUMN embedding TO embedding_json;');
+    await customStatement('ALTER TABLE snippets ADD COLUMN embedding BLOB;');
+
+    final rows = await customSelect(
+      'SELECT id, embedding_json FROM snippets WHERE embedding_json IS NOT NULL;',
+    ).get();
+    for (final row in rows) {
+      final vector = const DoubleListConverter()
+          .fromSql(row.read<String>('embedding_json'));
+      await customStatement(
+        'UPDATE snippets SET embedding = ? WHERE id = ?;',
+        [const EmbeddingConverter().toSql(vector), row.read<int>('id')],
+      );
+    }
+
+    await customStatement('ALTER TABLE snippets DROP COLUMN embedding_json;');
+  }
 
   /// External-content FTS5 index over snippets, kept in sync via triggers
   /// (external content mode doesn't auto-sync on writes).
@@ -204,6 +227,33 @@ END;
 
   Future<List<Snippet>> snippetsWithEmbedding() =>
       (select(snippets)..where((row) => row.embedding.isNotNull())).get();
+
+  Future<List<SnippetVector>> snippetVectors() async {
+    final rows = await customSelect(
+      'SELECT id, embedding FROM snippets WHERE embedding IS NOT NULL;',
+      readsFrom: {snippets},
+    ).get();
+    const converter = EmbeddingConverter();
+    return rows
+        .map((row) => SnippetVector(
+              id: row.read<int>('id'),
+              embedding: converter.fromSql(row.read<Uint8List>('embedding')),
+            ))
+        .toList();
+  }
+
+  Future<List<Snippet>> snippetsByIds(List<int> ids) async {
+    if (ids.isEmpty) return const [];
+    final byId = {
+      for (final snippet
+          in await (select(snippets)..where((row) => row.id.isIn(ids))).get())
+        snippet.id: snippet,
+    };
+    return [
+      for (final id in ids)
+        if (byId[id] != null) byId[id]!,
+    ];
+  }
 
   Future<List<Snippet>> snippetsMissingEmbedding() =>
       (select(snippets)..where((row) => row.embedding.isNull())).get();
@@ -364,7 +414,7 @@ END;
 
   Future<int> clearAllSummaries() => delete(activitySummaries).go();
 
-  static final _sqliteMagic = 'SQLite format 3 '.codeUnits;
+  static final _sqliteMagic = 'SQLite format 3\x00'.codeUnits;
 
   static bool isPlaintextDatabase(File file) {
     if (!file.existsSync()) return false;

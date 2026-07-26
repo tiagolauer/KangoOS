@@ -33,17 +33,25 @@ class SemanticSearch {
 
   Future<List<SemanticMatch>> search(String query, {int limit = 5}) async {
     final queryEmbedding = await embeddingProvider.embed(query);
-    final candidates = await database.snippetsWithEmbedding();
+    final vectors = await database.snippetVectors();
 
-    final matches = candidates
-        .map((snippet) => SemanticMatch(
-              snippet: snippet,
-              score: cosineSimilarity(queryEmbedding, snippet.embedding!),
+    final scored = vectors
+        .map((vector) => (
+              id: vector.id,
+              score: cosineSimilarity(queryEmbedding, vector.embedding),
             ))
         .toList()
       ..sort((a, b) => b.score.compareTo(a.score));
 
-    return matches.take(limit).toList();
+    final top = scored.take(limit).toList();
+    final scoreById = {for (final match in top) match.id: match.score};
+    final snippets =
+        await database.snippetsByIds([for (final match in top) match.id]);
+
+    return [
+      for (final snippet in snippets)
+        SemanticMatch(snippet: snippet, score: scoreById[snippet.id]!),
+    ];
   }
 }
 

@@ -26,7 +26,17 @@ KangoOS/
 ## MVP scope
 
 - Snippet CRUD with automatic tagging (via LLM)
-- Full-text search (real SQLite FTS5, bm25-ranked, prefix matching) + semantic search (local embeddings, brute-force cosine — fine at snippet-manager scale, no ANN index)
+- Full-text search (real SQLite FTS5, bm25-ranked, prefix matching) + semantic search (local embeddings, brute-force cosine — no ANN index, deliberately: see below)
+
+  Embeddings are stored as packed float32 blobs, and scoring reads only `(id, embedding)` before fetching the full rows for the top hits. Measured with `dart run tool/semantic_search_benchmark.dart` (768 dimensions, per query):
+
+  | snippets | before | after |
+  |---------:|-------:|------:|
+  |    1 000 |   48 ms |   4 ms |
+  |   10 000 |  573 ms |  40 ms |
+  |   50 000 | 3022 ms | 217 ms |
+
+  An approximate-nearest-neighbour index was considered and rejected on these numbers: even before the change, distance computation was only ~3% of query time (17 ms of 573 ms at 10 000 snippets) — the cost was loading and JSON-decoding every embedding, which an ANN index does not address. Revisit above ~50 000 snippets, where holding vectors in memory or an on-disk vector index would start to pay.
 - Contextual chat over saved snippets (RAG)
 - LLM provider configuration (local Ollama, or Anthropic/OpenAI/Gemini via API key, stored in the OS keychain — Credential Manager/Keychain/Secret Service, never plaintext on disk), with a reasoning-mode picker (Fast/Balanced/Extra Thinking) mapped to each provider's own mechanism — only takes effect on reasoning-capable models
 - Encryption at rest for the desktop app's local database (SQLCipher), keyed by a random key stored in the OS keychain — same mechanism as the LLM API keys. The CLI/MCP/server databases are unaffected (plain SQLite) — separate stores, separate threat model. **Because the key lives in the OS keychain, not the database file, wiping the keychain entry (or moving the `.db` to another machine) makes the data unrecoverable — export your snippets first (below) if that's a risk.**

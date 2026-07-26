@@ -42,9 +42,9 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
               defaultValue: const Constant('[]'))
           .withConverter<List<String>>($SnippetsTable.$convertertags);
   @override
-  late final GeneratedColumnWithTypeConverter<List<double>?, String> embedding =
-      GeneratedColumn<String>('embedding', aliasedName, true,
-              type: DriftSqlType.string, requiredDuringInsert: false)
+  late final GeneratedColumnWithTypeConverter<List<double>?, Uint8List>
+      embedding = GeneratedColumn<Uint8List>('embedding', aliasedName, true,
+              type: DriftSqlType.blob, requiredDuringInsert: false)
           .withConverter<List<double>?>($SnippetsTable.$converterembeddingn);
   static const VerificationMeta _syncIdMeta = const VerificationMeta('syncId');
   @override
@@ -141,7 +141,7 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
           .read(DriftSqlType.string, data['${effectivePrefix}tags'])!),
       embedding: $SnippetsTable.$converterembeddingn.fromSql(attachedDatabase
           .typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}embedding'])),
+          .read(DriftSqlType.blob, data['${effectivePrefix}embedding'])),
       syncId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_id']),
       createdAt: attachedDatabase.typeMapping
@@ -158,9 +158,9 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
 
   static TypeConverter<List<String>, String> $convertertags =
       const StringListConverter();
-  static TypeConverter<List<double>, String> $converterembedding =
-      const DoubleListConverter();
-  static TypeConverter<List<double>?, String?> $converterembeddingn =
+  static TypeConverter<List<double>, Uint8List> $converterembedding =
+      const EmbeddingConverter();
+  static TypeConverter<List<double>?, Uint8List?> $converterembeddingn =
       NullAwareTypeConverter.wrap($converterembedding);
 }
 
@@ -197,7 +197,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       map['tags'] = Variable<String>($SnippetsTable.$convertertags.toSql(tags));
     }
     if (!nullToAbsent || embedding != null) {
-      map['embedding'] = Variable<String>(
+      map['embedding'] = Variable<Uint8List>(
           $SnippetsTable.$converterembeddingn.toSql(embedding));
     }
     if (!nullToAbsent || syncId != null) {
@@ -366,7 +366,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
     Expression<String>? content,
     Expression<String>? language,
     Expression<String>? tags,
-    Expression<String>? embedding,
+    Expression<Uint8List>? embedding,
     Expression<String>? syncId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -427,7 +427,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
           Variable<String>($SnippetsTable.$convertertags.toSql(tags.value));
     }
     if (embedding.present) {
-      map['embedding'] = Variable<String>(
+      map['embedding'] = Variable<Uint8List>(
           $SnippetsTable.$converterembeddingn.toSql(embedding.value));
     }
     if (syncId.present) {
@@ -2011,7 +2011,7 @@ class $$SnippetsTableFilterComposer
           column: $table.tags,
           builder: (column) => ColumnWithTypeConverterFilters(column));
 
-  ColumnWithTypeConverterFilters<List<double>?, List<double>, String>
+  ColumnWithTypeConverterFilters<List<double>?, List<double>, Uint8List>
       get embedding => $composableBuilder(
           column: $table.embedding,
           builder: (column) => ColumnWithTypeConverterFilters(column));
@@ -2050,7 +2050,7 @@ class $$SnippetsTableOrderingComposer
   ColumnOrderings<String> get tags => $composableBuilder(
       column: $table.tags, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get embedding => $composableBuilder(
+  ColumnOrderings<Uint8List> get embedding => $composableBuilder(
       column: $table.embedding, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get syncId => $composableBuilder(
@@ -2087,7 +2087,7 @@ class $$SnippetsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<List<String>, String> get tags =>
       $composableBuilder(column: $table.tags, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<List<double>?, String> get embedding =>
+  GeneratedColumnWithTypeConverter<List<double>?, Uint8List> get embedding =>
       $composableBuilder(column: $table.embedding, builder: (column) => column);
 
   GeneratedColumn<String> get syncId =>
