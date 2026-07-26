@@ -279,5 +279,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "captureScreenText": "Capture screen text (OCR)",
+  "captureScreenTextDescription": "Runs OCR over your whole screen every time the focused window changes, and stores the text it reads. This captures everything visible — other people's messages, documents you did not open yourself, anything a colleague shares on a call. The most invasive capture source: off by default, and excluded apps do not protect you here, because OCR reads the entire screen rather than one window."
 }

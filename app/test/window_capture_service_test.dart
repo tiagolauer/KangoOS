@@ -185,6 +185,59 @@ void main() {
     expect(logged.single.capturedText, 'typed content');
   });
 
+  test('tick attaches screen OCR text only when the setting is enabled',
+      () async {
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(captureScreenText: true));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () =>
+          const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
+      captureScreenText: () async => 'text read off the screen',
+    );
+
+    await service.tick();
+
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedScreenText, 'text read off the screen');
+  });
+
+  test('tick never runs screen OCR when the setting is disabled', () async {
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: CaptureSettingsRepository(),
+      readWindow: () =>
+          const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
+      captureScreenText: () async =>
+          throw StateError('should not be called when disabled'),
+    );
+
+    await service.tick();
+
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedScreenText, isNull);
+  });
+
+  test('screen OCR text is full-text searchable', () async {
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(captureScreenText: true));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () =>
+          const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
+      captureScreenText: () async => 'quarterly revenue projection',
+    );
+    await service.tick();
+
+    final hits = await database.searchActivities('quarterly');
+    expect(hits, hasLength(1));
+    expect(hits.single.windowTitle, 'main.dart');
+  });
+
   test('tick leaves capturedText null when the setting is disabled',
       () async {
     final service = WindowCaptureService(

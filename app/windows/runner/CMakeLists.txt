@@ -39,6 +39,19 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
 
+# The screen-OCR helper ships next to the runner. This copy has to live in the
+# runner's own CMakeLists: add_custom_command(TARGET ...) only accepts targets
+# created in the same directory scope.
+add_dependencies(${BINARY_NAME} screen_ocr)
+add_custom_command(
+  TARGET ${BINARY_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          "$<TARGET_FILE:screen_ocr>"
+          "$<TARGET_FILE_DIR:${BINARY_NAME}>/screen_ocr.exe"
+  COMMENT "Bundling screen_ocr helper (screen-text LTM capture)"
+  VERBATIM
+)
+
 find_program(DART_EXECUTABLE NAMES dart dart.exe)
 if(DART_EXECUTABLE)
   set(UIA_CAPTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../../bin/uia_capture.dart")

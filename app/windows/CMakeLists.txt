@@ -54,6 +54,9 @@ endfunction()
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
 
+# Screen-OCR helper, built before the runner so it can be copied alongside it.
+add_subdirectory("screen_ocr")
+
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 

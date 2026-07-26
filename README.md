@@ -47,6 +47,9 @@ KangoOS/
 - Activity capture (Windows/Linux/macOS, app + window title by default) with retention/purge
   - Linux requires an X11 session (or XWayland); macOS requires granting Accessibility permission to the app so "System Events" can read other apps' window titles
 - Timeline: automatic activity summaries every 20 minutes, plus on-demand day recap (via LLM)
+- Opt-in continuous screen OCR (Windows only, off by default): each time the focused window changes, a bundled `screen_ocr.exe` helper captures the virtual screen and runs Windows' built-in OCR engine (`Windows.Media.Ocr` — local, no cloud, no extra downloads), storing the text alongside the activity entry and indexing it for full-text search.
+
+  **This is the most invasive capture source in KangoOS and it is not comparable to the others.** It reads the *entire screen*, so it records things you never focused and never opened: another person's messages in a shared call, a document a colleague put on screen, notifications that happen to pop up. The excluded-apps list does **not** protect you here — that list filters by the foreground process, while OCR reads every pixel regardless of which window owns it. Leave it off unless you have thought about what is on your screen, and prefer a short retention window if you turn it on.
 - Opt-in browser URL capture (off by default, real content — not just metadata): reads the active tab's URL for Chrome/Edge/Brave/Safari.
   - macOS: via AppleScript (reliable — browsers expose this directly).
   - Windows: via UI Automation reading the address bar (best-effort heuristic, unverified against a real browser at time of writing).

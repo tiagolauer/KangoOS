@@ -8,5 +8,6 @@ class Activities extends Table {
   TextColumn get capturedText => text().nullable()();
   TextColumn get capturedUrl => text().nullable()();
   TextColumn get capturedClipboard => text().nullable()();
+  TextColumn get capturedScreenText => text().nullable()();
   DateTimeColumn get capturedAt => dateTime().withDefault(currentDateAndTime)();
 }

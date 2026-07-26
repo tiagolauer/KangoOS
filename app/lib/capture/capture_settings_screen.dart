@@ -143,6 +143,13 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                 _apply(_settings.copyWith(captureVisibleText: enabled)),
           ),
           SwitchListTile(
+            title: Text(l10n.captureScreenText),
+            subtitle: Text(l10n.captureScreenTextDescription),
+            value: _settings.captureScreenText,
+            onChanged: (enabled) =>
+                _apply(_settings.copyWith(captureScreenText: enabled)),
+          ),
+          SwitchListTile(
             title: Text(l10n.captureClipboard),
             subtitle: Text(l10n.captureClipboardDescription),
             value: _settings.captureClipboard,

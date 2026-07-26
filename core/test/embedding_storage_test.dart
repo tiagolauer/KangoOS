@@ -20,6 +20,18 @@ CREATE TABLE snippets (
 );
 ''';
 
+const _legacyActivitiesSchema = '''
+CREATE TABLE activities (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  app_name TEXT NOT NULL,
+  window_title TEXT NOT NULL,
+  captured_text TEXT NULL,
+  captured_url TEXT NULL,
+  captured_clipboard TEXT NULL,
+  captured_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+''';
+
 void main() {
   group('EmbeddingConverter', () {
     test('round-trips a vector at float32 precision', () {
@@ -82,6 +94,11 @@ void main() {
 
     final legacy = sqlite3.open(file.path);
     legacy.execute(_legacySnippetsSchema);
+    legacy.execute(_legacyActivitiesSchema);
+    legacy.execute(
+      'INSERT INTO activities (app_name, window_title) VALUES (?, ?);',
+      ['code.exe', 'legacy window'],
+    );
     legacy.execute(
       'INSERT INTO snippets (title, content, embedding) VALUES (?, ?, ?);',
       ['legacy', 'body', jsonEncode([0.25, 0.5, 0.75])],
@@ -103,5 +120,10 @@ void main() {
     final snippets = await database.allSnippets();
     expect(snippets, hasLength(2));
     expect(snippets.map((s) => s.title), containsAll(['legacy', 'plain']));
+
+    final activities = await database.allActivities();
+    expect(activities.single.windowTitle, 'legacy window');
+    expect(activities.single.capturedScreenText, isNull);
+    expect(await database.searchActivities('legacy'), hasLength(1));
   });
 }

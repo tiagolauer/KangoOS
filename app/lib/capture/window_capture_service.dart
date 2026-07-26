@@ -19,6 +19,7 @@ import 'window_snapshot.dart';
 export 'window_snapshot.dart';
 
 const uiaHelperTimeout = Duration(seconds: 3);
+const screenOcrTimeout = Duration(seconds: 15);
 const maxCapturedClipboardLength = 2000;
 
 class WindowCaptureService {
@@ -28,11 +29,13 @@ class WindowCaptureService {
     this.pollInterval = const Duration(seconds: 5),
     WindowSnapshot? Function()? readWindow,
     Future<String?> Function()? captureVisibleText,
+    Future<String?> Function()? captureScreenText,
     Future<String?> Function(String appName)? browserUrlReader,
     Future<String?> Function()? clipboardReader,
   })  : readWindow = readWindow ?? defaultWindowReader(),
         captureVisibleText =
             captureVisibleText ?? _captureVisibleTextViaHelper,
+        captureScreenText = captureScreenText ?? _captureScreenTextViaHelper,
         browserUrlReader = browserUrlReader ?? defaultBrowserUrlReader(),
         clipboardReader = clipboardReader ?? _readClipboard;
 
@@ -44,6 +47,8 @@ class WindowCaptureService {
   final WindowSnapshot? Function() readWindow;
 
   final Future<String?> Function() captureVisibleText;
+
+  final Future<String?> Function() captureScreenText;
 
   /// Overridable for tests; defaults to the platform-appropriate browser URL
   /// reader. Only called when [CaptureSettings.captureBrowserUrls] is on.
@@ -104,6 +109,8 @@ class WindowCaptureService {
 
     final visibleText =
         settings.captureVisibleText ? await captureVisibleText() : null;
+    final screenText =
+        settings.captureScreenText ? await captureScreenText() : null;
     final url = settings.captureBrowserUrls
         ? await browserUrlReader(snapshot.appName)
         : null;
@@ -116,6 +123,7 @@ class WindowCaptureService {
       capturedText: Value(visibleText),
       capturedUrl: Value(url),
       capturedClipboard: Value(clipboard),
+      capturedScreenText: Value(screenText),
     ));
   }
 
@@ -132,8 +140,14 @@ class WindowCaptureService {
     }
   }
 
-  static Future<String?> _captureVisibleTextViaHelper() async {
-    final helperPath = _resolveCompiledHelperPath();
+  static Future<String?> _captureVisibleTextViaHelper() =>
+      _runHelper('uia_capture.exe', uiaHelperTimeout);
+
+  static Future<String?> _captureScreenTextViaHelper() =>
+      _runHelper('screen_ocr.exe', screenOcrTimeout);
+
+  static Future<String?> _runHelper(String executable, Duration timeout) async {
+    final helperPath = _resolveCompiledHelperPath(executable);
     if (helperPath == null) return null;
 
     try {
@@ -142,7 +156,7 @@ class WindowCaptureService {
       final stderrDrained = process.stderr.drain<void>();
 
       final exitCode = await process.exitCode.timeout(
-        uiaHelperTimeout,
+        timeout,
         onTimeout: () {
           process.kill();
           return -1;
@@ -158,10 +172,10 @@ class WindowCaptureService {
     }
   }
 
-  static String? _resolveCompiledHelperPath() {
+  static String? _resolveCompiledHelperPath(String executable) {
     if (!Platform.isWindows) return null;
     final helper =
-        p.join(p.dirname(Platform.resolvedExecutable), 'uia_capture.exe');
+        p.join(p.dirname(Platform.resolvedExecutable), executable);
     return File(helper).existsSync() ? helper : null;
   }
 }
