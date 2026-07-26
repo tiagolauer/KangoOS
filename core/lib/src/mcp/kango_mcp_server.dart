@@ -151,13 +151,21 @@ class KangoMcpServer {
           "Query KangoOS's long-term memory: captured window/app activity "
           'and recap summaries. The query can reference a time range in '
           'plain English (today, yesterday, this week, last week); it '
-          'defaults to today when none is mentioned.',
+          'defaults to today when none is mentioned. Pass keywords to '
+          'full-text-search the activity (app name, window title, captured '
+          'text/url/clipboard) within that range instead of listing it '
+          'chronologically.',
       inputSchema: {
         'type': 'object',
         'properties': {
           'query': {
             'type': 'string',
             'description': 'e.g. "what did I work on yesterday?"',
+          },
+          'keywords': {
+            'type': 'string',
+            'description':
+                'Optional full-text search terms, e.g. "drift migration".',
           },
         },
         'required': ['query'],
@@ -334,10 +342,13 @@ class KangoMcpServer {
 
     final range = parseTemporalRange(query);
     final queryEnd = range.end.add(const Duration(seconds: 1));
-    final activities =
-        (await database.activitiesBetween(range.start, queryEnd))
+    final keywords = (args['keywords'] as String?)?.trim() ?? '';
+    final activities = keywords.isEmpty
+        ? (await database.activitiesBetween(range.start, queryEnd))
             .take(maxLtmActivities)
-            .toList();
+            .toList()
+        : await database.searchActivities(keywords,
+            start: range.start, end: queryEnd, limit: maxLtmActivities);
     final summaries = await database.summariesBetween(range.start, queryEnd);
 
     return _toolJson({

@@ -191,6 +191,29 @@ void main() {
     expect((result['summaries'] as List).single['content'], 'Recap of today.');
   });
 
+  test('ask_kango_ltm with keywords full-text-searches activity in range',
+      () async {
+    final now = DateTime.now();
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'code.exe',
+      windowTitle: 'drift migration notes',
+      capturedAt: Value(now),
+    ));
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'chrome.exe',
+      windowTitle: 'unrelated tab',
+      capturedAt: Value(now),
+    ));
+
+    final response = await server.handleMessage(_call(
+        'ask_kango_ltm', {'query': 'today', 'keywords': 'drift'}));
+    final result = jsonDecode(_text(response!)) as Map<String, dynamic>;
+
+    final activities = result['activities'] as List;
+    expect(activities, hasLength(1));
+    expect(activities.single['windowTitle'], 'drift migration notes');
+  });
+
   test('ask_kango_ltm requires a query', () async {
     final response = await server.handleMessage(_call('ask_kango_ltm'));
     expect(response!['result']['isError'], true);

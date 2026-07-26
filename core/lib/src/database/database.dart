@@ -31,13 +31,14 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _createSnippetsFts();
+          await _createActivitiesFts();
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
@@ -64,6 +65,9 @@ class KangoosDatabase extends _$KangoosDatabase {
           }
           if (from < 9) {
             await m.addColumn(snippets, snippets.syncId);
+          }
+          if (from < 10) {
+            await _createActivitiesFts();
           }
         },
       );
@@ -95,6 +99,35 @@ CREATE TRIGGER IF NOT EXISTS snippets_fts_au AFTER UPDATE ON snippets BEGIN
   VALUES ('delete', old.id, old.title, old.content, old.tags);
   INSERT INTO snippets_fts(rowid, title, content, tags)
   VALUES (new.id, new.title, new.content, new.tags);
+END;
+''');
+  }
+
+  Future<void> _createActivitiesFts() async {
+    await customStatement('''
+CREATE VIRTUAL TABLE IF NOT EXISTS activities_fts USING fts5(
+  app_name, window_title, captured_text, captured_url, captured_clipboard,
+  content='activities', content_rowid='id'
+);
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS activities_fts_ai AFTER INSERT ON activities BEGIN
+  INSERT INTO activities_fts(rowid, app_name, window_title, captured_text, captured_url, captured_clipboard)
+  VALUES (new.id, new.app_name, new.window_title, new.captured_text, new.captured_url, new.captured_clipboard);
+END;
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS activities_fts_ad AFTER DELETE ON activities BEGIN
+  INSERT INTO activities_fts(activities_fts, rowid, app_name, window_title, captured_text, captured_url, captured_clipboard)
+  VALUES ('delete', old.id, old.app_name, old.window_title, old.captured_text, old.captured_url, old.captured_clipboard);
+END;
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS activities_fts_au AFTER UPDATE ON activities BEGIN
+  INSERT INTO activities_fts(activities_fts, rowid, app_name, window_title, captured_text, captured_url, captured_clipboard)
+  VALUES ('delete', old.id, old.app_name, old.window_title, old.captured_text, old.captured_url, old.captured_clipboard);
+  INSERT INTO activities_fts(rowid, app_name, window_title, captured_text, captured_url, captured_clipboard)
+  VALUES (new.id, new.app_name, new.window_title, new.captured_text, new.captured_url, new.captured_clipboard);
 END;
 ''');
   }
@@ -168,6 +201,40 @@ END;
                 row.capturedAt.isSmallerThanValue(end))
             ..orderBy([(row) => OrderingTerm.asc(row.capturedAt)]))
           .get();
+
+  Future<List<Activity>> searchActivities(
+    String query, {
+    DateTime? start,
+    DateTime? end,
+    int limit = 50,
+  }) async {
+    final matchQuery = _ftsMatchQuery(query);
+    if (matchQuery.isEmpty) return const [];
+
+    final buffer = StringBuffer(
+      'SELECT a.* FROM activities a '
+      'JOIN activities_fts ON activities_fts.rowid = a.id '
+      'WHERE activities_fts MATCH ?',
+    );
+    final variables = <Variable>[Variable.withString(matchQuery)];
+    if (start != null) {
+      buffer.write(' AND a.captured_at >= ?');
+      variables.add(Variable.withDateTime(start));
+    }
+    if (end != null) {
+      buffer.write(' AND a.captured_at < ?');
+      variables.add(Variable.withDateTime(end));
+    }
+    buffer.write(' ORDER BY rank LIMIT ?');
+    variables.add(Variable.withInt(limit));
+
+    final rows = await customSelect(
+      buffer.toString(),
+      variables: variables,
+      readsFrom: {activities},
+    ).get();
+    return rows.map((row) => activities.map(row.data)).toList();
+  }
 
   Future<int> insertActivitySummary(ActivitySummariesCompanion entry) =>
       into(activitySummaries).insert(entry);
