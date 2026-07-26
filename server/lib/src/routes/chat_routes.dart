@@ -6,27 +6,44 @@ import 'package:shelf/shelf.dart';
 
 Handler chatHandler({required RagChat ragChat, required LlmProvider provider}) {
   return (Request request) async {
-    final body = jsonDecode(await request.readAsString()) as Map<String, dynamic>;
-    final message = (body['message'] as String?)?.trim();
-    if (message == null || message.isEmpty) {
-      return Response(400,
-          body: jsonEncode({'error': 'message is required'}),
-          headers: {'content-type': 'application/json'});
+    final body = _decodeObject(await request.readAsString());
+    if (body == null) return _error('body must be a JSON object');
+
+    final message =
+        body['message'] is String ? (body['message'] as String).trim() : '';
+    if (message.isEmpty) return _error('message is required');
+
+    final historyJson = body['history'] ?? const [];
+    if (historyJson is! List) return _error('history must be a list');
+
+    final history = <LlmMessage>[];
+    for (final entry in historyJson) {
+      if (entry is! Map<String, dynamic>) {
+        return _error('each history entry must be an object');
+      }
+      final roles =
+          LlmRole.values.where((candidate) => candidate.name == entry['role']);
+      if (roles.isEmpty) {
+        return _error(
+            'history role must be one of ${LlmRole.values.map((r) => r.name).join(', ')}');
+      }
+      final role = roles.first;
+      if (entry['content'] is! String) {
+        return _error('history content must be a string');
+      }
+      history.add(LlmMessage(role: role, content: entry['content'] as String));
     }
 
-    final historyJson = (body['history'] as List?) ?? const [];
-    final history = historyJson.map((entry) {
-      final map = entry as Map<String, dynamic>;
-      final role = LlmRole.values.firstWhere((r) => r.name == map['role']);
-      return LlmMessage(role: role, content: map['content'] as String);
-    }).toList();
-
     final controller = StreamController<List<int>>();
-    ragChat.reply(provider: provider, history: history, userMessage: message).listen(
-      (chunk) => controller.add(utf8.encode('data: ${jsonEncode({'text': chunk})}\n\n')),
+    ragChat
+        .reply(provider: provider, history: history, userMessage: message)
+        .listen(
+      (chunk) => controller
+          .add(utf8.encode('data: ${jsonEncode({'text': chunk})}\n\n')),
       onDone: controller.close,
       onError: (Object error, StackTrace stackTrace) {
-        controller.add(utf8.encode('event: error\ndata: ${jsonEncode({'error': '$error'})}\n\n'));
+        controller.add(utf8.encode(
+            'event: error\ndata: ${jsonEncode({'error': '$error'})}\n\n'));
         controller.close();
       },
     );
@@ -40,4 +57,17 @@ Handler chatHandler({required RagChat ragChat, required LlmProvider provider}) {
       },
     );
   };
+}
+
+Response _error(String message) => Response(400,
+    body: jsonEncode({'error': message}),
+    headers: {'content-type': 'application/json'});
+
+Map<String, dynamic>? _decodeObject(String body) {
+  try {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> ? decoded : null;
+  } on FormatException {
+    return null;
+  }
 }
