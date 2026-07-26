@@ -7,7 +7,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'capture/activity_summary_service.dart';
+import 'capture/audio_capture_service.dart';
 import 'capture/capture_settings_repository.dart';
+import 'capture/whisper_model_repository.dart';
 import 'capture/window_capture_service.dart';
 import 'database_encryption.dart';
 import 'home/app_shell.dart';
@@ -51,6 +53,11 @@ Future<void> main() async {
   ActivitySummaryService(
           database: database, settingsRepository: SettingsRepository())
       .start();
+  AudioCaptureService(
+    database: database,
+    settingsRepository: captureSettingsRepository,
+    modelRepository: WhisperModelRepository(),
+  ).start();
   await TrayService(captureSettingsRepository: captureSettingsRepository)
       .init();
 

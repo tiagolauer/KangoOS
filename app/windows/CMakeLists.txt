@@ -54,8 +54,10 @@ endfunction()
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
 
-# Screen-OCR helper, built before the runner so it can be copied alongside it.
+# Capture helpers, built before the runner so they can be copied alongside it.
 add_subdirectory("screen_ocr")
+add_subdirectory("audio_capture")
+add_subdirectory("whisper_transcribe")
 
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")

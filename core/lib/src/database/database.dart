@@ -33,7 +33,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -79,6 +79,9 @@ class KangoosDatabase extends _$KangoosDatabase {
           }
           if (from < 13) {
             await m.addColumn(activities, activities.capturedScreenText);
+          }
+          if (from < 14) {
+            await m.addColumn(activities, activities.capturedAudioText);
             await _rebuildActivitiesFts();
           }
         },
@@ -149,28 +152,28 @@ END;
     await customStatement('''
 CREATE VIRTUAL TABLE IF NOT EXISTS activities_fts USING fts5(
   app_name, window_title, captured_text, captured_url, captured_clipboard,
-  captured_screen_text,
+  captured_screen_text, captured_audio_text,
   content='activities', content_rowid='id'
 );
 ''');
     await customStatement('''
 CREATE TRIGGER IF NOT EXISTS activities_fts_ai AFTER INSERT ON activities BEGIN
-  INSERT INTO activities_fts(rowid, app_name, window_title, captured_text, captured_url, captured_clipboard, captured_screen_text)
-  VALUES (new.id, new.app_name, new.window_title, new.captured_text, new.captured_url, new.captured_clipboard, new.captured_screen_text);
+  INSERT INTO activities_fts(rowid, app_name, window_title, captured_text, captured_url, captured_clipboard, captured_screen_text, captured_audio_text)
+  VALUES (new.id, new.app_name, new.window_title, new.captured_text, new.captured_url, new.captured_clipboard, new.captured_screen_text, new.captured_audio_text);
 END;
 ''');
     await customStatement('''
 CREATE TRIGGER IF NOT EXISTS activities_fts_ad AFTER DELETE ON activities BEGIN
-  INSERT INTO activities_fts(activities_fts, rowid, app_name, window_title, captured_text, captured_url, captured_clipboard, captured_screen_text)
-  VALUES ('delete', old.id, old.app_name, old.window_title, old.captured_text, old.captured_url, old.captured_clipboard, old.captured_screen_text);
+  INSERT INTO activities_fts(activities_fts, rowid, app_name, window_title, captured_text, captured_url, captured_clipboard, captured_screen_text, captured_audio_text)
+  VALUES ('delete', old.id, old.app_name, old.window_title, old.captured_text, old.captured_url, old.captured_clipboard, old.captured_screen_text, old.captured_audio_text);
 END;
 ''');
     await customStatement('''
 CREATE TRIGGER IF NOT EXISTS activities_fts_au AFTER UPDATE ON activities BEGIN
-  INSERT INTO activities_fts(activities_fts, rowid, app_name, window_title, captured_text, captured_url, captured_clipboard, captured_screen_text)
-  VALUES ('delete', old.id, old.app_name, old.window_title, old.captured_text, old.captured_url, old.captured_clipboard, old.captured_screen_text);
-  INSERT INTO activities_fts(rowid, app_name, window_title, captured_text, captured_url, captured_clipboard, captured_screen_text)
-  VALUES (new.id, new.app_name, new.window_title, new.captured_text, new.captured_url, new.captured_clipboard, new.captured_screen_text);
+  INSERT INTO activities_fts(activities_fts, rowid, app_name, window_title, captured_text, captured_url, captured_clipboard, captured_screen_text, captured_audio_text)
+  VALUES ('delete', old.id, old.app_name, old.window_title, old.captured_text, old.captured_url, old.captured_clipboard, old.captured_screen_text, old.captured_audio_text);
+  INSERT INTO activities_fts(rowid, app_name, window_title, captured_text, captured_url, captured_clipboard, captured_screen_text, captured_audio_text)
+  VALUES (new.id, new.app_name, new.window_title, new.captured_text, new.captured_url, new.captured_clipboard, new.captured_screen_text, new.captured_audio_text);
 END;
 ''');
   }

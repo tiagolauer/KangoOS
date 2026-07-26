@@ -9,6 +9,7 @@ class CaptureSettings {
     this.retentionDays = defaultRetentionDays,
     this.captureVisibleText = false,
     this.captureScreenText = false,
+    this.captureAudio = false,
     this.captureBrowserUrls = false,
     this.captureClipboard = false,
   });
@@ -18,6 +19,7 @@ class CaptureSettings {
   final int retentionDays;
   final bool captureVisibleText;
   final bool captureScreenText;
+  final bool captureAudio;
 
   /// Opt-in: also records the active tab's URL for recognized browsers.
   final bool captureBrowserUrls;
@@ -30,6 +32,7 @@ class CaptureSettings {
     int? retentionDays,
     bool? captureVisibleText,
     bool? captureScreenText,
+    bool? captureAudio,
     bool? captureBrowserUrls,
     bool? captureClipboard,
   }) {
@@ -39,6 +42,7 @@ class CaptureSettings {
       retentionDays: retentionDays ?? this.retentionDays,
       captureVisibleText: captureVisibleText ?? this.captureVisibleText,
       captureScreenText: captureScreenText ?? this.captureScreenText,
+      captureAudio: captureAudio ?? this.captureAudio,
       captureBrowserUrls: captureBrowserUrls ?? this.captureBrowserUrls,
       captureClipboard: captureClipboard ?? this.captureClipboard,
     );
@@ -51,6 +55,7 @@ class CaptureSettingsRepository {
   static const _retentionDaysKey = 'capture_retention_days';
   static const _captureVisibleTextKey = 'capture_visible_text';
   static const _captureScreenTextKey = 'capture_screen_text';
+  static const _captureAudioKey = 'capture_audio';
   static const _captureBrowserUrlsKey = 'capture_browser_urls';
   static const _captureClipboardKey = 'capture_clipboard';
   static const _consentShownKey = 'capture_consent_shown';
@@ -63,6 +68,7 @@ class CaptureSettingsRepository {
       retentionDays: prefs.getInt(_retentionDaysKey) ?? defaultRetentionDays,
       captureVisibleText: prefs.getBool(_captureVisibleTextKey) ?? false,
       captureScreenText: prefs.getBool(_captureScreenTextKey) ?? false,
+      captureAudio: prefs.getBool(_captureAudioKey) ?? false,
       captureBrowserUrls: prefs.getBool(_captureBrowserUrlsKey) ?? false,
       captureClipboard: prefs.getBool(_captureClipboardKey) ?? false,
     );
@@ -75,6 +81,7 @@ class CaptureSettingsRepository {
     await prefs.setInt(_retentionDaysKey, settings.retentionDays);
     await prefs.setBool(_captureVisibleTextKey, settings.captureVisibleText);
     await prefs.setBool(_captureScreenTextKey, settings.captureScreenText);
+    await prefs.setBool(_captureAudioKey, settings.captureAudio);
     await prefs.setBool(_captureBrowserUrlsKey, settings.captureBrowserUrls);
     await prefs.setBool(_captureClipboardKey, settings.captureClipboard);
   }

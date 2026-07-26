@@ -3,7 +3,9 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import '../autostart/autostart_service.dart';
+import 'audio_capture_service.dart';
 import 'capture_settings_repository.dart';
+import 'whisper_model_repository.dart';
 
 class CaptureSettingsScreen extends StatefulWidget {
   const CaptureSettingsScreen({
@@ -21,6 +23,10 @@ class CaptureSettingsScreen extends StatefulWidget {
 
 class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
   final _autostartService = AutostartService();
+  final _modelRepository = WhisperModelRepository();
+  var _modelReady = false;
+  int? _modelDownloadPercent;
+  String? _modelError;
   var _settings = const CaptureSettings();
   var _autostartEnabled = false;
   var _loading = true;
@@ -34,11 +40,18 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
 
   Future<void> _load() async {
     final settings = await widget.repository.load();
+    if (!mounted) return;
     setState(() {
       _settings = settings;
       _autostartEnabled = _autostartService.isEnabled();
       _loading = false;
     });
+    _refreshModelState();
+  }
+
+  Future<void> _refreshModelState() async {
+    final ready = await _modelRepository.isDownloaded();
+    if (mounted) setState(() => _modelReady = ready);
   }
 
   void _setAutostart(bool enabled) {
@@ -70,6 +83,29 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
           excludedApps: _settings.excludedApps.where((a) => a != app).toList(),
         ),
       );
+
+  Future<void> _downloadWhisperModel() async {
+    setState(() {
+      _modelDownloadPercent = 0;
+      _modelError = null;
+    });
+    final result = await _modelRepository.download(
+      onProgress: (received, total) {
+        if (!mounted || total <= 0) return;
+        setState(() => _modelDownloadPercent = (received * 100 ~/ total));
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _modelDownloadPercent = null;
+      switch (result) {
+        case ModelDownloadSuccess():
+          _modelReady = true;
+        case ModelDownloadFailure(message: final message):
+          _modelError = message;
+      }
+    });
+  }
 
   Future<void> _clearAllActivity() async {
     final l10n = AppLocalizations.of(context);
@@ -149,6 +185,44 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
             onChanged: (enabled) =>
                 _apply(_settings.copyWith(captureScreenText: enabled)),
           ),
+          if (AudioCaptureService.isSupported) ...[
+            SwitchListTile(
+              title: Text(l10n.captureAudio),
+              subtitle: Text(l10n.captureAudioDescription(audioClipSeconds)),
+              value: _settings.captureAudio,
+              onChanged: _modelReady
+                  ? (enabled) =>
+                      _apply(_settings.copyWith(captureAudio: enabled))
+                  : null,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _modelError != null
+                          ? l10n.whisperModelDownloadFailed(_modelError!)
+                          : _modelDownloadPercent != null
+                              ? l10n.downloadingWhisperModel(
+                                  _modelDownloadPercent!)
+                              : _modelReady
+                                  ? l10n.whisperModelReady
+                                  : l10n.whisperModelMissing,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  if (!_modelReady)
+                    TextButton(
+                      onPressed: _modelDownloadPercent == null
+                          ? _downloadWhisperModel
+                          : null,
+                      child: Text(l10n.downloadWhisperModel),
+                    ),
+                ],
+              ),
+            ),
+          ],
           SwitchListTile(
             title: Text(l10n.captureClipboard),
             subtitle: Text(l10n.captureClipboardDescription),

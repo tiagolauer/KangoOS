@@ -42,15 +42,17 @@ add_dependencies(${BINARY_NAME} flutter_assemble)
 # The screen-OCR helper ships next to the runner. This copy has to live in the
 # runner's own CMakeLists: add_custom_command(TARGET ...) only accepts targets
 # created in the same directory scope.
-add_dependencies(${BINARY_NAME} screen_ocr)
-add_custom_command(
-  TARGET ${BINARY_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          "$<TARGET_FILE:screen_ocr>"
-          "$<TARGET_FILE_DIR:${BINARY_NAME}>/screen_ocr.exe"
-  COMMENT "Bundling screen_ocr helper (screen-text LTM capture)"
-  VERBATIM
-)
+add_dependencies(${BINARY_NAME} screen_ocr audio_capture whisper_transcribe)
+foreach(CAPTURE_HELPER screen_ocr audio_capture whisper_transcribe)
+  add_custom_command(
+    TARGET ${BINARY_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:${CAPTURE_HELPER}>"
+            "$<TARGET_FILE_DIR:${BINARY_NAME}>/${CAPTURE_HELPER}.exe"
+    COMMENT "Bundling ${CAPTURE_HELPER} helper"
+    VERBATIM
+  )
+endforeach()
 
 find_program(DART_EXECUTABLE NAMES dart dart.exe)
 if(DART_EXECUTABLE)

@@ -281,5 +281,33 @@
     }
   },
   "captureScreenText": "Capture screen text (OCR)",
-  "captureScreenTextDescription": "Runs OCR over your whole screen every time the focused window changes, and stores the text it reads. This captures everything visible — other people's messages, documents you did not open yourself, anything a colleague shares on a call. The most invasive capture source: off by default, and excluded apps do not protect you here, because OCR reads the entire screen rather than one window."
+  "captureScreenTextDescription": "Runs OCR over your whole screen every time the focused window changes, and stores the text it reads. This captures everything visible — other people's messages, documents you did not open yourself, anything a colleague shares on a call. The most invasive capture source: off by default, and excluded apps do not protect you here, because OCR reads the entire screen rather than one window.",
+  "captureAudio": "Transcribe microphone audio (Whisper)",
+  "captureAudioDescription": "Every 10 minutes, records {seconds} seconds from your default microphone and transcribes it locally with Whisper. Audio never leaves this device and the recording is deleted right after transcription — only the text is kept. This records whoever is speaking, including other people in the room or on a call, who have not agreed to it. Check that recording is legal and acceptable where you are before enabling.",
+  "@captureAudioDescription": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "whisperModelMissing": "Speech model not downloaded yet (~140 MB).",
+  "whisperModelReady": "Speech model ready.",
+  "downloadWhisperModel": "Download speech model",
+  "downloadingWhisperModel": "Downloading… {percent}%",
+  "@downloadingWhisperModel": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "whisperModelDownloadFailed": "Model download failed: {error}",
+  "@whisperModelDownloadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

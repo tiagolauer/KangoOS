@@ -510,6 +510,12 @@ class $ActivitiesTable extends Activities
   late final GeneratedColumn<String> capturedScreenText =
       GeneratedColumn<String>('captured_screen_text', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _capturedAudioTextMeta =
+      const VerificationMeta('capturedAudioText');
+  @override
+  late final GeneratedColumn<String> capturedAudioText =
+      GeneratedColumn<String>('captured_audio_text', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _capturedAtMeta =
       const VerificationMeta('capturedAt');
   @override
@@ -527,6 +533,7 @@ class $ActivitiesTable extends Activities
         capturedUrl,
         capturedClipboard,
         capturedScreenText,
+        capturedAudioText,
         capturedAt
       ];
   @override
@@ -580,6 +587,12 @@ class $ActivitiesTable extends Activities
           capturedScreenText.isAcceptableOrUnknown(
               data['captured_screen_text']!, _capturedScreenTextMeta));
     }
+    if (data.containsKey('captured_audio_text')) {
+      context.handle(
+          _capturedAudioTextMeta,
+          capturedAudioText.isAcceptableOrUnknown(
+              data['captured_audio_text']!, _capturedAudioTextMeta));
+    }
     if (data.containsKey('captured_at')) {
       context.handle(
           _capturedAtMeta,
@@ -609,6 +622,8 @@ class $ActivitiesTable extends Activities
           DriftSqlType.string, data['${effectivePrefix}captured_clipboard']),
       capturedScreenText: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}captured_screen_text']),
+      capturedAudioText: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}captured_audio_text']),
       capturedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}captured_at'])!,
     );
@@ -628,6 +643,7 @@ class Activity extends DataClass implements Insertable<Activity> {
   final String? capturedUrl;
   final String? capturedClipboard;
   final String? capturedScreenText;
+  final String? capturedAudioText;
   final DateTime capturedAt;
   const Activity(
       {required this.id,
@@ -637,6 +653,7 @@ class Activity extends DataClass implements Insertable<Activity> {
       this.capturedUrl,
       this.capturedClipboard,
       this.capturedScreenText,
+      this.capturedAudioText,
       required this.capturedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -655,6 +672,9 @@ class Activity extends DataClass implements Insertable<Activity> {
     }
     if (!nullToAbsent || capturedScreenText != null) {
       map['captured_screen_text'] = Variable<String>(capturedScreenText);
+    }
+    if (!nullToAbsent || capturedAudioText != null) {
+      map['captured_audio_text'] = Variable<String>(capturedAudioText);
     }
     map['captured_at'] = Variable<DateTime>(capturedAt);
     return map;
@@ -677,6 +697,9 @@ class Activity extends DataClass implements Insertable<Activity> {
       capturedScreenText: capturedScreenText == null && nullToAbsent
           ? const Value.absent()
           : Value(capturedScreenText),
+      capturedAudioText: capturedAudioText == null && nullToAbsent
+          ? const Value.absent()
+          : Value(capturedAudioText),
       capturedAt: Value(capturedAt),
     );
   }
@@ -694,6 +717,8 @@ class Activity extends DataClass implements Insertable<Activity> {
           serializer.fromJson<String?>(json['capturedClipboard']),
       capturedScreenText:
           serializer.fromJson<String?>(json['capturedScreenText']),
+      capturedAudioText:
+          serializer.fromJson<String?>(json['capturedAudioText']),
       capturedAt: serializer.fromJson<DateTime>(json['capturedAt']),
     );
   }
@@ -708,6 +733,7 @@ class Activity extends DataClass implements Insertable<Activity> {
       'capturedUrl': serializer.toJson<String?>(capturedUrl),
       'capturedClipboard': serializer.toJson<String?>(capturedClipboard),
       'capturedScreenText': serializer.toJson<String?>(capturedScreenText),
+      'capturedAudioText': serializer.toJson<String?>(capturedAudioText),
       'capturedAt': serializer.toJson<DateTime>(capturedAt),
     };
   }
@@ -720,6 +746,7 @@ class Activity extends DataClass implements Insertable<Activity> {
           Value<String?> capturedUrl = const Value.absent(),
           Value<String?> capturedClipboard = const Value.absent(),
           Value<String?> capturedScreenText = const Value.absent(),
+          Value<String?> capturedAudioText = const Value.absent(),
           DateTime? capturedAt}) =>
       Activity(
         id: id ?? this.id,
@@ -734,6 +761,9 @@ class Activity extends DataClass implements Insertable<Activity> {
         capturedScreenText: capturedScreenText.present
             ? capturedScreenText.value
             : this.capturedScreenText,
+        capturedAudioText: capturedAudioText.present
+            ? capturedAudioText.value
+            : this.capturedAudioText,
         capturedAt: capturedAt ?? this.capturedAt,
       );
   Activity copyWithCompanion(ActivitiesCompanion data) {
@@ -753,6 +783,9 @@ class Activity extends DataClass implements Insertable<Activity> {
       capturedScreenText: data.capturedScreenText.present
           ? data.capturedScreenText.value
           : this.capturedScreenText,
+      capturedAudioText: data.capturedAudioText.present
+          ? data.capturedAudioText.value
+          : this.capturedAudioText,
       capturedAt:
           data.capturedAt.present ? data.capturedAt.value : this.capturedAt,
     );
@@ -768,14 +801,23 @@ class Activity extends DataClass implements Insertable<Activity> {
           ..write('capturedUrl: $capturedUrl, ')
           ..write('capturedClipboard: $capturedClipboard, ')
           ..write('capturedScreenText: $capturedScreenText, ')
+          ..write('capturedAudioText: $capturedAudioText, ')
           ..write('capturedAt: $capturedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, appName, windowTitle, capturedText,
-      capturedUrl, capturedClipboard, capturedScreenText, capturedAt);
+  int get hashCode => Object.hash(
+      id,
+      appName,
+      windowTitle,
+      capturedText,
+      capturedUrl,
+      capturedClipboard,
+      capturedScreenText,
+      capturedAudioText,
+      capturedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -787,6 +829,7 @@ class Activity extends DataClass implements Insertable<Activity> {
           other.capturedUrl == this.capturedUrl &&
           other.capturedClipboard == this.capturedClipboard &&
           other.capturedScreenText == this.capturedScreenText &&
+          other.capturedAudioText == this.capturedAudioText &&
           other.capturedAt == this.capturedAt);
 }
 
@@ -798,6 +841,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
   final Value<String?> capturedUrl;
   final Value<String?> capturedClipboard;
   final Value<String?> capturedScreenText;
+  final Value<String?> capturedAudioText;
   final Value<DateTime> capturedAt;
   const ActivitiesCompanion({
     this.id = const Value.absent(),
@@ -807,6 +851,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     this.capturedUrl = const Value.absent(),
     this.capturedClipboard = const Value.absent(),
     this.capturedScreenText = const Value.absent(),
+    this.capturedAudioText = const Value.absent(),
     this.capturedAt = const Value.absent(),
   });
   ActivitiesCompanion.insert({
@@ -817,6 +862,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     this.capturedUrl = const Value.absent(),
     this.capturedClipboard = const Value.absent(),
     this.capturedScreenText = const Value.absent(),
+    this.capturedAudioText = const Value.absent(),
     this.capturedAt = const Value.absent(),
   })  : appName = Value(appName),
         windowTitle = Value(windowTitle);
@@ -828,6 +874,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     Expression<String>? capturedUrl,
     Expression<String>? capturedClipboard,
     Expression<String>? capturedScreenText,
+    Expression<String>? capturedAudioText,
     Expression<DateTime>? capturedAt,
   }) {
     return RawValuesInsertable({
@@ -839,6 +886,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
       if (capturedClipboard != null) 'captured_clipboard': capturedClipboard,
       if (capturedScreenText != null)
         'captured_screen_text': capturedScreenText,
+      if (capturedAudioText != null) 'captured_audio_text': capturedAudioText,
       if (capturedAt != null) 'captured_at': capturedAt,
     });
   }
@@ -851,6 +899,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
       Value<String?>? capturedUrl,
       Value<String?>? capturedClipboard,
       Value<String?>? capturedScreenText,
+      Value<String?>? capturedAudioText,
       Value<DateTime>? capturedAt}) {
     return ActivitiesCompanion(
       id: id ?? this.id,
@@ -860,6 +909,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
       capturedUrl: capturedUrl ?? this.capturedUrl,
       capturedClipboard: capturedClipboard ?? this.capturedClipboard,
       capturedScreenText: capturedScreenText ?? this.capturedScreenText,
+      capturedAudioText: capturedAudioText ?? this.capturedAudioText,
       capturedAt: capturedAt ?? this.capturedAt,
     );
   }
@@ -888,6 +938,9 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     if (capturedScreenText.present) {
       map['captured_screen_text'] = Variable<String>(capturedScreenText.value);
     }
+    if (capturedAudioText.present) {
+      map['captured_audio_text'] = Variable<String>(capturedAudioText.value);
+    }
     if (capturedAt.present) {
       map['captured_at'] = Variable<DateTime>(capturedAt.value);
     }
@@ -904,6 +957,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
           ..write('capturedUrl: $capturedUrl, ')
           ..write('capturedClipboard: $capturedClipboard, ')
           ..write('capturedScreenText: $capturedScreenText, ')
+          ..write('capturedAudioText: $capturedAudioText, ')
           ..write('capturedAt: $capturedAt')
           ..write(')'))
         .toString();
@@ -2240,6 +2294,7 @@ typedef $$ActivitiesTableCreateCompanionBuilder = ActivitiesCompanion Function({
   Value<String?> capturedUrl,
   Value<String?> capturedClipboard,
   Value<String?> capturedScreenText,
+  Value<String?> capturedAudioText,
   Value<DateTime> capturedAt,
 });
 typedef $$ActivitiesTableUpdateCompanionBuilder = ActivitiesCompanion Function({
@@ -2250,6 +2305,7 @@ typedef $$ActivitiesTableUpdateCompanionBuilder = ActivitiesCompanion Function({
   Value<String?> capturedUrl,
   Value<String?> capturedClipboard,
   Value<String?> capturedScreenText,
+  Value<String?> capturedAudioText,
   Value<DateTime> capturedAt,
 });
 
@@ -2283,6 +2339,10 @@ class $$ActivitiesTableFilterComposer
 
   ColumnFilters<String> get capturedScreenText => $composableBuilder(
       column: $table.capturedScreenText,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get capturedAudioText => $composableBuilder(
+      column: $table.capturedAudioText,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get capturedAt => $composableBuilder(
@@ -2322,6 +2382,10 @@ class $$ActivitiesTableOrderingComposer
       column: $table.capturedScreenText,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get capturedAudioText => $composableBuilder(
+      column: $table.capturedAudioText,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get capturedAt => $composableBuilder(
       column: $table.capturedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -2355,6 +2419,9 @@ class $$ActivitiesTableAnnotationComposer
 
   GeneratedColumn<String> get capturedScreenText => $composableBuilder(
       column: $table.capturedScreenText, builder: (column) => column);
+
+  GeneratedColumn<String> get capturedAudioText => $composableBuilder(
+      column: $table.capturedAudioText, builder: (column) => column);
 
   GeneratedColumn<DateTime> get capturedAt => $composableBuilder(
       column: $table.capturedAt, builder: (column) => column);
@@ -2390,6 +2457,7 @@ class $$ActivitiesTableTableManager extends RootTableManager<
             Value<String?> capturedUrl = const Value.absent(),
             Value<String?> capturedClipboard = const Value.absent(),
             Value<String?> capturedScreenText = const Value.absent(),
+            Value<String?> capturedAudioText = const Value.absent(),
             Value<DateTime> capturedAt = const Value.absent(),
           }) =>
               ActivitiesCompanion(
@@ -2400,6 +2468,7 @@ class $$ActivitiesTableTableManager extends RootTableManager<
             capturedUrl: capturedUrl,
             capturedClipboard: capturedClipboard,
             capturedScreenText: capturedScreenText,
+            capturedAudioText: capturedAudioText,
             capturedAt: capturedAt,
           ),
           createCompanionCallback: ({
@@ -2410,6 +2479,7 @@ class $$ActivitiesTableTableManager extends RootTableManager<
             Value<String?> capturedUrl = const Value.absent(),
             Value<String?> capturedClipboard = const Value.absent(),
             Value<String?> capturedScreenText = const Value.absent(),
+            Value<String?> capturedAudioText = const Value.absent(),
             Value<DateTime> capturedAt = const Value.absent(),
           }) =>
               ActivitiesCompanion.insert(
@@ -2420,6 +2490,7 @@ class $$ActivitiesTableTableManager extends RootTableManager<
             capturedUrl: capturedUrl,
             capturedClipboard: capturedClipboard,
             capturedScreenText: capturedScreenText,
+            capturedAudioText: capturedAudioText,
             capturedAt: capturedAt,
           ),
           withReferenceMapper: (p0) => p0
