@@ -3,6 +3,7 @@ library;
 export 'src/chat/rag_chat.dart';
 export 'src/chat/temporal_query.dart';
 export 'src/database/database.dart';
+export 'src/database/snippet_json.dart';
 export 'src/database/tables/activities_table.dart';
 export 'src/database/tables/activity_summaries_table.dart';
 export 'src/database/tables/conversations_table.dart';

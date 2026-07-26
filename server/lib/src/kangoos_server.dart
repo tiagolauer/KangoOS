@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:shelf/shelf.dart';
@@ -39,12 +40,31 @@ class KangoosServer {
 
     return const Pipeline()
         .addMiddleware(logRequests())
+        .addMiddleware(_jsonErrors())
         .addMiddleware(authMiddleware(apiToken))
         .addHandler(router.call);
   }
 
   Future<Response> _indexMissing(Request request) async {
-    final count = await semanticSearch.indexMissing();
-    return Response.ok(jsonEncode({'indexed': count}), headers: jsonHeaders);
+    try {
+      final count = await semanticSearch.indexMissing();
+      return Response.ok(jsonEncode({'indexed': count}), headers: jsonHeaders);
+    } catch (e) {
+      return Response(502,
+          body: jsonEncode({'error': 'indexing failed: $e'}),
+          headers: jsonHeaders);
+    }
   }
+
+  Middleware _jsonErrors() => (handler) => (request) async {
+        try {
+          return await handler(request);
+        } catch (e, stackTrace) {
+          stderr.writeln('Unhandled request error: $e\n$stackTrace');
+          return Response.internalServerError(
+            body: jsonEncode({'error': 'internal server error'}),
+            headers: jsonHeaders,
+          );
+        }
+      };
 }

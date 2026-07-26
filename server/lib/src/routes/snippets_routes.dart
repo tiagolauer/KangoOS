@@ -26,31 +26,37 @@ Router snippetsRouter({
         final matches = await semanticSearch.search(query);
         snippets = matches.map((match) => match.snippet).toList();
       } catch (e) {
-        return Response(502,
-            body: jsonEncode({'error': 'semantic search failed: $e'}), headers: jsonHeaders);
+        return _error(502, 'semantic search failed: $e');
       }
     } else {
       snippets = await database.searchByKeyword(query);
     }
     return Response.ok(
-      jsonEncode(snippets.map((s) => s.toJson()).toList()),
+      jsonEncode(snippets.map(snippetToJson).toList()),
       headers: jsonHeaders,
     );
   });
 
   router.post('/', (Request request) async {
-    final body = jsonDecode(await request.readAsString()) as Map<String, dynamic>;
-    final title = (body['title'] as String?)?.trim() ?? '';
-    final content = body['content'] as String? ?? '';
+    final body = _decodeObject(await request.readAsString());
+    if (body == null) return _error(400, 'body must be a JSON object');
+
+    final title = _optionalString(body['title'])?.trim() ?? '';
+    final content = _optionalString(body['content']) ?? '';
     if (title.isEmpty || content.isEmpty) {
-      return Response(400,
-          body: jsonEncode({'error': 'title and content are required'}), headers: jsonHeaders);
+      return _error(400, 'title and content are required');
     }
-    final language = (body['language'] as String?)?.trim();
-    final tags = (body['tags'] as List?)?.cast<String>() ?? const <String>[];
-    final syncId = (body['syncId'] as String?)?.trim();
-    final updatedAtMillis = body['updatedAt'] as int?;
-    final createdAtMillis = body['createdAt'] as int?;
+
+    final tags = _stringList(body['tags']);
+    if (tags == null) return _error(400, 'tags must be a list of strings');
+
+    final language = _optionalString(body['language']);
+    final syncId = _optionalString(body['syncId']);
+    final createdAt = _optionalMillis(body['createdAt']);
+    final updatedAt = _optionalMillis(body['updatedAt']);
+    if (createdAt.invalid || updatedAt.invalid) {
+      return _error(400, 'createdAt and updatedAt must be epoch milliseconds');
+    }
 
     if (syncId != null && syncId.isNotEmpty) {
       await database.clearSnippetTombstone(syncId);
@@ -62,15 +68,16 @@ Router snippetsRouter({
       language: Value(language == null || language.isEmpty ? null : language),
       tags: Value(tags),
       syncId: Value(syncId == null || syncId.isEmpty ? null : syncId),
-      createdAt: createdAtMillis == null
+      createdAt: createdAt.value == null
           ? const Value.absent()
-          : Value(DateTime.fromMillisecondsSinceEpoch(createdAtMillis)),
-      updatedAt: updatedAtMillis == null
+          : Value(createdAt.value!),
+      updatedAt: updatedAt.value == null
           ? const Value.absent()
-          : Value(DateTime.fromMillisecondsSinceEpoch(updatedAtMillis)),
+          : Value(updatedAt.value!),
     ));
     final created = await database.getSnippetById(id);
-    return Response.ok(jsonEncode(created!.toJson()), headers: jsonHeaders);
+    return Response.ok(jsonEncode(snippetToJson(created!)),
+        headers: jsonHeaders);
   });
 
   router.get('/deleted', (Request request) async {
@@ -97,57 +104,70 @@ Router snippetsRouter({
   });
 
   router.get('/<id>', (Request request, String id) async {
-    final snippet = await database.getSnippetById(int.parse(id));
-    if (snippet == null) {
-      return Response.notFound(jsonEncode({'error': 'not found'}), headers: jsonHeaders);
-    }
-    return Response.ok(jsonEncode(snippet.toJson()), headers: jsonHeaders);
+    final snippetId = int.tryParse(id);
+    if (snippetId == null) return _error(400, 'id must be an integer');
+
+    final snippet = await database.getSnippetById(snippetId);
+    if (snippet == null) return _error(404, 'not found');
+    return Response.ok(jsonEncode(snippetToJson(snippet)),
+        headers: jsonHeaders);
   });
 
   router.put('/<id>', (Request request, String id) async {
-    final existing = await database.getSnippetById(int.parse(id));
-    if (existing == null) {
-      return Response.notFound(jsonEncode({'error': 'not found'}), headers: jsonHeaders);
-    }
+    final snippetId = int.tryParse(id);
+    if (snippetId == null) return _error(400, 'id must be an integer');
 
-    final body = jsonDecode(await request.readAsString()) as Map<String, dynamic>;
-    final title = body['title'] as String?;
-    final content = body['content'] as String?;
-    final tags = (body['tags'] as List?)?.cast<String>();
-    final updatedAtMillis = body['updatedAt'] as int?;
+    final existing = await database.getSnippetById(snippetId);
+    if (existing == null) return _error(404, 'not found');
+
+    final body = _decodeObject(await request.readAsString());
+    if (body == null) return _error(400, 'body must be a JSON object');
+
+    final title = _optionalString(body['title']);
+    final content = _optionalString(body['content']);
+    final tags = body.containsKey('tags') ? _stringList(body['tags']) : null;
+    if (body.containsKey('tags') && tags == null) {
+      return _error(400, 'tags must be a list of strings');
+    }
+    final updatedAt = _optionalMillis(body['updatedAt']);
+    if (updatedAt.invalid) {
+      return _error(400, 'updatedAt must be epoch milliseconds');
+    }
 
     final updated = existing.copyWith(
       title: title ?? existing.title,
       content: content ?? existing.content,
       language: body.containsKey('language')
-          ? Value(_normalize(body['language'] as String?))
+          ? Value(_normalize(_optionalString(body['language'])))
           : Value(existing.language),
       tags: tags ?? existing.tags,
-      updatedAt: updatedAtMillis == null
-          ? DateTime.now()
-          : DateTime.fromMillisecondsSinceEpoch(updatedAtMillis),
+      updatedAt: updatedAt.value ?? DateTime.now(),
     );
     await database.updateSnippet(updated);
-    unawaited(semanticSearch.indexSnippet(updated).catchError((_) {}));
+    unawaited(semanticSearch.indexSnippet(updated).catchError((Object _) {}));
 
-    return Response.ok(jsonEncode(updated.toJson()), headers: jsonHeaders);
+    return Response.ok(jsonEncode(snippetToJson(updated)),
+        headers: jsonHeaders);
   });
 
   router.delete('/<id>', (Request request, String id) async {
-    await database.deleteSnippet(int.parse(id));
+    final snippetId = int.tryParse(id);
+    if (snippetId == null) return _error(400, 'id must be an integer');
+
+    await database.deleteSnippet(snippetId);
     return Response(204);
   });
 
   router.post('/<id>/index', (Request request, String id) async {
-    final snippet = await database.getSnippetById(int.parse(id));
-    if (snippet == null) {
-      return Response.notFound(jsonEncode({'error': 'not found'}), headers: jsonHeaders);
-    }
+    final snippetId = int.tryParse(id);
+    if (snippetId == null) return _error(400, 'id must be an integer');
+
+    final snippet = await database.getSnippetById(snippetId);
+    if (snippet == null) return _error(404, 'not found');
     try {
       await semanticSearch.indexSnippet(snippet);
     } catch (e) {
-      return Response(502,
-          body: jsonEncode({'error': 'indexing failed: $e'}), headers: jsonHeaders);
+      return _error(502, 'indexing failed: $e');
     }
     return Response.ok(jsonEncode({'status': 'indexed'}), headers: jsonHeaders);
   });
@@ -155,4 +175,41 @@ Router snippetsRouter({
   return router;
 }
 
-String? _normalize(String? value) => value == null || value.isEmpty ? null : value;
+Response _error(int status, String message) => Response(
+      status,
+      body: jsonEncode({'error': message}),
+      headers: jsonHeaders,
+    );
+
+Map<String, dynamic>? _decodeObject(String body) {
+  try {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> ? decoded : null;
+  } on FormatException {
+    return null;
+  }
+}
+
+List<String>? _stringList(Object? raw) {
+  if (raw == null) return const [];
+  if (raw is! List || raw.any((entry) => entry is! String)) return null;
+  return raw.cast<String>();
+}
+
+String? _optionalString(Object? raw) => raw is String ? raw : null;
+
+_OptionalTimestamp _optionalMillis(Object? raw) {
+  if (raw == null) return const _OptionalTimestamp(value: null);
+  if (raw is! int) return const _OptionalTimestamp(value: null, invalid: true);
+  return _OptionalTimestamp(value: DateTime.fromMillisecondsSinceEpoch(raw));
+}
+
+class _OptionalTimestamp {
+  const _OptionalTimestamp({required this.value, this.invalid = false});
+
+  final DateTime? value;
+  final bool invalid;
+}
+
+String? _normalize(String? value) =>
+    value == null || value.isEmpty ? null : value;

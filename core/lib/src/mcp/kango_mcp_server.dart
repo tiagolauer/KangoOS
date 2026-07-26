@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show Value;
 
 import '../chat/temporal_query.dart';
 import '../database/database.dart';
+import '../database/snippet_json.dart';
 import '../database/tables/activity_summaries_table.dart';
 import '../search/semantic_search.dart';
 
@@ -174,8 +175,7 @@ class KangoMcpServer {
     );
 
     _tools['create_kango_memory'] = _McpTool(
-      description:
-          'Explicitly save a durable memory, independent of activity '
+      description: 'Explicitly save a durable memory, independent of activity '
           'capture. Shows up in the Timeline and is retrievable by '
           'ask_kango_ltm and chat.',
       inputSchema: {
@@ -269,7 +269,7 @@ class KangoMcpServer {
     } else {
       results = (await database.searchByKeyword(query)).take(limit).toList();
     }
-    return _toolJson(results.map((s) => s.toJson()).toList());
+    return _toolJson(results.map(snippetToJson).toList());
   }
 
   Future<Map<String, dynamic>> _createSnippet(Map<String, dynamic> args) async {
@@ -293,13 +293,13 @@ class KangoMcpServer {
         ? await database.createSnippet(entry)
         : await search.createAndIndex(entry);
     final created = await database.getSnippetById(id);
-    return _toolJson(created!.toJson());
+    return _toolJson(snippetToJson(created!));
   }
 
   Future<Map<String, dynamic>> _listSnippets(Map<String, dynamic> args) async {
     final limit = (args['limit'] as num?)?.toInt() ?? 20;
     final snippets = (await database.watchAllSnippets().first).take(limit);
-    return _toolJson(snippets.map((s) => s.toJson()).toList());
+    return _toolJson(snippets.map(snippetToJson).toList());
   }
 
   Future<Map<String, dynamic>> _getSnippet(Map<String, dynamic> args) async {
@@ -308,7 +308,7 @@ class KangoMcpServer {
 
     final snippet = await database.getSnippetById(id);
     if (snippet == null) return _toolError('snippet #$id not found');
-    return _toolJson(snippet.toJson());
+    return _toolJson(snippetToJson(snippet));
   }
 
   Future<Map<String, dynamic>> _updateSnippet(Map<String, dynamic> args) async {
@@ -328,7 +328,7 @@ class KangoMcpServer {
       updatedAt: DateTime.now(),
     );
     await database.updateSnippet(updated);
-    return _toolJson(updated.toJson());
+    return _toolJson(snippetToJson(updated));
   }
 
   Future<Map<String, dynamic>> _deleteSnippet(Map<String, dynamic> args) async {
