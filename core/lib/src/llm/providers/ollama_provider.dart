@@ -2,17 +2,20 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../llm_http.dart';
 import '../llm_provider.dart';
 
 class OllamaProvider implements LlmProvider {
   OllamaProvider({
     required this.model,
     this.baseUrl = 'http://localhost:11434',
+    this.timeout = defaultLlmTimeout,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String model;
   final String baseUrl;
+  final Duration timeout;
   final http.Client _client;
 
   @override
@@ -30,9 +33,16 @@ class OllamaProvider implements LlmProvider {
             .toList(),
       });
 
-    final response = await _client.send(request);
-    final lines =
-        response.stream.transform(utf8.decoder).transform(const LineSplitter());
+    final response = await sendLlmRequest(
+      client: _client,
+      request: request,
+      provider: id,
+      timeout: timeout,
+    );
+    final lines = response.stream
+        .timeout(timeout)
+        .transform(utf8.decoder)
+        .transform(const LineSplitter());
 
     await for (final line in lines) {
       if (line.isEmpty) continue;

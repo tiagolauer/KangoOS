@@ -10,6 +10,7 @@ export 'src/database/tables/snippets_table.dart';
 export 'src/embedding/embedding_provider.dart';
 export 'src/exchange/snippet_exchange.dart';
 export 'src/embedding/providers/ollama_embedding_provider.dart';
+export 'src/llm/llm_http.dart';
 export 'src/llm/llm_provider.dart';
 export 'src/llm/llm_settings.dart';
 export 'src/llm/providers/anthropic_provider.dart';
