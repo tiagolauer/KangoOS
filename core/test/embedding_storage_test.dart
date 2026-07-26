@@ -48,7 +48,8 @@ void main() {
 
     test('encodes four bytes per dimension', () {
       const converter = EmbeddingConverter();
-      expect(converter.toSql(List<double>.filled(768, 0.5)), hasLength(768 * 4));
+      expect(
+          converter.toSql(List<double>.filled(768, 0.5)), hasLength(768 * 4));
     });
   });
 
@@ -75,10 +76,10 @@ void main() {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
 
-    final first =
-        await database.createSnippet(SnippetsCompanion.insert(title: '1', content: 'x'));
-    final second =
-        await database.createSnippet(SnippetsCompanion.insert(title: '2', content: 'y'));
+    final first = await database
+        .createSnippet(SnippetsCompanion.insert(title: '1', content: 'x'));
+    final second = await database
+        .createSnippet(SnippetsCompanion.insert(title: '2', content: 'y'));
 
     final ordered = await database.snippetsByIds([second, first]);
 
@@ -101,10 +102,14 @@ void main() {
     );
     legacy.execute(
       'INSERT INTO snippets (title, content, embedding) VALUES (?, ?, ?);',
-      ['legacy', 'body', jsonEncode([0.25, 0.5, 0.75])],
+      [
+        'legacy',
+        'body',
+        jsonEncode([0.25, 0.5, 0.75])
+      ],
     );
-    legacy.execute(
-        'INSERT INTO snippets (title, content) VALUES (?, ?);', ['plain', 'body']);
+    legacy.execute('INSERT INTO snippets (title, content) VALUES (?, ?);',
+        ['plain', 'body']);
     legacy.execute('PRAGMA user_version = 11;');
     legacy.dispose();
 
@@ -125,5 +130,29 @@ void main() {
     expect(activities.single.windowTitle, 'legacy window');
     expect(activities.single.capturedScreenText, isNull);
     expect(await database.searchActivities('legacy'), hasLength(1));
+  });
+
+  test('migrating an old database indexes rows written before FTS existed',
+      () async {
+    final tempDir = Directory.systemTemp.createTempSync('kangoos_fts');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+    final file = File('${tempDir.path}/legacy.db');
+
+    final legacy = sqlite3.open(file.path);
+    legacy.execute(_legacySnippetsSchema);
+    legacy.execute(_legacyActivitiesSchema);
+    legacy.execute(
+      'INSERT INTO snippets (title, content) VALUES (?, ?);',
+      ['Reverse a string', 'written before the fts migration'],
+    );
+    legacy.execute('PRAGMA user_version = 11;');
+    legacy.dispose();
+
+    final database = KangoosDatabase.native(file);
+    addTearDown(database.close);
+
+    final found = await database.searchByKeyword('reverse');
+    expect(found, hasLength(1));
+    expect(found.single.title, 'Reverse a string');
   });
 }

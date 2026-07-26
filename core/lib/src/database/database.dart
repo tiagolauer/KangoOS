@@ -33,7 +33,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,13 +82,34 @@ class KangoosDatabase extends _$KangoosDatabase {
           }
           if (from < 14) {
             await m.addColumn(activities, activities.capturedAudioText);
+          }
+          if (from < 15) {
+            await _rebuildSnippetsFts();
             await _rebuildActivitiesFts();
           }
         },
       );
 
+  Future<void> _rebuildSnippetsFts() async {
+    for (final name in [
+      'snippets_fts_ai',
+      'snippets_fts_ad',
+      'snippets_fts_au'
+    ]) {
+      await customStatement('DROP TRIGGER IF EXISTS $name;');
+    }
+    await customStatement('DROP TABLE IF EXISTS snippets_fts;');
+    await _createSnippetsFts();
+    await customStatement(
+        "INSERT INTO snippets_fts(snippets_fts) VALUES ('rebuild');");
+  }
+
   Future<void> _rebuildActivitiesFts() async {
-    for (final name in ['activities_fts_ai', 'activities_fts_ad', 'activities_fts_au']) {
+    for (final name in [
+      'activities_fts_ai',
+      'activities_fts_ad',
+      'activities_fts_au'
+    ]) {
       await customStatement('DROP TRIGGER IF EXISTS $name;');
     }
     await customStatement('DROP TABLE IF EXISTS activities_fts;');
@@ -197,8 +218,7 @@ END;
   Future<void> recordSnippetTombstone(String syncId, {DateTime? deletedAt}) =>
       into(deletedSnippets).insertOnConflictUpdate(DeletedSnippetsCompanion(
         syncId: Value(syncId),
-        deletedAt:
-            deletedAt == null ? const Value.absent() : Value(deletedAt),
+        deletedAt: deletedAt == null ? const Value.absent() : Value(deletedAt),
       ));
 
   Future<List<DeletedSnippet>> snippetTombstones() =>
@@ -341,11 +361,12 @@ END;
   Future<int> insertActivitySummary(ActivitySummariesCompanion entry) =>
       into(activitySummaries).insert(entry);
 
-  Future<ActivitySummary?> getSummaryById(int id) => (select(activitySummaries)
-        ..where((row) => row.id.equals(id)))
-      .getSingleOrNull();
+  Future<ActivitySummary?> getSummaryById(int id) =>
+      (select(activitySummaries)..where((row) => row.id.equals(id)))
+          .getSingleOrNull();
 
-  Future<List<ActivitySummary>> summariesBetween(DateTime start, DateTime end) =>
+  Future<List<ActivitySummary>> summariesBetween(
+          DateTime start, DateTime end) =>
       (select(activitySummaries)
             ..where((row) =>
                 row.periodEnd.isBiggerThanValue(start) &
@@ -359,7 +380,8 @@ END;
             ..limit(limit))
           .watch();
 
-  Future<List<ActivitySummary>> allSummaries() => select(activitySummaries).get();
+  Future<List<ActivitySummary>> allSummaries() =>
+      select(activitySummaries).get();
 
   Future<List<ActivitySummary>> recentSummaries({int limit = 5}) =>
       (select(activitySummaries)
@@ -388,7 +410,8 @@ END;
       into(conversationMessages).insert(ConversationMessagesCompanion.insert(
           conversationId: conversationId, role: role, content: content));
 
-  Future<List<ConversationMessage>> messagesForConversation(int conversationId) =>
+  Future<List<ConversationMessage>> messagesForConversation(
+          int conversationId) =>
       (select(conversationMessages)
             ..where((row) => row.conversationId.equals(conversationId))
             ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
@@ -421,7 +444,8 @@ END;
         await (delete(conversationMessages)
               ..where((row) => row.conversationId.equals(conversationId)))
             .go();
-        await (delete(conversations)..where((row) => row.id.equals(conversationId)))
+        await (delete(conversations)
+              ..where((row) => row.id.equals(conversationId)))
             .go();
       });
 
@@ -457,7 +481,8 @@ END;
 
     final db = sqlite3.open(file.path);
     try {
-      db.execute("ATTACH DATABASE '$encryptedPath' AS encrypted KEY '$escaped';");
+      db.execute(
+          "ATTACH DATABASE '$encryptedPath' AS encrypted KEY '$escaped';");
       db.select("SELECT sqlcipher_export('encrypted');");
       db.execute('DETACH DATABASE encrypted;');
     } finally {
