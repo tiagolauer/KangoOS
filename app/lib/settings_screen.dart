@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import 'settings_repository.dart';
@@ -53,12 +54,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     await widget.repository.save(settings);
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Settings saved')));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -68,10 +70,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LLM settings'),
+        title: Text(l10n.llmSettings),
         actions: [
           IconButton(
-              onPressed: _save, icon: const Icon(Icons.check), tooltip: 'Save'),
+              onPressed: _save, icon: const Icon(Icons.check), tooltip: l10n.commonSave),
         ],
       ),
       body: Padding(
@@ -80,10 +82,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             DropdownButtonFormField<LlmProviderKind>(
               value: _settings.provider,
-              decoration: const InputDecoration(labelText: 'Provider'),
+              decoration: InputDecoration(labelText: l10n.llmProvider),
               items: LlmProviderKind.values
                   .map((kind) =>
-                      DropdownMenuItem(value: kind, child: Text(_label(kind))))
+                      DropdownMenuItem(value: kind, child: Text(_label(l10n, kind))))
                   .toList(),
               onChanged: (value) {
                 if (value == null) return;
@@ -93,13 +95,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _modelController,
-              decoration: const InputDecoration(labelText: 'Model'),
+              decoration: InputDecoration(labelText: l10n.llmModel),
             ),
             if (needsApiKey) ...[
               const SizedBox(height: 12),
               TextField(
                 controller: _apiKeyController,
-                decoration: const InputDecoration(labelText: 'API key'),
+                decoration: InputDecoration(labelText: l10n.llmApiKey),
                 obscureText: true,
               ),
             ],
@@ -107,8 +109,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: _baseUrlController,
-                decoration: const InputDecoration(
-                  labelText: 'Base URL (optional)',
+                decoration: InputDecoration(
+                  labelText: l10n.llmBaseUrl,
                   hintText: 'http://localhost:11434',
                 ),
               ),
@@ -117,15 +119,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               DropdownButtonFormField<ReasoningEffort>(
                 value: _settings.reasoningEffort,
-                decoration: const InputDecoration(
-                  labelText: 'Reasoning mode',
+                decoration: InputDecoration(
+                  labelText: l10n.llmReasoningMode,
                   helperText: 'Only takes effect on reasoning-capable models '
                       '(e.g. o-series/gpt-5, Claude with thinking, Gemini 2.5).',
                   helperMaxLines: 2,
                 ),
                 items: ReasoningEffort.values
                     .map((effort) => DropdownMenuItem(
-                        value: effort, child: Text(_effortLabel(effort))))
+                        value: effort, child: Text(_effortLabel(l10n, effort))))
                     .toList(),
                 onChanged: (value) {
                   if (value == null) return;
@@ -140,27 +142,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  String _label(LlmProviderKind provider) {
+  String _label(AppLocalizations l10n, LlmProviderKind provider) {
     switch (provider) {
       case LlmProviderKind.ollama:
-        return 'Ollama (local)';
+        return l10n.providerOllama;
       case LlmProviderKind.anthropic:
-        return 'Anthropic';
+        return l10n.providerAnthropic;
       case LlmProviderKind.openAi:
-        return 'OpenAI';
+        return l10n.providerOpenAi;
       case LlmProviderKind.gemini:
-        return 'Gemini';
+        return l10n.providerGemini;
     }
   }
 
-  String _effortLabel(ReasoningEffort effort) {
+  String _effortLabel(AppLocalizations l10n, ReasoningEffort effort) {
     switch (effort) {
       case ReasoningEffort.fast:
-        return 'Fast';
+        return l10n.reasoningFast;
       case ReasoningEffort.balanced:
-        return 'Balanced';
+        return l10n.reasoningBalanced;
       case ReasoningEffort.thinking:
-        return 'Extra thinking';
+        return l10n.reasoningExtraThinking;
     }
   }
 }

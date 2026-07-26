@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import '../capture/capture_settings_repository.dart';
@@ -44,25 +45,25 @@ class _AppShellState extends State<AppShell> {
     final enable = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Activity capture'),
-        content: const Text(
-          'KangoOS can record the app and window title you have focused, '
-          "so chat and search can use today's activity as context. "
-          'Everything stays on this device. You can change this anytime '
-          'in capture settings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Not now'),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(l10n.activityCapture),
+          content: Text(
+            '${l10n.captureConsentBody}\n\n${l10n.captureConsentPrivacy}',
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Enable'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.commonNotNow),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.commonEnable),
+            ),
+          ],
+        );
+      },
     );
 
     await widget.captureSettingsRepository.markConsentShown();

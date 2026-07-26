@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import 'relative_time.dart';
@@ -35,14 +36,15 @@ class _SidebarState extends State<Sidebar> {
     if (_generatingRecap) return;
     setState(() => _generatingRecap = true);
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     try {
       final result = await widget.onGenerateDayRecap();
       final message = switch (result) {
-        SummarySuccess() => 'Day recap generated.',
+        SummarySuccess() => l10n.dayRecapGenerated,
         SummaryFailure(error: SummaryError.noActivity) =>
-          'No activity captured today yet.',
+          l10n.dayRecapNoActivity,
         SummaryFailure(error: SummaryError.llmFailed) =>
-          'Day recap failed: could not reach the LLM.',
+          l10n.dayRecapLlmFailed,
       };
       messenger.showSnackBar(SnackBar(content: Text(message)));
     } finally {
@@ -53,6 +55,7 @@ class _SidebarState extends State<Sidebar> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: 320,
       decoration: BoxDecoration(
@@ -67,13 +70,13 @@ class _SidebarState extends State<Sidebar> {
               children: [
                 Expanded(
                   child: SegmentedButton<SidebarTab>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
-                          value: SidebarTab.snippets, label: Text('Snippets')),
+                          value: SidebarTab.snippets, label: Text(l10n.tabSnippets)),
                       ButtonSegment(
-                          value: SidebarTab.activity, label: Text('Activity')),
+                          value: SidebarTab.activity, label: Text(l10n.tabActivity)),
                       ButtonSegment(
-                          value: SidebarTab.timeline, label: Text('Timeline')),
+                          value: SidebarTab.timeline, label: Text(l10n.tabTimeline)),
                     ],
                     selected: {_tab},
                     onSelectionChanged: (selection) =>
@@ -86,7 +89,7 @@ class _SidebarState extends State<Sidebar> {
                   IconButton.filledTonal(
                     onPressed: widget.onCreateSnippet,
                     icon: const Icon(Icons.add),
-                    tooltip: 'New snippet',
+                    tooltip: l10n.newSnippet,
                   ),
                 ],
                 if (_tab == SidebarTab.timeline) ...[
@@ -100,7 +103,7 @@ class _SidebarState extends State<Sidebar> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.auto_awesome),
-                    tooltip: 'Generate day recap',
+                    tooltip: l10n.generateDayRecap,
                   ),
                 ],
               ],
@@ -113,14 +116,14 @@ class _SidebarState extends State<Sidebar> {
                 decoration: InputDecoration(
                   isDense: true,
                   hintText: _semantic
-                      ? 'Filter snippets (semantic)'
-                      : 'Filter snippets',
+                      ? l10n.filterSnippetsSemantic
+                      : l10n.filterSnippets,
                   prefixIcon: IconButton(
                     icon: Icon(_semantic ? Icons.auto_awesome : Icons.search,
                         size: 18),
                     tooltip: _semantic
-                        ? 'Switch to keyword search'
-                        : 'Switch to semantic search',
+                        ? l10n.switchToKeywordSearch
+                        : l10n.switchToSemanticSearch,
                     onPressed: () => setState(() => _semantic = !_semantic),
                   ),
                 ),
@@ -140,6 +143,7 @@ class _SidebarState extends State<Sidebar> {
   }
 
   Widget _buildSnippets(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_query.isEmpty) {
       return StreamBuilder<List<Snippet>>(
         stream: widget.database.watchAllSnippets(),
@@ -155,7 +159,7 @@ class _SidebarState extends State<Sidebar> {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return _SidebarMessage(
-                text: 'Semantic search failed: ${snapshot.error}');
+                text: l10n.semanticSearchFailed('${snapshot.error}'));
           }
           return _SnippetList(
             snippets: snapshot.data?.map((match) => match.snippet).toList(),
@@ -174,6 +178,7 @@ class _SidebarState extends State<Sidebar> {
   }
 
   Widget _buildActivity(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return StreamBuilder<List<Activity>>(
       stream: widget.database.watchRecentActivities(),
       builder: (context, snapshot) {
@@ -182,7 +187,7 @@ class _SidebarState extends State<Sidebar> {
           return const Center(child: CircularProgressIndicator());
         }
         if (activities.isEmpty) {
-          return const _SidebarMessage(text: 'No activity captured yet.');
+          return _SidebarMessage(text: l10n.noActivityYet);
         }
         final rows = groupByDay(activities, (a) => a.capturedAt);
         return ListView.builder(
@@ -213,7 +218,7 @@ class _SidebarState extends State<Sidebar> {
                 subtitle: Text(activity.appName,
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: Text(
-                  formatClockTime(activity.capturedAt),
+                  formatClockTime(l10n, activity.capturedAt),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -225,6 +230,7 @@ class _SidebarState extends State<Sidebar> {
   }
 
   Widget _buildTimeline(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return StreamBuilder<List<ActivitySummary>>(
       stream: widget.database.watchRecentSummaries(),
       builder: (context, snapshot) {
@@ -233,11 +239,7 @@ class _SidebarState extends State<Sidebar> {
           return const Center(child: CircularProgressIndicator());
         }
         if (summaries.isEmpty) {
-          return const _SidebarMessage(
-            text:
-                'No summaries yet. Automatic recaps show up here every 20 minutes '
-                'of captured activity, or tap the sparkle to generate one now.',
-          );
+          return _SidebarMessage(text: l10n.noSummariesYet);
         }
         final rows = groupByDay(summaries, (s) => s.periodEnd);
         return ListView.builder(
@@ -261,10 +263,11 @@ class _DayHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Text(
-        formatDayHeader(day),
+        formatDayHeader(l10n, day),
         style: Theme.of(context)
             .textTheme
             .labelSmall
@@ -282,10 +285,11 @@ class _SummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context);
     final label = switch (summary.kind) {
-      SummaryKind.periodic => 'Auto recap',
-      SummaryKind.dayRecap => 'Day recap',
-      SummaryKind.manual => 'Memory',
+      SummaryKind.periodic => l10n.summaryAutoRecap,
+      SummaryKind.dayRecap => l10n.summaryDayRecap,
+      SummaryKind.manual => l10n.summaryMemory,
     };
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -296,7 +300,7 @@ class _SummaryTile extends StatelessWidget {
             children: [
               Text(label, style: textTheme.labelSmall),
               const Spacer(),
-              Text(formatClockTime(summary.periodEnd),
+              Text(formatClockTime(l10n, summary.periodEnd),
                   style: textTheme.labelSmall),
             ],
           ),
@@ -336,11 +340,12 @@ class _SnippetList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (snippets == null) {
       return const Center(child: CircularProgressIndicator());
     }
     if (snippets!.isEmpty) {
-      return const _SidebarMessage(text: 'No snippets yet. Tap + to add one.');
+      return _SidebarMessage(text: l10n.noSnippetsYet);
     }
     final textTheme = Theme.of(context).textTheme;
     return ListView.builder(
@@ -374,7 +379,7 @@ class _SnippetList extends StatelessWidget {
                   style: textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
-                Text(formatRelativeTime(snippet.updatedAt),
+                Text(formatRelativeTime(l10n, snippet.updatedAt),
                     style: textTheme.labelSmall),
               ],
             ),

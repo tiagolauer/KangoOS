@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,7 +28,10 @@ void main() {
         SettingsRepository(secureStore: _FakeSecureCredentialStore());
 
     await tester
-        .pumpWidget(MaterialApp(home: SettingsScreen(repository: repository)));
+        .pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+home: SettingsScreen(repository: repository)));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextField, 'Model'), 'gpt-4o');
@@ -46,7 +50,10 @@ void main() {
         SettingsRepository(secureStore: _FakeSecureCredentialStore());
 
     await tester
-        .pumpWidget(MaterialApp(home: SettingsScreen(repository: repository)));
+        .pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+home: SettingsScreen(repository: repository)));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(DropdownButtonFormField<LlmProviderKind>));
@@ -74,7 +81,10 @@ void main() {
     final repository = SettingsRepository(secureStore: secureStore);
 
     await tester
-        .pumpWidget(MaterialApp(home: SettingsScreen(repository: repository)));
+        .pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+home: SettingsScreen(repository: repository)));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(DropdownButtonFormField<LlmProviderKind>));

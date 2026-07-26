@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import 'sync_settings_repository.dart';
@@ -52,15 +53,16 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       apiToken: _tokenController.text.trim(),
     ));
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Settings saved')));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)));
   }
 
   Future<void> _syncNow() async {
+    final l10n = AppLocalizations.of(context);
     final url = _urlController.text.trim();
     final token = _tokenController.text.trim();
     if (url.isEmpty || token.isEmpty) {
-      setState(() => _status = 'Set a server URL and API token first.');
+      setState(() => _status = l10n.syncSetUrlAndTokenFirst);
       return;
     }
 
@@ -77,11 +79,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         apiToken: token,
       );
       final result = await client.sync();
-      setState(() => _status = 'Synced: ${result.pushed} pushed, '
-          '${result.pulled} pulled, ${result.updated} updated, '
-          '${result.deletedLocally + result.deletedRemotely} deleted.');
+      setState(() => _status = l10n.syncSucceeded(
+            result.pushed,
+            result.pulled,
+            result.updated,
+            result.deletedLocally + result.deletedRemotely,
+          ));
     } catch (e) {
-      setState(() => _status = 'Sync failed: $e');
+      setState(() => _status = l10n.syncFailed('$e'));
     } finally {
       if (mounted) setState(() => _syncing = false);
     }
@@ -89,40 +94,38 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Server sync'),
+        title: Text(l10n.serverSync),
         actions: [
           IconButton(
-              onPressed: _save, icon: const Icon(Icons.check), tooltip: 'Save'),
+              onPressed: _save,
+              icon: const Icon(Icons.check),
+              tooltip: l10n.commonSave),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            const Text(
-              'Sync snippets with a self-hosted KangoOS server. Snippets '
-              'only — captured activity and chat history stay on this '
-              'device. Deleting a snippet on one side does not delete it '
-              'on the other yet.',
-            ),
+            Text(l10n.serverSyncDescription),
             const SizedBox(height: 16),
             TextField(
               controller: _urlController,
-              decoration: const InputDecoration(
-                labelText: 'Server URL',
+              decoration: InputDecoration(
+                labelText: l10n.serverUrl,
                 hintText: 'http://localhost:8080',
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _tokenController,
-              decoration: const InputDecoration(labelText: 'API token'),
+              decoration: InputDecoration(labelText: l10n.serverApiToken),
               obscureText: true,
             ),
             const SizedBox(height: 16),
@@ -134,7 +137,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.sync),
-              label: const Text('Sync now'),
+              label: Text(l10n.syncNow),
             ),
             if (_status != null) ...[
               const SizedBox(height: 12),

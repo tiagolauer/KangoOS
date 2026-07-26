@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import '../capture/capture_settings_repository.dart';
@@ -47,61 +48,57 @@ class _SummaryAction {
   final _AccentRole accent;
 }
 
-const _summaryActions = [
+List<_SummaryAction> _summaryActionsFor(AppLocalizations l10n) => [
   _SummaryAction(
     icon: Icons.wb_sunny_outlined,
-    title: 'Day recap',
-    description: "Summary of today's captured activity",
-    prompt: 'Summarize what I worked on today based on my captured activity.',
+    title: l10n.actionDayRecapTitle,
+    description: l10n.actionDayRecapDescription,
+    prompt: l10n.actionDayRecapPrompt,
     accent: _AccentRole.primary,
   ),
   _SummaryAction(
     icon: Icons.forum_outlined,
-    title: 'Standup update',
-    description: "What you did, what's next, any blockers",
-    prompt: "Give me a standup update: what I worked on, what's next, and any "
-        'blockers, based on my captured activity and snippets.',
+    title: l10n.actionStandupTitle,
+    description: l10n.actionStandupDescription,
+    prompt: l10n.actionStandupPrompt,
     accent: _AccentRole.later,
   ),
   _SummaryAction(
     icon: Icons.code_outlined,
-    title: 'Recent snippets',
-    description: 'Overview of what you last saved',
-    prompt: 'Summarize my most recently saved snippets.',
+    title: l10n.actionRecentSnippetsTitle,
+    description: l10n.actionRecentSnippetsDescription,
+    prompt: l10n.actionRecentSnippetsPrompt,
     accent: _AccentRole.done,
   ),
   _SummaryAction(
     icon: Icons.sell_outlined,
-    title: 'Missing tags',
-    description: 'Find snippets that need tagging',
-    prompt:
-        'Which of my snippets are missing a language or tags? Suggest some.',
+    title: l10n.actionMissingTagsTitle,
+    description: l10n.actionMissingTagsDescription,
+    prompt: l10n.actionMissingTagsPrompt,
     accent: _AccentRole.next,
   ),
   _SummaryAction(
     icon: Icons.insights_outlined,
-    title: "What's top of mind",
-    description: 'Recurring themes across your snippets',
-    prompt:
-        'Look at my snippets and tell me what themes or topics come up most.',
+    title: l10n.actionTopOfMindTitle,
+    description: l10n.actionTopOfMindDescription,
+    prompt: l10n.actionTopOfMindPrompt,
     accent: _AccentRole.done,
   ),
   _SummaryAction(
     icon: Icons.schedule_outlined,
-    title: 'Time breakdown',
-    description: 'Where your time went today, by app',
-    prompt: 'Break down how I spent my time today by app or activity, based on '
-        'my captured activity.',
+    title: l10n.actionTimeBreakdownTitle,
+    description: l10n.actionTimeBreakdownDescription,
+    prompt: l10n.actionTimeBreakdownPrompt,
     accent: _AccentRole.primary,
   ),
 ];
 
-const _freeformPool = [
-  'Summarize my snippets from this week',
-  'What languages do I use most often?',
-  'Which snippets have I not touched in a while?',
-  'Draft a commit message for my latest change',
-  'What should I clean up or refactor next?',
+List<String> _freeformPoolFor(AppLocalizations l10n) => [
+  l10n.freeform1,
+  l10n.freeform2,
+  l10n.freeform3,
+  l10n.freeform4,
+  l10n.freeform5,
 ];
 
 String? _osUserName() {
@@ -152,7 +149,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   var _semanticDegraded = false;
   int? _conversationId;
   String? _error;
-  List<String> _freeformSuggestions = _freeformPool.take(2).toList();
+  List<String>? _freeformSuggestions;
 
   bool get _started => _history.isNotEmpty;
 
@@ -231,24 +228,25 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   }
 
   void _shuffleFreeformSuggestions() {
-    setState(() {
-      final pool = List<String>.of(_freeformPool)..shuffle(_random);
-      _freeformSuggestions = pool.take(2).toList();
-    });
+    final pool = List<String>.of(_freeformPoolFor(AppLocalizations.of(context)))
+      ..shuffle(_random);
+    setState(() => _freeformSuggestions = pool.take(2).toList());
   }
 
   Future<void> _indexMissing() async {
+    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
       final count = await widget.semanticSearch.indexMissing();
       messenger
-          .showSnackBar(SnackBar(content: Text('Indexed $count snippet(s).')));
+          .showSnackBar(SnackBar(content: Text(l10n.indexedSnippets(count))));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Indexing failed: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.indexingFailed('$e'))));
     }
   }
 
   Future<void> _exportSnippets() async {
+    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final exchange = SnippetExchange(database: widget.database);
     try {
@@ -265,13 +263,14 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
         mimeType: 'application/json',
       ).saveTo(location.path);
       messenger.showSnackBar(
-          const SnackBar(content: Text('Snippets exported.')));
+          SnackBar(content: Text(l10n.snippetsExported)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.exportFailed('$e'))));
     }
   }
 
   Future<void> _importSnippets() async {
+    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final exchange = SnippetExchange(database: widget.database);
     try {
@@ -283,26 +282,26 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       if (file == null) return;
       final result = await exchange.importJson(await file.readAsString());
       messenger.showSnackBar(SnackBar(
-          content: Text(
-              'Imported ${result.imported}, skipped ${result.skipped}.')));
+          content: Text(l10n.importSucceeded(result.imported, result.skipped))));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Import failed: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.importFailed('$e'))));
     }
   }
 
   Future<void> _send(String text) async {
+    final l10n = AppLocalizations.of(context);
     final trimmed = text.trim();
     if (trimmed.isEmpty || _sending) return;
     setState(() => _semanticDegraded = false);
 
     final settings = await widget.settingsRepository.load();
     if (settings.model.isEmpty) {
-      setState(() => _error = 'Set a model in LLM settings first.');
+      setState(() => _error = l10n.setModelFirst);
       return;
     }
     if (settings.provider != LlmProviderKind.ollama &&
         settings.apiKey.isEmpty) {
-      setState(() => _error = 'Set an API key in LLM settings first.');
+      setState(() => _error = l10n.setApiKeyFirst);
       return;
     }
 
@@ -360,6 +359,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         _Header(
@@ -413,8 +413,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Semantic search unavailable — using keyword search. '
-                    'Check that Ollama is running.',
+                    l10n.semanticSearchUnavailable,
                     style: TextStyle(
                         color: Theme.of(context)
                             .colorScheme
@@ -440,6 +439,10 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
 
   Widget _buildGreeting(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context);
+    final summaryActions = _summaryActionsFor(l10n);
+    final suggestions =
+        _freeformSuggestions ?? _freeformPoolFor(l10n).take(2).toList();
     final userName = _osUserName();
 
     return SingleChildScrollView(
@@ -448,13 +451,11 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            userName == null
-                ? 'How can I help today?'
-                : 'How can I help today, $userName?',
+            userName == null ? l10n.greeting : l10n.greetingNamed(userName),
             style: textTheme.headlineLarge,
           ),
           const SizedBox(height: 24),
-          Text('SINGLE-CLICK SUMMARIES', style: textTheme.labelSmall),
+          Text(l10n.sectionSingleClickSummaries, style: textTheme.labelSmall),
           const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -468,20 +469,20 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
                   crossAxisSpacing: 10,
                   mainAxisExtent: 132,
                 ),
-                itemCount: _summaryActions.length,
+                itemCount: summaryActions.length,
                 itemBuilder: (context, index) => _SummaryActionCard(
-                    action: _summaryActions[index], onTap: _send),
+                    action: summaryActions[index], onTap: _send),
               );
             },
           ),
           const SizedBox(height: 28),
           Row(
             children: [
-              Text('FREEFORM CHAT', style: textTheme.labelSmall),
+              Text(l10n.sectionFreeformChat, style: textTheme.labelSmall),
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 18),
-                tooltip: 'Shuffle suggestions',
+                tooltip: l10n.shuffleSuggestions,
                 onPressed: _shuffleFreeformSuggestions,
                 visualDensity: VisualDensity.compact,
               ),
@@ -495,15 +496,15 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
               final mostRecent = (snippets != null && snippets.isNotEmpty)
                   ? snippets.first
                   : null;
-              final suggestions = [
-                if (mostRecent != null) 'Explain "${mostRecent.title}"',
-                ..._freeformSuggestions,
+              final chips = [
+                if (mostRecent != null) l10n.explainSnippet(mostRecent.title),
+                ...suggestions,
               ];
               return Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final suggestion in suggestions)
+                  for (final suggestion in chips)
                     _FreeformChip(
                         text: suggestion, onTap: () => _send(suggestion)),
                   _StartNewChatChip(
@@ -564,6 +565,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -572,55 +574,55 @@ class _Header extends StatelessWidget {
         children: [
           Icon(Icons.circle, size: 8, color: colors.primary),
           const SizedBox(width: 8),
-          Text('KangoOS', style: Theme.of(context).textTheme.titleMedium),
+          Text(l10n.appTitle, style: Theme.of(context).textTheme.titleMedium),
           const Spacer(),
           if (showNewChat)
             IconButton(
               icon: const Icon(Icons.add_comment_outlined),
-              tooltip: 'New chat',
+              tooltip: l10n.newChat,
               onPressed: onNewChat,
             ),
           IconButton(
             icon: const Icon(Icons.history),
-            tooltip: 'Chat history',
+            tooltip: l10n.chatHistory,
             onPressed: onOpenHistory,
           ),
           IconButton(
             icon: const Icon(Icons.auto_awesome_outlined),
-            tooltip: 'Index snippets for semantic search',
+            tooltip: l10n.indexSnippets,
             onPressed: onIndexMissing,
           ),
           IconButton(
             icon: const Icon(Icons.privacy_tip_outlined),
-            tooltip: 'Activity capture settings',
+            tooltip: l10n.captureSettings,
             onPressed: onOpenCaptureSettings,
           ),
           IconButton(
             icon: const Icon(Icons.sync_outlined),
-            tooltip: 'Server sync',
+            tooltip: l10n.serverSync,
             onPressed: onOpenSyncSettings,
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            tooltip: 'LLM settings',
+            tooltip: l10n.llmSettings,
             onPressed: onOpenLlmSettings,
           ),
           PopupMenuButton<void>(
-            tooltip: 'More',
+            tooltip: l10n.more,
             itemBuilder: (context) => [
               PopupMenuItem<void>(
                 onTap: onExportSnippets,
-                child: const ListTile(
+                child: ListTile(
                   leading: Icon(Icons.upload_file_outlined),
-                  title: Text('Export snippets…'),
+                  title: Text(l10n.exportSnippets),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
               PopupMenuItem<void>(
                 onTap: onImportSnippets,
-                child: const ListTile(
+                child: ListTile(
                   leading: Icon(Icons.download_outlined),
-                  title: Text('Import snippets…'),
+                  title: Text(l10n.importSnippets),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -645,6 +647,7 @@ class ConversationHistorySheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -662,7 +665,7 @@ class ConversationHistorySheet extends StatelessWidget {
             if (conversations.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.all(32),
-                child: Text('No saved conversations yet.',
+                child: Text(l10n.noSavedConversations,
                     style: textTheme.bodyMedium),
               );
             }
@@ -677,15 +680,15 @@ class ConversationHistorySheet extends StatelessWidget {
                   leading: const Icon(Icons.chat_bubble_outline),
                   title: Text(
                     conversation.preview.isEmpty
-                        ? 'Untitled chat'
+                        ? l10n.untitledChat
                         : conversation.preview,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text('${conversation.messageCount} messages'),
+                  subtitle: Text(l10n.messageCount(conversation.messageCount)),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Delete',
+                    tooltip: l10n.commonDelete,
                     onPressed: () =>
                         database.deleteConversation(conversation.id),
                   ),
@@ -859,8 +862,8 @@ class _Composer extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 focusNode: focusNode,
-                decoration: const InputDecoration(
-                    hintText: 'Ask about your snippets or activity'),
+                decoration: InputDecoration(
+                    hintText: AppLocalizations.of(context).askAboutSnippets),
                 onSubmitted: onSubmit,
               ),
             ),

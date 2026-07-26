@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
@@ -13,6 +14,9 @@ void main() {
   Future<int?> pumpSheetAndOpen(WidgetTester tester) async {
     int? popped;
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+
       home: Scaffold(
         body: Builder(
           builder: (context) => ElevatedButton(
@@ -77,6 +81,9 @@ void main() {
 
     int? popped;
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+
       home: Scaffold(
         body: Builder(
           builder: (context) => ElevatedButton(

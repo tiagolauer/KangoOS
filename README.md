@@ -51,6 +51,7 @@ KangoOS/
   - macOS: via AppleScript (reliable — browsers expose this directly).
   - Windows: via UI Automation reading the address bar (best-effort heuristic, unverified against a real browser at time of writing).
   - Linux: via AT-SPI/D-Bus tree walk (best-effort, needs an AT-SPI-enabled desktop session; Firefox untested, lowest-confidence of the three).
+- Localized interface (English and Brazilian Portuguese), following the OS language and falling back to English. Strings live in `app/lib/l10n/*.arb`; dates, weekday and month names come from `intl` per locale. The single-click summary prompts are localized too, so the assistant answers in the same language as the UI. A test asserts the two translation files never drift apart — add a key to `app_en.arb` without translating it and the suite fails.
 - CLI (`kango`, see below) for snippet create/search/list/show/edit/delete, embedding `core` directly — no server required.
 - MCP server (`kango_mcp`, see below) so IDE assistants (Cursor, GitHub Copilot, Claude Desktop) can search/create/edit snippets as tools.
 

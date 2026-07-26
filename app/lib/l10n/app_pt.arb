@@ -1,0 +1,283 @@
+{
+  "@@locale": "pt",
+  "appTitle": "KangoOS",
+  "commonSave": "Salvar",
+  "commonCancel": "Cancelar",
+  "commonDelete": "Excluir",
+  "commonBack": "Voltar",
+  "commonClear": "Limpar",
+  "commonEnable": "Ativar",
+  "commonNotNow": "Agora não",
+  "settingsSaved": "Configurações salvas",
+  "tabSnippets": "Snippets",
+  "tabActivity": "Atividade",
+  "tabTimeline": "Linha do tempo",
+  "newSnippet": "Novo snippet",
+  "editSnippet": "Editar snippet",
+  "generateDayRecap": "Gerar resumo do dia",
+  "filterSnippets": "Filtrar snippets",
+  "filterSnippetsSemantic": "Filtrar snippets (semântico)",
+  "switchToKeywordSearch": "Mudar para busca por palavra-chave",
+  "switchToSemanticSearch": "Mudar para busca semântica",
+  "noSnippetsYet": "Nenhum snippet ainda. Toque em + para criar.",
+  "noActivityYet": "Nenhuma atividade capturada ainda.",
+  "noSummariesYet": "Nenhum resumo ainda. Resumos automáticos aparecem aqui a cada 20 minutos de atividade capturada, ou toque na estrela para gerar um agora.",
+  "summaryAutoRecap": "Resumo automático",
+  "summaryDayRecap": "Resumo do dia",
+  "summaryMemory": "Memória",
+  "dayRecapGenerated": "Resumo do dia gerado.",
+  "dayRecapNoActivity": "Nenhuma atividade capturada hoje ainda.",
+  "dayRecapLlmFailed": "Falha ao gerar o resumo: não foi possível acessar o LLM.",
+  "semanticSearchFailed": "Falha na busca semântica: {error}",
+  "@semanticSearchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snippetTitle": "Título",
+  "snippetLanguage": "Linguagem (opcional)",
+  "snippetTags": "Tags (separadas por vírgula)",
+  "snippetCode": "Código",
+  "suggestTagsViaLlm": "Sugerir tags via LLM",
+  "noTagsSuggested": "Nenhuma tag sugerida.",
+  "tagSuggestionFailed": "Falha ao sugerir tags: {error}",
+  "@tagSuggestionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "setModelFirst": "Defina um modelo nas configurações de LLM primeiro.",
+  "setApiKeyFirst": "Defina uma chave de API nas configurações de LLM primeiro.",
+  "llmSettings": "Configurações de LLM",
+  "llmProvider": "Provedor",
+  "llmModel": "Modelo",
+  "llmApiKey": "Chave de API",
+  "llmBaseUrl": "URL base (opcional)",
+  "llmReasoningMode": "Modo de raciocínio",
+  "llmReasoningHint": "Só tem efeito em modelos com suporte a raciocínio.",
+  "providerOllama": "Ollama (local)",
+  "providerAnthropic": "Anthropic",
+  "providerOpenAi": "OpenAI",
+  "providerGemini": "Gemini",
+  "reasoningFast": "Rápido",
+  "reasoningBalanced": "Equilibrado",
+  "reasoningExtraThinking": "Raciocínio extra",
+  "serverSync": "Sincronização com servidor",
+  "serverSyncDescription": "Sincroniza snippets com um servidor KangoOS auto-hospedado. Apenas snippets: atividade capturada e histórico de conversas ficam neste dispositivo.",
+  "serverUrl": "URL do servidor",
+  "serverApiToken": "Token de API",
+  "syncNow": "Sincronizar agora",
+  "syncSetUrlAndTokenFirst": "Defina a URL do servidor e o token de API primeiro.",
+  "syncSucceeded": "Sincronizado: {pushed} enviados, {pulled} recebidos, {updated} atualizados, {deleted} excluídos.",
+  "@syncSucceeded": {
+    "placeholders": {
+      "pushed": {
+        "type": "int"
+      },
+      "pulled": {
+        "type": "int"
+      },
+      "updated": {
+        "type": "int"
+      },
+      "deleted": {
+        "type": "int"
+      }
+    }
+  },
+  "syncFailed": "Falha na sincronização: {error}",
+  "@syncFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "activityCapture": "Captura de atividade",
+  "captureConsentBody": "O KangoOS pode registrar o app e o título da janela em foco, para montar uma linha do tempo do seu trabalho.",
+  "captureConsentPrivacy": "Tudo fica neste dispositivo. Você pode mudar isso quando quiser nas configurações de captura.",
+  "launchAtStartup": "Iniciar o KangoOS junto com o sistema",
+  "launchAtStartupDescription": "Inicia o KangoOS minimizado na bandeja quando você faz login, para a captura rodar sem abrir a janela.",
+  "captureActiveWindow": "Capturar janela ativa",
+  "captureActiveWindowDescription": "Registra o app e o título da janela a cada poucos segundos enquanto o KangoOS estiver aberto.",
+  "captureBrowserUrls": "Capturar URLs do navegador",
+  "captureBrowserUrlsDescription": "Também registra a URL da aba ativa no Chrome/Edge/Brave/Safari. Isso é conteúdo, não apenas metadado: desativado por padrão. No Windows/Linux, lê a barra de endereços via APIs de acessibilidade (melhor esforço, pode não funcionar sempre); no macOS, exige conceder permissão de Acessibilidade ao KangoOS.",
+  "captureVisibleText": "Capturar texto visível (experimental)",
+  "captureVisibleTextDescription": "Também registra o texto em foco (por exemplo, o conteúdo de um campo de texto), via Windows UI Automation. Roda em um processo auxiliar separado, então uma falha nele nunca afeta o KangoOS — mas isso significa que pode capturar nada silenciosamente em alguns sistemas.",
+  "captureClipboard": "Capturar área de transferência",
+  "captureClipboardDescription": "Também registra tudo que você copia. Esta é a fonte de captura mais sensível — senhas ou tokens copiados também seriam armazenados. Desativada por padrão; apps excluídos continuam sendo ignorados, mas a área de transferência pode sobreviver ao app de onde você copiou.",
+  "keepHistoryFor": "Manter histórico por",
+  "keepHistoryDescription": "Atividade mais antiga é removida automaticamente.",
+  "retentionForever": "Para sempre",
+  "retentionDays": "{days, plural, =1{1 dia} other{{days} dias}}",
+  "@retentionDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "excludedApps": "Apps excluídos",
+  "excludedAppsDescription": "Nunca capturados, por exemplo um gerenciador de senhas ou app de banco.",
+  "clearAllActivity": "Apagar toda a atividade capturada",
+  "clearAllActivityTitle": "Apagar toda a atividade capturada?",
+  "clearAllActivityBody": "Isso exclui permanentemente cada registro de janela/app e cada resumo. Não é possível desfazer.",
+  "clearedEntries": "{entries} registros e {recaps} resumos apagados.",
+  "@clearedEntries": {
+    "placeholders": {
+      "entries": {
+        "type": "int"
+      },
+      "recaps": {
+        "type": "int"
+      }
+    }
+  },
+  "chatHistory": "Histórico de conversas",
+  "newChat": "Nova conversa",
+  "indexSnippets": "Indexar snippets para busca semântica",
+  "captureSettings": "Configurações de captura de atividade",
+  "more": "Mais",
+  "exportSnippets": "Exportar snippets…",
+  "importSnippets": "Importar snippets…",
+  "snippetsExported": "Snippets exportados.",
+  "exportFailed": "Falha ao exportar: {error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importSucceeded": "{imported} importados, {skipped} ignorados.",
+  "@importSucceeded": {
+    "placeholders": {
+      "imported": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "importFailed": "Falha ao importar: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "indexedSnippets": "{count} snippet(s) indexado(s).",
+  "@indexedSnippets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "indexingFailed": "Falha ao indexar: {error}",
+  "@indexingFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "semanticSearchUnavailable": "Busca semântica indisponível — usando busca por palavra-chave. Verifique se o Ollama está rodando.",
+  "noSavedConversations": "Nenhuma conversa salva ainda.",
+  "untitledChat": "Conversa sem título",
+  "messageCount": "{count, plural, =1{1 mensagem} other{{count} mensagens}}",
+  "@messageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "askAboutSnippets": "Pergunte sobre seus snippets ou atividade",
+  "databaseErrorTitle": "Não foi possível abrir seu banco de dados",
+  "databaseErrorBody": "O KangoOS criptografa o banco com uma chave guardada no cofre de credenciais do sistema. Se essa chave foi removida, ou o banco foi copiado de outra máquina, ele não pode mais ser lido.",
+  "databaseErrorPath": "Banco: {path}",
+  "@databaseErrorPath": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "timeNow": "agora",
+  "timeMinutesAgo": "há {minutes}min",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "timeHoursAgo": "há {hours}h",
+  "@timeHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "timeDaysAgo": "há {days}d",
+  "@timeDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "dayToday": "Hoje",
+  "dayYesterday": "Ontem",
+  "greeting": "Como posso ajudar hoje?",
+  "greetingNamed": "Como posso ajudar hoje, {name}?",
+  "@greetingNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionSingleClickSummaries": "RESUMOS DE UM CLIQUE",
+  "sectionFreeformChat": "CONVERSA LIVRE",
+  "shuffleSuggestions": "Embaralhar sugestões",
+  "actionDayRecapTitle": "Resumo do dia",
+  "actionDayRecapDescription": "Resumo da atividade capturada hoje",
+  "actionDayRecapPrompt": "Resuma no que eu trabalhei hoje com base na minha atividade capturada.",
+  "actionStandupTitle": "Atualização de daily",
+  "actionStandupDescription": "O que você fez, o que vem depois, impedimentos",
+  "actionStandupPrompt": "Me dê uma atualização de daily: no que trabalhei, o que vem a seguir e quaisquer impedimentos, com base na minha atividade capturada e nos meus snippets.",
+  "actionRecentSnippetsTitle": "Snippets recentes",
+  "actionRecentSnippetsDescription": "Visão geral do que você salvou por último",
+  "actionRecentSnippetsPrompt": "Resuma meus snippets salvos mais recentemente.",
+  "actionMissingTagsTitle": "Tags faltando",
+  "actionMissingTagsDescription": "Encontre snippets que precisam de tags",
+  "actionMissingTagsPrompt": "Quais dos meus snippets estão sem linguagem ou sem tags? Sugira algumas.",
+  "actionTopOfMindTitle": "O que está em pauta",
+  "actionTopOfMindDescription": "Temas recorrentes nos seus snippets",
+  "actionTopOfMindPrompt": "Analise meus snippets e me diga quais temas ou tópicos aparecem mais.",
+  "actionTimeBreakdownTitle": "Distribuição do tempo",
+  "actionTimeBreakdownDescription": "Para onde foi seu tempo hoje, por app",
+  "actionTimeBreakdownPrompt": "Detalhe como gastei meu tempo hoje por app ou atividade, com base na minha atividade capturada.",
+  "freeform1": "Resuma meus snippets desta semana",
+  "freeform2": "Quais linguagens eu mais uso?",
+  "freeform3": "Quais snippets eu não mexo há um tempo?",
+  "freeform4": "Escreva uma mensagem de commit para minha última mudança",
+  "freeform5": "O que devo limpar ou refatorar em seguida?",
+  "explainSnippet": "Explique \"{title}\"",
+  "@explainSnippet": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
+}

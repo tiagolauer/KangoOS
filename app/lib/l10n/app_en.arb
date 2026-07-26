@@ -1,0 +1,283 @@
+{
+  "@@locale": "en",
+  "appTitle": "KangoOS",
+  "commonSave": "Save",
+  "commonCancel": "Cancel",
+  "commonDelete": "Delete",
+  "commonBack": "Back",
+  "commonClear": "Clear",
+  "commonEnable": "Enable",
+  "commonNotNow": "Not now",
+  "settingsSaved": "Settings saved",
+  "tabSnippets": "Snippets",
+  "tabActivity": "Activity",
+  "tabTimeline": "Timeline",
+  "newSnippet": "New snippet",
+  "editSnippet": "Edit snippet",
+  "generateDayRecap": "Generate day recap",
+  "filterSnippets": "Filter snippets",
+  "filterSnippetsSemantic": "Filter snippets (semantic)",
+  "switchToKeywordSearch": "Switch to keyword search",
+  "switchToSemanticSearch": "Switch to semantic search",
+  "noSnippetsYet": "No snippets yet. Tap + to add one.",
+  "noActivityYet": "No activity captured yet.",
+  "noSummariesYet": "No summaries yet. Automatic recaps show up here every 20 minutes of captured activity, or tap the sparkle to generate one now.",
+  "summaryAutoRecap": "Auto recap",
+  "summaryDayRecap": "Day recap",
+  "summaryMemory": "Memory",
+  "dayRecapGenerated": "Day recap generated.",
+  "dayRecapNoActivity": "No activity captured today yet.",
+  "dayRecapLlmFailed": "Day recap failed: could not reach the LLM.",
+  "semanticSearchFailed": "Semantic search failed: {error}",
+  "@semanticSearchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snippetTitle": "Title",
+  "snippetLanguage": "Language (optional)",
+  "snippetTags": "Tags (comma-separated)",
+  "snippetCode": "Code",
+  "suggestTagsViaLlm": "Suggest tags via LLM",
+  "noTagsSuggested": "No tags suggested.",
+  "tagSuggestionFailed": "Tag suggestion failed: {error}",
+  "@tagSuggestionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "setModelFirst": "Set a model in LLM settings first.",
+  "setApiKeyFirst": "Set an API key in LLM settings first.",
+  "llmSettings": "LLM settings",
+  "llmProvider": "Provider",
+  "llmModel": "Model",
+  "llmApiKey": "API key",
+  "llmBaseUrl": "Base URL (optional)",
+  "llmReasoningMode": "Reasoning mode",
+  "llmReasoningHint": "Only takes effect on reasoning-capable models.",
+  "providerOllama": "Ollama (local)",
+  "providerAnthropic": "Anthropic",
+  "providerOpenAi": "OpenAI",
+  "providerGemini": "Gemini",
+  "reasoningFast": "Fast",
+  "reasoningBalanced": "Balanced",
+  "reasoningExtraThinking": "Extra thinking",
+  "serverSync": "Server sync",
+  "serverSyncDescription": "Sync snippets with a self-hosted KangoOS server. Snippets only: captured activity and chat history stay on this device.",
+  "serverUrl": "Server URL",
+  "serverApiToken": "API token",
+  "syncNow": "Sync now",
+  "syncSetUrlAndTokenFirst": "Set a server URL and API token first.",
+  "syncSucceeded": "Synced: {pushed} pushed, {pulled} pulled, {updated} updated, {deleted} deleted.",
+  "@syncSucceeded": {
+    "placeholders": {
+      "pushed": {
+        "type": "int"
+      },
+      "pulled": {
+        "type": "int"
+      },
+      "updated": {
+        "type": "int"
+      },
+      "deleted": {
+        "type": "int"
+      }
+    }
+  },
+  "syncFailed": "Sync failed: {error}",
+  "@syncFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "activityCapture": "Activity capture",
+  "captureConsentBody": "KangoOS can record the app and window title you have focused, to build a timeline of your work.",
+  "captureConsentPrivacy": "Everything stays on this device. You can change this anytime in capture settings.",
+  "launchAtStartup": "Launch KangoOS at startup",
+  "launchAtStartupDescription": "Starts KangoOS minimized to the tray when you sign in, so capture runs without opening the window.",
+  "captureActiveWindow": "Capture active window",
+  "captureActiveWindowDescription": "Records the app and window title every few seconds while KangoOS is open.",
+  "captureBrowserUrls": "Capture browser URLs",
+  "captureBrowserUrlsDescription": "Also records the active tab's URL for Chrome/Edge/Brave/Safari. This is content, not just metadata: off by default. On Windows/Linux this reads the address bar via accessibility APIs (best-effort, may not always work); on macOS it requires granting Accessibility permission to KangoOS.",
+  "captureVisibleText": "Capture visible text (experimental)",
+  "captureVisibleTextDescription": "Also records the text you were focused on (e.g. what a text field contains), via Windows UI Automation. Runs in a separate helper process so a crash there never affects KangoOS, but it means this may silently capture nothing on some systems.",
+  "captureClipboard": "Capture clipboard",
+  "captureClipboardDescription": "Also records whatever you copy. This is the most sensitive capture source — copied passwords or tokens would be stored too. Off by default; excluded apps are still skipped, but the clipboard can outlive the app you copied it from.",
+  "keepHistoryFor": "Keep history for",
+  "keepHistoryDescription": "Older activity is purged automatically.",
+  "retentionForever": "Forever",
+  "retentionDays": "{days, plural, =1{1 day} other{{days} days}}",
+  "@retentionDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "excludedApps": "Excluded apps",
+  "excludedAppsDescription": "Never captured, e.g. a password manager or banking app.",
+  "clearAllActivity": "Clear all captured activity",
+  "clearAllActivityTitle": "Clear all captured activity?",
+  "clearAllActivityBody": "This permanently deletes every recorded window/app entry and recap summary. This cannot be undone.",
+  "clearedEntries": "Cleared {entries} entries and {recaps} recaps.",
+  "@clearedEntries": {
+    "placeholders": {
+      "entries": {
+        "type": "int"
+      },
+      "recaps": {
+        "type": "int"
+      }
+    }
+  },
+  "chatHistory": "Chat history",
+  "newChat": "New chat",
+  "indexSnippets": "Index snippets for semantic search",
+  "captureSettings": "Activity capture settings",
+  "more": "More",
+  "exportSnippets": "Export snippets…",
+  "importSnippets": "Import snippets…",
+  "snippetsExported": "Snippets exported.",
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importSucceeded": "Imported {imported}, skipped {skipped}.",
+  "@importSucceeded": {
+    "placeholders": {
+      "imported": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "importFailed": "Import failed: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "indexedSnippets": "Indexed {count} snippet(s).",
+  "@indexedSnippets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "indexingFailed": "Indexing failed: {error}",
+  "@indexingFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "semanticSearchUnavailable": "Semantic search unavailable — using keyword search. Check that Ollama is running.",
+  "noSavedConversations": "No saved conversations yet.",
+  "untitledChat": "Untitled chat",
+  "messageCount": "{count, plural, =1{1 message} other{{count} messages}}",
+  "@messageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "askAboutSnippets": "Ask about your snippets or activity",
+  "databaseErrorTitle": "Could not open your database",
+  "databaseErrorBody": "KangoOS encrypts its database with a key kept in the OS credential store. If that key was removed, or the database was copied from another machine, it can no longer be read.",
+  "databaseErrorPath": "Database: {path}",
+  "@databaseErrorPath": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "timeNow": "now",
+  "timeMinutesAgo": "{minutes}m ago",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "timeHoursAgo": "{hours}h ago",
+  "@timeHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "timeDaysAgo": "{days}d ago",
+  "@timeDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "dayToday": "Today",
+  "dayYesterday": "Yesterday",
+  "greeting": "How can I help today?",
+  "greetingNamed": "How can I help today, {name}?",
+  "@greetingNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionSingleClickSummaries": "SINGLE-CLICK SUMMARIES",
+  "sectionFreeformChat": "FREEFORM CHAT",
+  "shuffleSuggestions": "Shuffle suggestions",
+  "actionDayRecapTitle": "Day recap",
+  "actionDayRecapDescription": "Summary of today's captured activity",
+  "actionDayRecapPrompt": "Summarize what I worked on today based on my captured activity.",
+  "actionStandupTitle": "Standup update",
+  "actionStandupDescription": "What you did, what's next, any blockers",
+  "actionStandupPrompt": "Give me a standup update: what I worked on, what's next, and any blockers, based on my captured activity and snippets.",
+  "actionRecentSnippetsTitle": "Recent snippets",
+  "actionRecentSnippetsDescription": "Overview of what you last saved",
+  "actionRecentSnippetsPrompt": "Summarize my most recently saved snippets.",
+  "actionMissingTagsTitle": "Missing tags",
+  "actionMissingTagsDescription": "Find snippets that need tagging",
+  "actionMissingTagsPrompt": "Which of my snippets are missing a language or tags? Suggest some.",
+  "actionTopOfMindTitle": "What's top of mind",
+  "actionTopOfMindDescription": "Recurring themes across your snippets",
+  "actionTopOfMindPrompt": "Look at my snippets and tell me what themes or topics come up most.",
+  "actionTimeBreakdownTitle": "Time breakdown",
+  "actionTimeBreakdownDescription": "Where your time went today, by app",
+  "actionTimeBreakdownPrompt": "Break down how I spent my time today by app or activity, based on my captured activity.",
+  "freeform1": "Summarize my snippets from this week",
+  "freeform2": "What languages do I use most often?",
+  "freeform3": "Which snippets have I not touched in a while?",
+  "freeform4": "Draft a commit message for my latest change",
+  "freeform5": "What should I clean up or refactor next?",
+  "explainSnippet": "Explain \"{title}\"",
+  "@explainSnippet": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
+}

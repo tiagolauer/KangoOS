@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -74,40 +75,40 @@ class DatabaseErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'KangoOS',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: KangoosTheme.light,
       darkTheme: KangoosTheme.dark,
       themeMode: ThemeMode.system,
-      home: Scaffold(
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Could not open your database',
-                      style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'KangoOS encrypts its database with a key kept in the '
-                    'Windows Credential Manager. If that key was removed, or '
-                    'the database was copied from another machine, it can no '
-                    'longer be read.',
-                  ),
-                  const SizedBox(height: 12),
-                  SelectableText('Database: $databasePath'),
-                  const SizedBox(height: 12),
-                  SelectableText('$error',
-                      style: Theme.of(context).textTheme.bodySmall),
-                ],
+      home: Builder(builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return Scaffold(
+          body: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.databaseErrorTitle,
+                        style: Theme.of(context).textTheme.headlineMedium),
+                    const SizedBox(height: 12),
+                    Text(l10n.databaseErrorBody),
+                    const SizedBox(height: 12),
+                    SelectableText(l10n.databaseErrorPath(databasePath)),
+                    const SizedBox(height: 12),
+                    SelectableText('$error',
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
@@ -129,7 +130,9 @@ class KangoosApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'KangoOS',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: KangoosTheme.light,
       darkTheme: KangoosTheme.dark,
       themeMode: ThemeMode.system,

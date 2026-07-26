@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import '../autostart/autostart_service.dart';
@@ -71,22 +72,20 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
       );
 
   Future<void> _clearAllActivity() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear all captured activity?'),
-        content: const Text(
-          'This permanently deletes every recorded window/app entry and '
-          'recap summary. This cannot be undone.',
-        ),
+        title: Text(l10n.clearAllActivityTitle),
+        content: Text(l10n.clearAllActivityBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear'),
+            child: Text(l10n.commonClear),
           ),
         ],
       ),
@@ -98,91 +97,72 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content:
-            Text('Cleared $activityCount entries and $summaryCount recaps.')));
+            Text(l10n.clearedEntries(activityCount, summaryCount))));
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Activity capture')),
+      appBar: AppBar(title: Text(l10n.activityCapture)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (AutostartService.isSupported)
             SwitchListTile(
-              title: const Text('Launch KangoOS at startup'),
-              subtitle: const Text(
-                'Starts KangoOS minimized to the tray when you sign in, so '
-                'capture runs without opening the window.',
-              ),
+              title: Text(l10n.launchAtStartup),
+              subtitle: Text(l10n.launchAtStartupDescription),
               value: _autostartEnabled,
               onChanged: _setAutostart,
             ),
           SwitchListTile(
-            title: const Text('Capture active window'),
-            subtitle: const Text(
-              'Records the app and window title every few seconds while '
-              'KangoOS is open.',
+            title: Text(l10n.captureActiveWindow),
+            subtitle: Text(
+              l10n.captureActiveWindowDescription,
             ),
             value: !_settings.paused,
             onChanged: (enabled) =>
                 _apply(_settings.copyWith(paused: !enabled)),
           ),
           SwitchListTile(
-            title: const Text('Capture browser URLs'),
-            subtitle: const Text(
-              'Also records the active tab\'s URL for Chrome/Edge/Brave/Safari. '
-              'This is content, not just metadata: off by default. On Windows/'
-              'Linux this reads the address bar via accessibility APIs '
-              '(best-effort, may not always work); on macOS it requires '
-              'granting Accessibility permission to KangoOS.',
-            ),
+            title: Text(l10n.captureBrowserUrls),
+            subtitle: Text(l10n.captureBrowserUrlsDescription),
             value: _settings.captureBrowserUrls,
             onChanged: (enabled) =>
                 _apply(_settings.copyWith(captureBrowserUrls: enabled)),
           ),
           SwitchListTile(
-            title: const Text('Capture visible text (experimental)'),
-            subtitle: const Text(
-              'Also records the text you were focused on (e.g. what a text '
-              'field contains), via Windows UI Automation. Runs in a separate '
-              'helper process so a crash there never affects KangoOS, but it '
-              'means this may silently capture nothing on some systems.',
-            ),
+            title: Text(l10n.captureVisibleText),
+            subtitle: Text(l10n.captureVisibleTextDescription),
             value: _settings.captureVisibleText,
             onChanged: (enabled) =>
                 _apply(_settings.copyWith(captureVisibleText: enabled)),
           ),
           SwitchListTile(
-            title: const Text('Capture clipboard'),
-            subtitle: const Text(
-              'Also records whatever you copy. This is the most sensitive '
-              'capture source — copied passwords or tokens would be stored '
-              'too. Off by default; excluded apps are still skipped, but the '
-              'clipboard can outlive the app you copied it from.',
-            ),
+            title: Text(l10n.captureClipboard),
+            subtitle: Text(l10n.captureClipboardDescription),
             value: _settings.captureClipboard,
             onChanged: (enabled) =>
                 _apply(_settings.copyWith(captureClipboard: enabled)),
           ),
           const SizedBox(height: 16),
-          Text('Keep history for',
+          Text(l10n.keepHistoryFor,
               style: Theme.of(context).textTheme.titleMedium),
-          const Text('Older activity is purged automatically.'),
+          Text(l10n.keepHistoryDescription),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             value: _settings.retentionDays,
             decoration: const InputDecoration(
                 border: OutlineInputBorder(), isDense: true),
-            items: const [
-              DropdownMenuItem(value: 7, child: Text('7 days')),
-              DropdownMenuItem(value: 30, child: Text('30 days')),
-              DropdownMenuItem(value: 90, child: Text('90 days')),
-              DropdownMenuItem(value: 0, child: Text('Forever')),
+            items: [
+              for (final days in const [7, 30, 90])
+                DropdownMenuItem(
+                    value: days, child: Text(l10n.retentionDays(days))),
+              DropdownMenuItem(value: 0, child: Text(l10n.retentionForever)),
             ],
             onChanged: (value) {
               if (value != null) {
@@ -191,8 +171,8 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
             },
           ),
           const SizedBox(height: 16),
-          Text('Excluded apps', style: Theme.of(context).textTheme.titleMedium),
-          const Text('Never captured, e.g. a password manager or banking app.'),
+          Text(l10n.excludedApps, style: Theme.of(context).textTheme.titleMedium),
+          Text(l10n.excludedAppsDescription),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -226,7 +206,7 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
           OutlinedButton.icon(
             onPressed: _clearAllActivity,
             icon: const Icon(Icons.delete_forever_outlined),
-            label: const Text('Clear all captured activity'),
+            label: Text(l10n.clearAllActivity),
             style: OutlinedButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),

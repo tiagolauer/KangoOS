@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -61,6 +62,9 @@ void main() {
   testWidgets('suggest tags fills the tags field from the LLM response',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+
       home: SnippetEditorScreen(
         database: database,
         semanticSearch: semanticSearch,
@@ -88,6 +92,9 @@ void main() {
         .save(const LlmSettings(provider: LlmProviderKind.ollama, model: ''));
 
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+
       home: SnippetEditorScreen(
         database: database,
         semanticSearch: semanticSearch,

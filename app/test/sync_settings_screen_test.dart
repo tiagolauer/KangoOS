@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +35,9 @@ void main() {
     final repository = SyncSettingsRepository(secureStore: secureStore);
 
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+
       home: SyncSettingsScreen(repository: repository, database: database),
     ));
     await tester.pumpAndSettle();
@@ -58,6 +62,9 @@ void main() {
         SyncSettingsRepository(secureStore: _FakeSecureCredentialStore());
 
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+
       home: SyncSettingsScreen(repository: repository, database: database),
     ));
     await tester.pumpAndSettle();

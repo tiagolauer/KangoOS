@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import 'settings_repository.dart';
@@ -99,17 +100,18 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
 
     setState(() => _suggestingTags = true);
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     try {
       final settings = await widget.settingsRepository.load();
       if (settings.model.isEmpty) {
-        messenger.showSnackBar(const SnackBar(
-            content: Text('Set a model in LLM settings first.')));
+        messenger.showSnackBar(SnackBar(
+            content: Text(l10n.setModelFirst)));
         return;
       }
       if (settings.provider != LlmProviderKind.ollama &&
           settings.apiKey.isEmpty) {
-        messenger.showSnackBar(const SnackBar(
-            content: Text('Set an API key in LLM settings first.')));
+        messenger.showSnackBar(SnackBar(
+            content: Text(l10n.setApiKeyFirst)));
         return;
       }
 
@@ -123,13 +125,13 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
 
       if (tags.isEmpty) {
         messenger
-            .showSnackBar(const SnackBar(content: Text('No tags suggested.')));
+            .showSnackBar(SnackBar(content: Text(l10n.noTagsSuggested)));
         return;
       }
       setState(() => _tagsController.text = tags.join(', '));
     } catch (e) {
       messenger
-          .showSnackBar(SnackBar(content: Text('Tag suggestion failed: $e')));
+          .showSnackBar(SnackBar(content: Text(l10n.tagSuggestionFailed('$e'))));
     } finally {
       if (mounted) setState(() => _suggestingTags = false);
     }
@@ -142,23 +144,24 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           onPressed: widget.onDone,
           icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back',
+          tooltip: l10n.commonBack,
         ),
-        title: Text(_isEditing ? 'Edit snippet' : 'New snippet'),
+        title: Text(_isEditing ? l10n.editSnippet : l10n.newSnippet),
         actions: [
           if (_isEditing)
             IconButton(
               onPressed: _delete,
               icon: const Icon(Icons.delete_outline),
-              tooltip: 'Delete',
+              tooltip: l10n.commonDelete,
             ),
           IconButton(
-              onPressed: _save, icon: const Icon(Icons.check), tooltip: 'Save'),
+              onPressed: _save, icon: const Icon(Icons.check), tooltip: l10n.commonSave),
         ],
       ),
       body: Padding(
@@ -167,7 +170,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
+              decoration: InputDecoration(labelText: l10n.snippetTitle),
             ),
             const SizedBox(height: 12),
             Row(
@@ -176,7 +179,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
                   child: TextField(
                     controller: _languageController,
                     decoration:
-                        const InputDecoration(labelText: 'Language (optional)'),
+                        InputDecoration(labelText: l10n.snippetLanguage),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -184,7 +187,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
                   child: TextField(
                     controller: _tagsController,
                     decoration: InputDecoration(
-                      labelText: 'Tags (comma-separated)',
+                      labelText: l10n.snippetTags,
                       suffixIcon: IconButton(
                         icon: _suggestingTags
                             ? const SizedBox(
@@ -194,7 +197,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
                                     CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.auto_awesome, size: 20),
-                        tooltip: 'Suggest tags via LLM',
+                        tooltip: l10n.suggestTagsViaLlm,
                         onPressed: _suggestingTags ? null : _suggestTags,
                       ),
                     ),
@@ -205,8 +208,8 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _contentController,
-              decoration: const InputDecoration(
-                labelText: 'Code',
+              decoration: InputDecoration(
+                labelText: l10n.snippetCode,
                 alignLabelWithHint: true,
               ),
               maxLines: 14,
