@@ -86,11 +86,23 @@ API keys are stored via [`flutter_secure_storage`](https://pub.dev/packages/flut
 - **Linux**: needs libsecret at build and runtime (`sudo apt install libsecret-1-0 libsecret-1-dev` on Debian/Ubuntu) plus a running keyring service (`gnome-keyring`, `kwallet`, or similar — usually already present on a desktop session).
 
 The app's database encryption (SQLCipher via `sqlcipher_flutter_libs`) has its own native build-time requirement:
-- **Windows**: needs OpenSSL installed at build time (`choco install openssl` with Chocolatey) — statically linked into the generated DLL, so end users don't need it installed.
+- **Windows**: needs OpenSSL installed at build time (`choco install openssl` with Chocolatey, elevated) — statically linked into the generated DLL, so end users don't need it installed.
 - **Linux**: needs `libssl-dev` at build time (`sudo apt install libssl-dev` on Debian/Ubuntu) — also statically linked.
 - **macOS/iOS/Android**: no extra setup, uses a precompiled SQLCipher build.
 
-Not yet verified with a real `flutter run -d windows`/build in this repo — see the commit that introduced it for details.
+**Windows-specific gotcha**: if your installed CMake predates the modern Win64OpenSSL installer's `lib/VC/<arch>/<mode>/` directory layout (this bites the CMake 3.20 that ships with VS2019 Build Tools; VS2022's bundled CMake is newer and may not need this — but VS2022's CMake component isn't installed by default, so you may still be on the VS2019 one even with VS2022 present), the build fails at configure time with `Could NOT find OpenSSL ... OPENSSL_CRYPTO_LIBRARY`. `app/windows/CMakeLists.txt` looks for a compat directory at `app/windows/.openssl-compat/` (gitignored, not committed — it's a partial copy of your real OpenSSL install, machine-specific) and points `OPENSSL_ROOT_DIR` at it if present. Regenerate it after installing OpenSSL:
+
+```powershell
+$dst = "app\windows\.openssl-compat"
+New-Item -ItemType Directory -Force "$dst\lib\VC\static" | Out-Null
+Copy-Item "C:\Program Files\OpenSSL-Win64\include\*" "$dst\include" -Recurse -Force
+Copy-Item "C:\Program Files\OpenSSL-Win64\lib\VC\x64\MD\libcrypto_static.lib" "$dst\lib\VC\static\libcrypto_static.lib" -Force
+Copy-Item "C:\Program Files\OpenSSL-Win64\lib\VC\x64\MD\libssl_static.lib" "$dst\lib\VC\static\libssl_static.lib" -Force
+```
+
+If your CMake is new enough to understand the real install directly, you don't need this at all — just don't create `.openssl-compat/` and the `if(EXISTS ...)` in CMakeLists.txt skips the override.
+
+Verified working end to end on Windows: `flutter build windows --release` produces a `kangoos_app.exe` that launches, opens the SQLCipher-encrypted database, and renders normally.
 
 Self-hosted server: see [server/README.md](server/README.md).
 

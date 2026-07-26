@@ -38,3 +38,18 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
+
+find_program(DART_EXECUTABLE NAMES dart dart.exe)
+if(DART_EXECUTABLE)
+  set(UIA_CAPTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../../bin/uia_capture.dart")
+  add_custom_command(
+    TARGET ${BINARY_NAME} POST_BUILD
+    COMMAND "${DART_EXECUTABLE}" compile exe "${UIA_CAPTURE_SOURCE}"
+            -o "$<TARGET_FILE_DIR:${BINARY_NAME}>/uia_capture.exe"
+    COMMENT "Compiling uia_capture helper (visible-text LTM capture)"
+    VERBATIM
+  )
+else()
+  message(WARNING "dart executable not found on PATH; uia_capture.exe will "
+    "not be built. The 'capture visible text' setting will silently no-op.")
+endif()

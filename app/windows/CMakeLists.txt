@@ -2,6 +2,11 @@
 cmake_minimum_required(VERSION 3.14)
 project(kangoos_app LANGUAGES CXX)
 
+set(OPENSSL_COMPAT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.openssl-compat")
+if(EXISTS "${OPENSSL_COMPAT_DIR}")
+  set(OPENSSL_ROOT_DIR "${OPENSSL_COMPAT_DIR}" CACHE PATH "" FORCE)
+endif()
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "kangoos_app")
@@ -52,29 +57,14 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
-find_program(DART_EXECUTABLE NAMES dart dart.exe)
-if(DART_EXECUTABLE)
-  set(UIA_CAPTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../bin/uia_capture.dart")
-  set(UIA_CAPTURE_OUTPUT "$<TARGET_FILE_DIR:${BINARY_NAME}>/uia_capture.exe")
-  add_custom_command(
-    OUTPUT "${UIA_CAPTURE_OUTPUT}"
-    COMMAND "${DART_EXECUTABLE}" compile exe "${UIA_CAPTURE_SOURCE}"
-            -o "${UIA_CAPTURE_OUTPUT}"
-    DEPENDS "${UIA_CAPTURE_SOURCE}"
-    COMMENT "Compiling uia_capture helper (visible-text LTM capture)"
-    VERBATIM
-  )
-  add_custom_target(uia_capture_helper ALL DEPENDS "${UIA_CAPTURE_OUTPUT}")
-  add_dependencies(${BINARY_NAME} uia_capture_helper)
-else()
-  message(WARNING "dart executable not found on PATH; uia_capture.exe will "
-    "not be built. The 'capture visible text' setting will silently no-op.")
-endif()
-
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
+
+if(TARGET sqlite3)
+  target_link_libraries(sqlite3 PRIVATE ws2_32 crypt32 advapi32 user32 gdi32)
+endif()
 
 
 # === Installation ===
