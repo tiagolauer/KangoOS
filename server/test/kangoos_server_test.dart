@@ -61,9 +61,18 @@ void main() {
     expect(jsonDecode(response.body), {'status': 'ok'});
   });
 
-  test('requests without a bearer token are rejected', () async {
+  test('requests without a bearer token are rejected with 401', () async {
     final response = await http.get(baseUrl.resolve('/snippets'));
-    expect(response.statusCode, 403);
+    expect(response.statusCode, 401);
+    expect(response.headers['www-authenticate'], 'Bearer');
+  });
+
+  test('requests with a wrong token of the same length are rejected', () async {
+    final response = await http.get(
+      baseUrl.resolve('/snippets'),
+      headers: {'authorization': 'Bearer ${'x' * apiToken.length}'},
+    );
+    expect(response.statusCode, 401);
   });
 
   test('create, list, get, update and delete a snippet', () async {
