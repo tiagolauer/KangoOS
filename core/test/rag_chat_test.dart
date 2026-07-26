@@ -85,6 +85,40 @@ void main() {
     expect(systemPrompt, contains('Fixed the LTM-blind RAG chat bug.'));
   });
 
+  test('reply grounds "yesterday" queries in yesterday\'s activity, not today\'s',
+      () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+    final semanticSearch =
+        SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
+    final ragChat = RagChat(database: database, semanticSearch: semanticSearch);
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'code.exe',
+      windowTitle: 'yesterday-work.dart',
+      capturedAt: Value(today.subtract(const Duration(hours: 2))),
+    ));
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'code.exe',
+      windowTitle: 'today-work.dart',
+      capturedAt: Value(now),
+    ));
+
+    final provider = _FakeLlmProvider();
+    await ragChat
+        .reply(
+            provider: provider,
+            history: const [],
+            userMessage: 'what did I work on yesterday?')
+        .toList();
+
+    final systemPrompt = provider.lastMessages!.first.content;
+    expect(systemPrompt, contains('yesterday-work.dart'));
+    expect(systemPrompt, isNot(contains('today-work.dart')));
+  });
+
   test('retrieveContext falls back to keyword search with no embeddings', () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);

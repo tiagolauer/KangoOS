@@ -184,10 +184,13 @@ class _SidebarState extends State<Sidebar> {
         if (activities.isEmpty) {
           return const _SidebarMessage(text: 'No activity captured yet.');
         }
+        final rows = groupByDay(activities, (a) => a.capturedAt);
         return ListView.builder(
-          itemCount: activities.length,
+          itemCount: rows.length,
           itemBuilder: (context, index) {
-            final activity = activities[index];
+            final row = rows[index];
+            if (row is DateTime) return _DayHeader(day: row);
+            final activity = row as Activity;
             return ListTile(
               dense: true,
               title: Text(
@@ -224,12 +227,37 @@ class _SidebarState extends State<Sidebar> {
                 'of captured activity, or tap the sparkle to generate one now.',
           );
         }
+        final rows = groupByDay(summaries, (s) => s.periodEnd);
         return ListView.builder(
-          itemCount: summaries.length,
-          itemBuilder: (context, index) =>
-              _SummaryTile(summary: summaries[index]),
+          itemCount: rows.length,
+          itemBuilder: (context, index) {
+            final row = rows[index];
+            return row is DateTime
+                ? _DayHeader(day: row)
+                : _SummaryTile(summary: row as ActivitySummary);
+          },
         );
       },
+    );
+  }
+}
+
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({required this.day});
+
+  final DateTime day;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+      child: Text(
+        formatDayHeader(day),
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(fontWeight: FontWeight.w700),
+      ),
     );
   }
 }
