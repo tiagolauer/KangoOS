@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
@@ -246,6 +248,48 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     }
   }
 
+  Future<void> _exportSnippets() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final exchange = SnippetExchange(database: widget.database);
+    try {
+      final location = await getSaveLocation(
+        suggestedName: 'kangoos-snippets.json',
+        acceptedTypeGroups: const [
+          XTypeGroup(label: 'JSON', extensions: ['json'])
+        ],
+      );
+      if (location == null) return;
+      final json = await exchange.exportJson();
+      await XFile.fromData(
+        utf8.encode(json),
+        mimeType: 'application/json',
+      ).saveTo(location.path);
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Snippets exported.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    }
+  }
+
+  Future<void> _importSnippets() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final exchange = SnippetExchange(database: widget.database);
+    try {
+      final file = await openFile(
+        acceptedTypeGroups: const [
+          XTypeGroup(label: 'JSON', extensions: ['json'])
+        ],
+      );
+      if (file == null) return;
+      final result = await exchange.importJson(await file.readAsString());
+      messenger.showSnackBar(SnackBar(
+          content: Text(
+              'Imported ${result.imported}, skipped ${result.skipped}.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Import failed: $e')));
+    }
+  }
+
   Future<void> _send(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _sending) return;
@@ -342,6 +386,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
               database: widget.database,
             ),
           )),
+          onExportSnippets: _exportSnippets,
+          onImportSnippets: _importSnippets,
         ),
         if (_error != null)
           Container(
@@ -501,6 +547,8 @@ class _Header extends StatelessWidget {
     required this.onOpenCaptureSettings,
     required this.onOpenLlmSettings,
     required this.onOpenSyncSettings,
+    required this.onExportSnippets,
+    required this.onImportSnippets,
   });
 
   final bool showNewChat;
@@ -510,6 +558,8 @@ class _Header extends StatelessWidget {
   final VoidCallback onOpenCaptureSettings;
   final VoidCallback onOpenLlmSettings;
   final VoidCallback onOpenSyncSettings;
+  final VoidCallback onExportSnippets;
+  final VoidCallback onImportSnippets;
 
   @override
   Widget build(BuildContext context) {
@@ -554,6 +604,27 @@ class _Header extends StatelessWidget {
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'LLM settings',
             onPressed: onOpenLlmSettings,
+          ),
+          PopupMenuButton<void>(
+            tooltip: 'More',
+            itemBuilder: (context) => [
+              PopupMenuItem<void>(
+                onTap: onExportSnippets,
+                child: const ListTile(
+                  leading: Icon(Icons.upload_file_outlined),
+                  title: Text('Export snippets…'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem<void>(
+                onTap: onImportSnippets,
+                child: const ListTile(
+                  leading: Icon(Icons.download_outlined),
+                  title: Text('Import snippets…'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
