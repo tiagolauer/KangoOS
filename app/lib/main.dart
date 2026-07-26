@@ -21,6 +21,15 @@ const defaultEmbeddingModel = 'nomic-embed-text';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await _startKangoos();
+  } catch (error, stackTrace) {
+    stderr.writeln('KangoOS failed to start: $error\n$stackTrace');
+    runApp(StartupErrorApp(error: error));
+  }
+}
+
+Future<void> _startKangoos() async {
   final supportDir = await getApplicationSupportDirectory();
   final encryptionKey = await DatabaseEncryptionKeyProvider().getOrCreateKey();
   final databaseFile = File(p.join(supportDir.path, 'kangoos.db'));
@@ -67,6 +76,50 @@ Future<void> main() async {
     captureSettingsRepository: captureSettingsRepository,
     needsCaptureConsent: needsCaptureConsent,
   ));
+}
+
+class StartupErrorApp extends StatelessWidget {
+  const StartupErrorApp({super.key, required this.error});
+
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: KangoosTheme.light,
+      darkTheme: KangoosTheme.dark,
+      themeMode: ThemeMode.system,
+      home: Builder(builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return Scaffold(
+          body: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.startupErrorTitle,
+                        style: Theme.of(context).textTheme.headlineMedium),
+                    const SizedBox(height: 12),
+                    Text(l10n.startupErrorBody),
+                    const SizedBox(height: 12),
+                    SelectableText('$error',
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
 }
 
 class DatabaseErrorApp extends StatelessWidget {

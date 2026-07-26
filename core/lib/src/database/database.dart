@@ -388,6 +388,9 @@ END;
       into(conversationMessages).insert(ConversationMessagesCompanion.insert(
           conversationId: conversationId, role: role, content: content));
 
+  Future<int> deleteMessage(int id) =>
+      (delete(conversationMessages)..where((row) => row.id.equals(id))).go();
+
   Future<List<ConversationMessage>> messagesForConversation(int conversationId) =>
       (select(conversationMessages)
             ..where((row) => row.conversationId.equals(conversationId))

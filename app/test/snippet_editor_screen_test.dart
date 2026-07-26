@@ -112,4 +112,94 @@ void main() {
     expect(find.text('Set a model in LLM settings first.'), findsOneWidget);
     expect(find.text('should-not-appear'), findsNothing);
   });
+
+  testWidgets('save with an empty title says so instead of doing nothing',
+      (tester) async {
+    var done = false;
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: SnippetEditorScreen(
+        database: database,
+        semanticSearch: semanticSearch,
+        settingsRepository: settingsRepository,
+        onDone: () => done = true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Code'), 'body');
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+
+    expect(find.text('A title is required.'), findsOneWidget);
+    expect(done, isFalse);
+    expect(await database.allSnippets(), isEmpty);
+  });
+
+  testWidgets('going back with unsaved edits asks before discarding them',
+      (tester) async {
+    var done = false;
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: SnippetEditorScreen(
+        database: database,
+        semanticSearch: semanticSearch,
+        settingsRepository: settingsRepository,
+        onDone: () => done = true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Title'), 'Half-written');
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Discard your changes?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(done, isFalse);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard'));
+    await tester.pumpAndSettle();
+    expect(done, isTrue);
+  });
+
+  testWidgets('deleting a snippet asks first and can be cancelled',
+      (tester) async {
+    final id = await database.createSnippet(
+        SnippetsCompanion.insert(title: 'Precious', content: 'body'));
+    final snippet = (await database.getSnippetById(id))!;
+
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: SnippetEditorScreen(
+        database: database,
+        semanticSearch: semanticSearch,
+        settingsRepository: settingsRepository,
+        snippet: snippet,
+        onDone: () {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete this snippet?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(await database.allSnippets(), hasLength(1));
+
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(await database.allSnippets(), isEmpty);
+  });
 }

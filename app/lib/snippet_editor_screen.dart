@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import 'confirm_dialog.dart';
 import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
 
@@ -18,6 +19,7 @@ class SnippetEditorScreen extends StatefulWidget {
     this.snippet,
     this.tagger = const SnippetTagger(),
     this.providerBuilder,
+    this.onDirtyChanged,
   });
 
   final KangoosDatabase database;
@@ -29,6 +31,8 @@ class SnippetEditorScreen extends StatefulWidget {
 
   /// Overridable for tests; defaults to [LlmSettings.buildProvider].
   final LlmProvider Function(LlmSettings settings)? providerBuilder;
+
+  final ValueChanged<bool>? onDirtyChanged;
 
   @override
   State<SnippetEditorScreen> createState() => _SnippetEditorScreenState();
@@ -45,11 +49,39 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
       TextEditingController(text: widget.snippet?.content);
 
   var _suggestingTags = false;
+  var _dirty = false;
+  String? _titleError;
+  String? _contentError;
 
   bool get _isEditing => widget.snippet != null;
 
   @override
+  void initState() {
+    super.initState();
+    for (final controller in [
+      _titleController,
+      _languageController,
+      _tagsController,
+      _contentController,
+    ]) {
+      controller.addListener(_markDirty);
+    }
+  }
+
+  void _markDirty() {
+    if (_dirty) return;
+    _dirty = true;
+    widget.onDirtyChanged?.call(true);
+  }
+
+  void _markClean() {
+    _dirty = false;
+    widget.onDirtyChanged?.call(false);
+  }
+
+  @override
   void dispose() {
+    widget.onDirtyChanged?.call(false);
     _titleController.dispose();
     _languageController.dispose();
     _tagsController.dispose();
@@ -58,8 +90,13 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final title = _titleController.text.trim();
     final content = _contentController.text;
+    setState(() {
+      _titleError = title.isEmpty ? l10n.snippetTitleRequired : null;
+      _contentError = content.isEmpty ? l10n.snippetContentRequired : null;
+    });
     if (title.isEmpty || content.isEmpty) return;
 
     final language = _languageController.text.trim();
@@ -91,7 +128,23 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
 
     unawaited(widget.semanticSearch.indexSnippet(saved).catchError((_) {}));
 
+    _markClean();
     if (mounted) widget.onDone();
+  }
+
+  Future<void> _close() async {
+    if (_dirty) {
+      final l10n = AppLocalizations.of(context);
+      final discard = await confirmDestructiveAction(
+        context: context,
+        title: l10n.discardChangesTitle,
+        body: l10n.discardChangesBody,
+        confirmLabel: l10n.discardChangesConfirm,
+      );
+      if (!discard) return;
+    }
+    _markClean();
+    widget.onDone();
   }
 
   Future<void> _suggestTags() async {
@@ -138,7 +191,16 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
   }
 
   Future<void> _delete() async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await confirmDestructiveAction(
+      context: context,
+      title: l10n.deleteSnippetTitle,
+      body: l10n.deleteSnippetBody(widget.snippet!.title),
+    );
+    if (!confirmed) return;
+
     await widget.database.deleteSnippet(widget.snippet!.id);
+    _markClean();
     if (mounted) widget.onDone();
   }
 
@@ -148,7 +210,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          onPressed: widget.onDone,
+          onPressed: _close,
           icon: const Icon(Icons.arrow_back),
           tooltip: l10n.commonBack,
         ),
@@ -170,7 +232,10 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: InputDecoration(labelText: l10n.snippetTitle),
+              decoration: InputDecoration(
+                labelText: l10n.snippetTitle,
+                errorText: _titleError,
+              ),
             ),
             const SizedBox(height: 12),
             Row(
@@ -211,6 +276,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
               decoration: InputDecoration(
                 labelText: l10n.snippetCode,
                 alignLabelWithHint: true,
+                errorText: _contentError,
               ),
               maxLines: 14,
               style: const TextStyle(

@@ -68,6 +68,10 @@ void main() {
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
 
+    expect(find.text('Delete this conversation?'), findsOneWidget);
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
     expect(find.text('delete me'), findsNothing);
     expect(find.text('No saved conversations yet.'), findsOneWidget);
 
