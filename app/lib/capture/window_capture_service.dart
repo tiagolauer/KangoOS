@@ -39,7 +39,6 @@ class WindowCaptureService {
   /// Overridable for tests; defaults to the platform-appropriate reader.
   final WindowSnapshot? Function() readWindow;
 
-  /// Overridable for tests; defaults to the Windows UI Automation helper.
   final Future<String?> Function() captureVisibleText;
 
   /// Overridable for tests; defaults to the platform-appropriate browser URL
@@ -112,7 +111,7 @@ class WindowCaptureService {
   }
 
   static Future<String?> _captureVisibleTextViaHelper() async {
-    final helperPath = _resolveHelperPath();
+    final helperPath = _resolveCompiledHelperPath();
     if (helperPath == null) return null;
 
     try {
@@ -137,12 +136,7 @@ class WindowCaptureService {
     }
   }
 
-  /// The helper is compiled AOT and copied next to the app executable by
-  /// the Windows CMake build (see windows/CMakeLists.txt), so this works
-  /// the same way in `flutter run` and in a packaged release build —
-  /// unlike spawning `dart run` against the source, which needs the Dart
-  /// SDK on PATH and a specific working directory.
-  static String? _resolveHelperPath() {
+  static String? _resolveCompiledHelperPath() {
     if (!Platform.isWindows) return null;
     final helper =
         p.join(p.dirname(Platform.resolvedExecutable), 'uia_capture.exe');

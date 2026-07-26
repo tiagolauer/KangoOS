@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../autostart/autostart_service.dart';
 import 'capture_settings_repository.dart';
 
 class CaptureSettingsScreen extends StatefulWidget {
@@ -12,7 +13,9 @@ class CaptureSettingsScreen extends StatefulWidget {
 }
 
 class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
+  final _autostartService = AutostartService();
   var _settings = const CaptureSettings();
+  var _autostartEnabled = false;
   var _loading = true;
   final _excludeController = TextEditingController();
 
@@ -26,8 +29,14 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
     final settings = await widget.repository.load();
     setState(() {
       _settings = settings;
+      _autostartEnabled = _autostartService.isEnabled();
       _loading = false;
     });
+  }
+
+  void _setAutostart(bool enabled) {
+    _autostartService.setEnabled(enabled);
+    setState(() => _autostartEnabled = enabled);
   }
 
   @override
@@ -66,6 +75,16 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (AutostartService.isSupported)
+            SwitchListTile(
+              title: const Text('Launch KangoOS at startup'),
+              subtitle: const Text(
+                'Starts KangoOS minimized to the tray when you sign in, so '
+                'capture runs without opening the window.',
+              ),
+              value: _autostartEnabled,
+              onChanged: _setAutostart,
+            ),
           SwitchListTile(
             title: const Text('Capture active window'),
             subtitle: const Text(

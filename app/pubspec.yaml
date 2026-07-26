@@ -46,6 +46,9 @@ dependencies:
   ffi: ^2.1.3
   dbus: ^0.7.12
   flutter_secure_storage: ^10.3.1
+  tray_manager: ^0.5.3
+  window_manager: ^0.5.2
+  win32_registry: ^1.1.5
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +71,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/tray_icon.ico
 
   # To add assets to your application, add an assets section, like this:
   # assets:

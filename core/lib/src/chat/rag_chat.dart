@@ -17,6 +17,8 @@ class RagChat {
   final int maxContextActivities;
   final int maxContextSummaries;
 
+  static const _queryBoundarySlack = Duration(seconds: 1);
+
   Future<List<Snippet>> retrieveContext(String query) async {
     try {
       final matches = await semanticSearch.search(query, limit: maxContextSnippets);
@@ -26,17 +28,11 @@ class RagChat {
     return matches.take(maxContextSnippets).toList();
   }
 
-  /// Today's captured activity (local time), most recent first, capped at
-  /// [maxContextActivities]. There's no time-range parsing on the user's
-  /// query yet, so "today" is the fixed window every reply grounds against.
-  Future<List<Activity>> retrieveRecentActivity() async {
+  Future<List<Activity>> retrieveTodayActivity() async {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
-    // +1s guards against the exclusive upper bound clipping activity
-    // captured in the same second this query runs (sqlite truncates
-    // DateTime storage to whole seconds).
     final activities = await database.activitiesBetween(
-        startOfDay, now.add(const Duration(seconds: 1)));
+        startOfDay, now.add(_queryBoundarySlack));
     final recent = activities.length > maxContextActivities
         ? activities.sublist(activities.length - maxContextActivities)
         : activities;
@@ -100,7 +96,7 @@ class RagChat {
     required String userMessage,
   }) async* {
     final snippets = await retrieveContext(userMessage);
-    final activities = await retrieveRecentActivity();
+    final activities = await retrieveTodayActivity();
     final summaries = await retrieveRecentSummaries();
     final requestMessages = [
       LlmMessage(

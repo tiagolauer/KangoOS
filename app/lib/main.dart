@@ -11,6 +11,7 @@ import 'capture/window_capture_service.dart';
 import 'home/app_shell.dart';
 import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
+import 'tray/tray_service.dart';
 
 const defaultEmbeddingModel = 'nomic-embed-text';
 
@@ -30,6 +31,8 @@ Future<void> main() async {
   ActivitySummaryService(
           database: database, settingsRepository: SettingsRepository())
       .start();
+  await TrayService(captureSettingsRepository: captureSettingsRepository)
+      .init();
 
   runApp(KangoosApp(
     database: database,
