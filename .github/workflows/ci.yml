@@ -50,7 +50,7 @@ jobs:
       - run: flutter test
 
   windows-build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     defaults:
       run:
         working-directory: app
