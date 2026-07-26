@@ -52,6 +52,32 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
+# Compile the UI Automation helper (opt-in "capture visible text" LTM
+# feature) as a standalone AOT executable and place it next to the runner
+# exe. This lets the app find and run it via Platform.resolvedExecutable at
+# runtime without depending on a `dart` on PATH or a specific working
+# directory — required for the feature to work in a packaged build, not
+# just `flutter run`. Wired as an OUTPUT-based custom command (not a bare
+# POST_BUILD step) so it only recompiles when the helper source changes.
+find_program(DART_EXECUTABLE NAMES dart dart.exe)
+if(DART_EXECUTABLE)
+  set(UIA_CAPTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../bin/uia_capture.dart")
+  set(UIA_CAPTURE_OUTPUT "$<TARGET_FILE_DIR:${BINARY_NAME}>/uia_capture.exe")
+  add_custom_command(
+    OUTPUT "${UIA_CAPTURE_OUTPUT}"
+    COMMAND "${DART_EXECUTABLE}" compile exe "${UIA_CAPTURE_SOURCE}"
+            -o "${UIA_CAPTURE_OUTPUT}"
+    DEPENDS "${UIA_CAPTURE_SOURCE}"
+    COMMENT "Compiling uia_capture helper (visible-text LTM capture)"
+    VERBATIM
+  )
+  add_custom_target(uia_capture_helper ALL DEPENDS "${UIA_CAPTURE_OUTPUT}")
+  add_dependencies(${BINARY_NAME} uia_capture_helper)
+else()
+  message(WARNING "dart executable not found on PATH; uia_capture.exe will "
+    "not be built. The 'capture visible text' setting will silently no-op.")
+endif()
+
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.

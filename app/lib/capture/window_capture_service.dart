@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:path/path.dart' as p;
 
 import 'browser_url_reader_linux.dart';
 import 'browser_url_reader_macos.dart';
@@ -111,12 +112,11 @@ class WindowCaptureService {
   }
 
   static Future<String?> _captureVisibleTextViaHelper() async {
+    final helperPath = _resolveHelperPath();
+    if (helperPath == null) return null;
+
     try {
-      final process = await Process.start(
-        'dart',
-        ['run', 'bin/uia_capture.dart'],
-        workingDirectory: Directory.current.path,
-      );
+      final process = await Process.start(helperPath, const []);
       final stdoutFuture = process.stdout.transform(utf8.decoder).join();
       final stderrDrained = process.stderr.drain<void>();
 
@@ -135,5 +135,17 @@ class WindowCaptureService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// The helper is compiled AOT and copied next to the app executable by
+  /// the Windows CMake build (see windows/CMakeLists.txt), so this works
+  /// the same way in `flutter run` and in a packaged release build —
+  /// unlike spawning `dart run` against the source, which needs the Dart
+  /// SDK on PATH and a specific working directory.
+  static String? _resolveHelperPath() {
+    if (!Platform.isWindows) return null;
+    final helper =
+        p.join(p.dirname(Platform.resolvedExecutable), 'uia_capture.exe');
+    return File(helper).existsSync() ? helper : null;
   }
 }
