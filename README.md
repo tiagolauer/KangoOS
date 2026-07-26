@@ -4,7 +4,7 @@ Open source alternative to [Pieces OS](https://pieces.app/): a snippet manager w
 
 ## Why
 
-- **Self-hosted**: runs locally by default; optional self-hosted server (Docker) for multi-device sync.
+- **Self-hosted**: runs locally by default; optional self-hosted server (Docker) exposes the same snippet/chat API over HTTP for scripts or a future client — the desktop app has no sync client yet, so today it's a separate store, not synced with the app's local data.
 - **Local-first LLM**: [Ollama](https://ollama.com/) by default, with optional fallback to OpenAI/Anthropic/Gemini via user-supplied API key.
 - **AGPL-3.0 licensed**: free to use and modify, including as a service, as long as modified source stays available.
 
@@ -25,8 +25,9 @@ KangoOS/
 - Full-text search (real SQLite FTS5, bm25-ranked, prefix matching) + semantic search (local embeddings, brute-force cosine — fine at snippet-manager scale, no ANN index)
 - Contextual chat over saved snippets (RAG)
 - LLM provider configuration (local Ollama, or Anthropic/OpenAI/Gemini via API key, stored in the OS keychain — Credential Manager/Keychain/Secret Service, never plaintext on disk), with a reasoning-mode picker (Fast/Balanced/Extra Thinking) mapped to each provider's own mechanism — only takes effect on reasoning-capable models
+- Encryption at rest for the desktop app's local database (SQLCipher), keyed by a random key stored in the OS keychain — same mechanism as the LLM API keys. The CLI/MCP/server databases are unaffected (plain SQLite) — separate stores, separate threat model.
 
-- Self-hosted HTTP server (Docker) for sharing snippets/chat across clients
+- Self-hosted HTTP server (Docker) — same snippet storage/RAG chat as the app, reachable over its REST API (curl, scripts); the desktop app itself has no client for it yet
 - Activity capture (Windows/Linux/macOS, app + window title by default) with retention/purge
   - Linux requires an X11 session (or XWayland); macOS requires granting Accessibility permission to the app so "System Events" can read other apps' window titles
 - Timeline: automatic activity summaries every 20 minutes, plus on-demand day recap (via LLM)
@@ -37,7 +38,7 @@ KangoOS/
 - CLI (`kango`, see below) for snippet create/search/list/show/edit/delete, embedding `core` directly — no server required.
 - MCP server (`kango_mcp`, see below) so IDE assistants (Cursor, GitHub Copilot, Claude Desktop) can search/create/edit snippets as tools.
 
-Out of scope for now (future roadmap): page content beyond the URL, VS Code extension, browser extension, mobile app, plugin system.
+Out of scope for now (future roadmap): page content beyond the URL, VS Code extension, browser extension, mobile app, plugin system, app→server sync client (the server exists but nothing in the app talks to it yet).
 
 ## CLI
 
@@ -82,6 +83,13 @@ API keys are stored via [`flutter_secure_storage`](https://pub.dev/packages/flut
 - **Windows**: needs the C++ ATL component of Visual Studio Build Tools (same VS install Flutter Windows desktop already requires — check the "C++ ATL" optional component is ticked).
 - **macOS**: needs the `keychain-access-groups` entitlement (already added to `app/macos/Runner/*.entitlements`).
 - **Linux**: needs libsecret at build and runtime (`sudo apt install libsecret-1-0 libsecret-1-dev` on Debian/Ubuntu) plus a running keyring service (`gnome-keyring`, `kwallet`, or similar — usually already present on a desktop session).
+
+The app's database encryption (SQLCipher via `sqlcipher_flutter_libs`) has its own native build-time requirement:
+- **Windows**: needs OpenSSL installed at build time (`choco install openssl` with Chocolatey) — statically linked into the generated DLL, so end users don't need it installed.
+- **Linux**: needs `libssl-dev` at build time (`sudo apt install libssl-dev` on Debian/Ubuntu) — also statically linked.
+- **macOS/iOS/Android**: no extra setup, uses a precompiled SQLCipher build.
+
+Not yet verified with a real `flutter run -d windows`/build in this repo — see the commit that introduced it for details.
 
 Self-hosted server: see [server/README.md](server/README.md).
 

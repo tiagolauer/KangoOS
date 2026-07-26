@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:sqlite3/sqlite3.dart' show Database;
 
 import '../llm/llm_provider.dart';
 import 'tables/activities_table.dart';
@@ -21,7 +22,11 @@ part 'database.g.dart';
 class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase(super.executor);
 
-  KangoosDatabase.native(File file) : super(NativeDatabase(file));
+  KangoosDatabase.native(File file, {String? encryptionKey})
+      : super(NativeDatabase(
+          file,
+          setup: encryptionKey == null ? null : _setupCipher(encryptionKey),
+        ));
 
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
@@ -223,6 +228,18 @@ END;
   Future<int> clearAllActivity() => delete(activities).go();
 
   Future<int> clearAllSummaries() => delete(activitySummaries).go();
+
+  static void Function(Database) _setupCipher(String encryptionKey) {
+    return (db) {
+      final escaped = encryptionKey.replaceAll("'", "''");
+      db.execute("PRAGMA key = '$escaped';");
+      if (db.select('PRAGMA cipher_version;').isEmpty) {
+        throw StateError(
+            'SQLCipher native library not found; refusing to open the '
+            'database in plaintext.');
+      }
+    };
+  }
 }
 
 /// Builds an FTS5 MATCH expression from free-form user input: each word

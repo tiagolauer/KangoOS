@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'capture/activity_summary_service.dart';
 import 'capture/capture_settings_repository.dart';
 import 'capture/window_capture_service.dart';
+import 'database_encryption.dart';
 import 'home/app_shell.dart';
 import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
@@ -18,8 +19,11 @@ const defaultEmbeddingModel = 'nomic-embed-text';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supportDir = await getApplicationSupportDirectory();
-  final database =
-      KangoosDatabase.native(File(p.join(supportDir.path, 'kangoos.db')));
+  final encryptionKey = await DatabaseEncryptionKeyProvider().getOrCreateKey();
+  final database = KangoosDatabase.native(
+    File(p.join(supportDir.path, 'kangoos.db')),
+    encryptionKey: encryptionKey,
+  );
   final semanticSearch = SemanticSearch(
     database: database,
     embeddingProvider: OllamaEmbeddingProvider(model: defaultEmbeddingModel),

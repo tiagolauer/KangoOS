@@ -1,6 +1,6 @@
 # kangoos_server
 
-Self-hosted HTTP server exposing [`kangoos_core`](../core) — the same snippet storage, semantic search and RAG chat the desktop app uses, reachable over the network so multiple clients (desktop app, IDE extensions, browser extension) can share one store.
+Self-hosted HTTP server exposing [`kangoos_core`](../core) — the same snippet storage, semantic search and RAG chat the desktop app uses, reachable over the network via its own REST API. The desktop app doesn't connect to it yet (no sync client) — today each keeps its own local database; this server is usable standalone via curl/scripts, or as the backend for a future client.
 
 ## Run with Docker
 

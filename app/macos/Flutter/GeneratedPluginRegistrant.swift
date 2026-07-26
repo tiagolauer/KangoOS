@@ -9,7 +9,7 @@ import flutter_secure_storage_darwin
 import path_provider_foundation
 import screen_retriever_macos
 import shared_preferences_foundation
-import sqlite3_flutter_libs
+import sqlcipher_flutter_libs
 import tray_manager
 import window_manager
 
