@@ -6,6 +6,7 @@ import '../autostart/autostart_service.dart';
 import 'audio_capture_service.dart';
 import 'capture_settings_repository.dart';
 import 'whisper_model_repository.dart';
+import 'window_capture_service.dart';
 
 class CaptureSettingsScreen extends StatefulWidget {
   const CaptureSettingsScreen({
@@ -72,7 +73,10 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
 
   Future<void> _addExcludedApp() async {
     final app = _excludeController.text.trim();
-    if (app.isEmpty || _settings.excludedApps.contains(app)) return;
+    if (app.isEmpty ||
+        WindowCaptureService.isExcluded(app, _settings.excludedApps)) {
+      return;
+    }
     _excludeController.clear();
     await _apply(
         _settings.copyWith(excludedApps: [..._settings.excludedApps, app]));

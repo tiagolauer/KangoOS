@@ -13,6 +13,7 @@ class SettingsRepository {
   static const _modelKey = 'llm_model';
   static const _baseUrlKey = 'llm_base_url';
   static const _reasoningEffortKey = 'llm_reasoning_effort';
+  static const _embeddingModelKey = 'embedding_model';
 
   /// Same key in both stores: read from [SharedPreferences] is only ever a
   /// one-time migration off of the old plaintext-on-disk storage.
@@ -35,6 +36,18 @@ class SettingsRepository {
       apiKey: await _readApiKey(prefs),
       baseUrl: prefs.getString(_baseUrlKey) ?? '',
       reasoningEffort: reasoningEffort,
+      embeddingModel:
+          prefs.getString(_embeddingModelKey) ?? defaultEmbeddingModel,
+    );
+  }
+
+  Future<LlmSettings> loadEmbeddingSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    return LlmSettings(
+      provider: LlmProviderKind.ollama,
+      baseUrl: prefs.getString(_baseUrlKey) ?? '',
+      embeddingModel:
+          prefs.getString(_embeddingModelKey) ?? defaultEmbeddingModel,
     );
   }
 
@@ -58,6 +71,7 @@ class SettingsRepository {
     await prefs.setString(_modelKey, settings.model);
     await prefs.setString(_baseUrlKey, settings.baseUrl);
     await prefs.setString(_reasoningEffortKey, settings.reasoningEffort.name);
+    await prefs.setString(_embeddingModelKey, settings.embeddingModel);
 
     if (settings.apiKey.isEmpty) {
       await _secureStore.delete(_apiKeyKey);

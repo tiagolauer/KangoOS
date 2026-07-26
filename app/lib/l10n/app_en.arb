@@ -92,6 +92,8 @@
   "llmModel": "Model",
   "llmApiKey": "API key",
   "llmBaseUrl": "Base URL (optional)",
+  "embeddingModel": "Embedding model",
+  "embeddingModelHint": "Used for semantic search. Runs on the Ollama server above; the model must be pulled there.",
   "llmReasoningMode": "Reasoning mode",
   "llmReasoningHint": "Only takes effect on reasoning-capable models.",
   "providerOllama": "Ollama (local)",

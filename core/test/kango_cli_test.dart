@@ -1,6 +1,15 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:kangoos_core/src/cli/kango_cli.dart';
 import 'package:test/test.dart';
+
+class _FakeEmbeddingProvider implements EmbeddingProvider {
+  @override
+  String get id => 'fake';
+
+  @override
+  Future<List<double>> embed(String text) async => [1, 0, 0];
+}
 
 void main() {
   late KangoosDatabase database;
@@ -145,5 +154,76 @@ void main() {
     final code = await run([]);
     expect(code, 64);
     expect(err.toString(), contains('Usage: kango'));
+  });
+
+  test('a value flag given without a value is a usage error', () async {
+    final id = await database.createSnippet(SnippetsCompanion.insert(
+      title: 'Reverse a string',
+      content: 'body',
+      tags: const Value(['dart']),
+    ));
+
+    for (final flag in ['tags', 'title', 'content', 'language']) {
+      final code = await run(['edit', '$id', '--$flag']);
+      expect(code, 64, reason: '--$flag');
+      expect(err.toString(), contains('--$flag needs a value'));
+    }
+
+    final unchanged = (await database.getSnippetById(id))!;
+    expect(unchanged.title, 'Reverse a string');
+    expect(unchanged.tags, ['dart']);
+  });
+
+  test('edit --tags "" clears the tags', () async {
+    final id = await database.createSnippet(SnippetsCompanion.insert(
+      title: 'Tagged',
+      content: 'body',
+      tags: const Value(['dart', 'strings']),
+    ));
+
+    final code = await run(['edit', '$id', '--tags', '']);
+
+    expect(code, 0);
+    expect((await database.getSnippetById(id))!.tags, isEmpty);
+  });
+
+  test('a bare boolean flag is still accepted', () async {
+    final semanticSearch = SemanticSearch(
+      database: database,
+      embeddingProvider: _FakeEmbeddingProvider(),
+    );
+    await semanticSearch.createAndIndex(
+        SnippetsCompanion.insert(title: 'Reverse a string', content: 'body'));
+
+    final code = await runKangoCli(
+      ['search', 'reverse', '--semantic'],
+      database: database,
+      semanticSearch: semanticSearch,
+      out: out,
+      err: err,
+    );
+
+    expect(code, 0);
+    expect(out.toString(), contains('Reverse a string'));
+  });
+
+  test('create indexes the snippet when semantic search is available',
+      () async {
+    final semanticSearch = SemanticSearch(
+      database: database,
+      embeddingProvider: _FakeEmbeddingProvider(),
+    );
+
+    final code = await runKangoCli(
+      ['create', '--title', 'Reverse a string'],
+      database: database,
+      semanticSearch: semanticSearch,
+      out: out,
+      err: err,
+      readStdin: () => 'input.split("").reversed.join()',
+    );
+
+    expect(code, 0);
+    expect(await database.snippetsMissingEmbedding(), isEmpty);
   });
 }

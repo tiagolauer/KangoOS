@@ -158,6 +158,66 @@ void main() {
     expect(context, hasLength(1));
     expect(context.first.title, 'Dart string reverse');
   });
+
+  test('only the tail of a long conversation is replayed', () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+    final ragChat = RagChat(
+      database: database,
+      semanticSearch: SemanticSearch(
+          database: database, embeddingProvider: _FakeEmbeddingProvider()),
+      maxHistoryMessages: 4,
+    );
+
+    final provider = _FakeLlmProvider();
+    final history = [
+      for (var i = 0; i < 20; i++)
+        LlmMessage(role: LlmRole.user, content: 'turn $i'),
+    ];
+
+    await ragChat
+        .reply(provider: provider, history: history, userMessage: 'now what?')
+        .drain<void>();
+
+    final sent = provider.lastMessages!;
+    expect(sent.first.role, LlmRole.system);
+    expect(sent.length, 1 + 4 + 1);
+    expect(sent[1].content, 'turn 16');
+    expect(sent.last.content, 'now what?');
+  });
+
+  test('the activity context carries a duration per window', () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+    final ragChat = RagChat(
+      database: database,
+      semanticSearch: SemanticSearch(
+          database: database, embeddingProvider: _FakeEmbeddingProvider()),
+    );
+
+    final now = DateTime.now();
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'code.exe',
+      windowTitle: 'main.dart',
+      capturedAt: Value(now.subtract(const Duration(minutes: 9))),
+    ));
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'chrome.exe',
+      windowTitle: 'Docs',
+      capturedAt: Value(now.subtract(const Duration(minutes: 4))),
+    ));
+
+    final provider = _FakeLlmProvider();
+    await ragChat
+        .reply(
+            provider: provider,
+            history: const [],
+            userMessage: 'what did I do today?')
+        .drain<void>();
+
+    expect(provider.lastMessages!.first.content, contains('main.dart'));
+    expect(provider.lastMessages!.first.content, contains('5m]'));
+  });
 }
 
 class _ThrowingEmbeddingProvider implements EmbeddingProvider {

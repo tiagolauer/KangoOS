@@ -35,7 +35,8 @@ void main() {
     clientDatabase = KangoosDatabase.memory();
     final semanticSearch = SemanticSearch(
         database: serverDatabase, embeddingProvider: _FakeEmbeddingProvider());
-    final ragChat = RagChat(database: serverDatabase, semanticSearch: semanticSearch);
+    final ragChat =
+        RagChat(database: serverDatabase, semanticSearch: semanticSearch);
     final server = KangoosServer(
       database: serverDatabase,
       semanticSearch: semanticSearch,
@@ -83,8 +84,8 @@ void main() {
 
   test('a newer local edit overwrites an older remote copy', () async {
     await syncClient.sync();
-    final id = await clientDatabase.createSnippet(
-        SnippetsCompanion.insert(title: 'v1', content: 'x'));
+    final id = await clientDatabase
+        .createSnippet(SnippetsCompanion.insert(title: 'v1', content: 'x'));
     await syncClient.sync();
 
     final local = (await clientDatabase.getSnippetById(id))!;
@@ -101,8 +102,8 @@ void main() {
   });
 
   test('a newer remote edit overwrites an older local copy', () async {
-    final id = await clientDatabase.createSnippet(
-        SnippetsCompanion.insert(title: 'v1', content: 'x'));
+    final id = await clientDatabase
+        .createSnippet(SnippetsCompanion.insert(title: 'v1', content: 'x'));
     await syncClient.sync();
 
     final remoteRow = (await serverDatabase.allSnippets()).single;
@@ -119,8 +120,8 @@ void main() {
   });
 
   test('re-syncing with nothing new is a no-op', () async {
-    await clientDatabase.createSnippet(
-        SnippetsCompanion.insert(title: 'a', content: 'b'));
+    await clientDatabase
+        .createSnippet(SnippetsCompanion.insert(title: 'a', content: 'b'));
     await syncClient.sync();
 
     final result = await syncClient.sync();
