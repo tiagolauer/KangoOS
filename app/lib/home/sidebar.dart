@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import '../clipboard_actions.dart';
 import 'relative_time.dart';
 
 enum SidebarTab { snippets, activity, timeline }
@@ -27,11 +30,21 @@ class Sidebar extends StatefulWidget {
   State<Sidebar> createState() => _SidebarState();
 }
 
+const searchDebounce = Duration(milliseconds: 300);
+
 class _SidebarState extends State<Sidebar> {
   var _tab = SidebarTab.snippets;
   var _query = '';
   var _semantic = false;
   var _generatingRecap = false;
+  Timer? _searchDebounce;
+  Future<List<Snippet>>? _results;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
 
   Future<void> _generateDayRecap() async {
     if (_generatingRecap) return;
@@ -125,10 +138,13 @@ class _SidebarState extends State<Sidebar> {
                     tooltip: _semantic
                         ? l10n.switchToKeywordSearch
                         : l10n.switchToSemanticSearch,
-                    onPressed: () => setState(() => _semantic = !_semantic),
+                    onPressed: () => setState(() {
+                      _semantic = !_semantic;
+                      _results = _query.isEmpty ? null : _runSearch(_query);
+                    }),
                   ),
                 ),
-                onChanged: (value) => setState(() => _query = value.trim()),
+                onChanged: _onQueryChanged,
               ),
             ),
           Expanded(
@@ -143,6 +159,25 @@ class _SidebarState extends State<Sidebar> {
     );
   }
 
+  void _onQueryChanged(String value) {
+    final query = value.trim();
+    _searchDebounce?.cancel();
+    if (query == _query) return;
+    _searchDebounce = Timer(searchDebounce, () {
+      if (!mounted) return;
+      setState(() {
+        _query = query;
+        _results = query.isEmpty ? null : _runSearch(query);
+      });
+    });
+  }
+
+  Future<List<Snippet>> _runSearch(String query) async {
+    if (!_semantic) return widget.database.searchByKeyword(query);
+    final matches = await widget.semanticSearch.search(query);
+    return matches.map((match) => match.snippet).toList();
+  }
+
   Widget _buildSnippets(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     if (_query.isEmpty) {
@@ -154,27 +189,18 @@ class _SidebarState extends State<Sidebar> {
         ),
       );
     }
-    if (_semantic) {
-      return FutureBuilder<List<SemanticMatch>>(
-        future: widget.semanticSearch.search(_query),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return _SidebarMessage(
-                text: l10n.semanticSearchFailed('${snapshot.error}'));
-          }
-          return _SnippetList(
-            snippets: snapshot.data?.map((match) => match.snippet).toList(),
-            onTap: widget.onSelectSnippet,
-          );
-        },
-      );
-    }
     return FutureBuilder<List<Snippet>>(
-      future: widget.database.searchByKeyword(_query),
-      builder: (context, snapshot) => _SnippetList(
-        snippets: snapshot.data,
-        onTap: widget.onSelectSnippet,
-      ),
+      future: _results,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _SidebarMessage(
+              text: l10n.semanticSearchFailed('${snapshot.error}'));
+        }
+        return _SnippetList(
+          snippets: snapshot.data,
+          onTap: widget.onSelectSnippet,
+        );
+      },
     );
   }
 
@@ -386,12 +412,25 @@ class _SnippetList extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  snippet.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        snippet.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodyLarge
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 16,
+                      tooltip: l10n.copySnippet,
+                      onPressed: () => copyToClipboard(context, snippet.content),
+                      icon: const Icon(Icons.copy_outlined),
+                    ),
+                  ],
                 ),
                 if (snippet.language != null && snippet.language!.isNotEmpty)
                   Padding(

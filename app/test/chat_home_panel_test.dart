@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +11,7 @@ import 'package:kangoos_app/home/chat_home_panel.dart';
 import 'package:kangoos_app/secure_credential_store.dart';
 import 'package:kangoos_app/settings_repository.dart';
 import 'package:kangoos_app/theme/kangoos_theme.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class _FakeSecureCredentialStore implements SecureCredentialStore {
   final _values = <String, String>{};
@@ -29,6 +32,25 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
 
   @override
   Future<List<double>> embed(String text) async => const [1, 0, 0];
+}
+
+class _ControlledLlmProvider implements LlmProvider {
+  final controller = StreamController<String>();
+
+  @override
+  String get id => 'controlled';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) => controller.stream;
+}
+
+class _MarkdownLlmProvider implements LlmProvider {
+  @override
+  String get id => 'markdown';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) =>
+      Stream.fromIterable(const ['**bold** and `code`']);
 }
 
 class _BreakingLlmProvider implements LlmProvider {
@@ -119,6 +141,49 @@ void main() {
       tester.widget<TextField>(find.byType(TextField).last).controller!.text,
       'anyone home?',
     );
+
+    await drainStreams(tester);
+  });
+
+  testWidgets('stopping a reply ends the turn and keeps what arrived',
+      (tester) async {
+    final provider = _ControlledLlmProvider();
+    await pumpPanel(tester, provider);
+
+    await tester.enterText(find.byType(TextField).last, 'tell me everything');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    provider.controller.add('It started well');
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.byIcon(Icons.stop), findsOneWidget);
+    expect(find.textContaining('It started well'), findsWidgets);
+
+    await tester.tap(find.byIcon(Icons.stop));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(find.byIcon(Icons.stop), findsNothing);
+    expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+    expect(find.textContaining('It started well'), findsWidgets);
+
+    unawaited(provider.controller.close());
+    await drainStreams(tester);
+  });
+
+  testWidgets('assistant replies render as markdown with a copy button',
+      (tester) async {
+    await pumpPanel(tester, _MarkdownLlmProvider());
+
+    await send(tester, 'format something');
+
+    expect(find.byType(MarkdownBody), findsWidgets);
+    expect(find.byTooltip('Copy message'), findsWidgets);
 
     await drainStreams(tester);
   });

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import 'clipboard_actions.dart';
 import 'confirm_dialog.dart';
 import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
@@ -216,6 +217,11 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
         ),
         title: Text(_isEditing ? l10n.editSnippet : l10n.newSnippet),
         actions: [
+          IconButton(
+            onPressed: () => copyToClipboard(context, _contentController.text),
+            icon: const Icon(Icons.copy_outlined),
+            tooltip: l10n.copySnippet,
+          ),
           if (_isEditing)
             IconButton(
               onPressed: _delete,

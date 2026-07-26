@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -5,9 +6,11 @@ import 'dart:math';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import '../capture/capture_settings_repository.dart';
+import '../clipboard_actions.dart';
 import '../capture/capture_settings_screen.dart';
 import '../confirm_dialog.dart';
 import '../settings_repository.dart';
@@ -146,6 +149,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   final _scrollController = ScrollController();
   final _random = Random();
   var _sending = false;
+  StreamSubscription<String>? _replySubscription;
+  Completer<void>? _replyCompleter;
   var _capturing = true;
   var _semanticDegraded = false;
   int? _conversationId;
@@ -325,24 +330,51 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
 
     final buffer = StringBuffer();
     try {
-      await for (final chunk in _ragChat.reply(
+      final completed = Completer<void>();
+      _replyCompleter = completed;
+      _replySubscription = _ragChat
+          .reply(
         provider: provider,
         history: priorHistory,
         userMessage: trimmed,
-      )) {
-        buffer.write(chunk);
-        setState(() {
-          _history[_history.length - 1] =
-              LlmMessage(role: LlmRole.assistant, content: buffer.toString());
-        });
-        _scrollToEnd();
-      }
+      )
+          .listen(
+        (chunk) {
+          buffer.write(chunk);
+          setState(() {
+            _history[_history.length - 1] =
+                LlmMessage(role: LlmRole.assistant, content: buffer.toString());
+          });
+          _scrollToEnd();
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (!completed.isCompleted) completed.completeError(error, stackTrace);
+        },
+        onDone: () {
+          if (!completed.isCompleted) completed.complete();
+        },
+        cancelOnError: true,
+      );
+      await completed.future;
     } catch (e) {
       setState(() => _error = l10n.chatRequestFailed('$e'));
     } finally {
+      unawaited(_replySubscription?.cancel());
+      _replySubscription = null;
+      _replyCompleter = null;
       await _persistReply(userMessageId, buffer.toString(), trimmed);
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  void _stopStreaming() {
+    final subscription = _replySubscription;
+    if (subscription == null) return;
+    _replySubscription = null;
+
+    final completer = _replyCompleter;
+    if (completer != null && !completer.isCompleted) completer.complete();
+    unawaited(subscription.cancel());
   }
 
   Future<void> _persistReply(
@@ -448,6 +480,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           focusNode: _inputFocusNode,
           sending: _sending,
           onSubmit: _send,
+          onStop: _stopStreaming,
         ),
       ],
     );
@@ -871,12 +904,14 @@ class _Composer extends StatelessWidget {
     required this.focusNode,
     required this.sending,
     required this.onSubmit,
+    required this.onStop,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool sending;
   final void Function(String text) onSubmit;
+  final VoidCallback onStop;
 
   @override
   Widget build(BuildContext context) {
@@ -896,14 +931,11 @@ class _Composer extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             IconButton.filled(
-              onPressed: sending ? null : () => onSubmit(controller.text),
-              icon: sending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.arrow_upward),
+              tooltip: sending
+                  ? AppLocalizations.of(context).stopStreaming
+                  : null,
+              onPressed: sending ? onStop : () => onSubmit(controller.text),
+              icon: Icon(sending ? Icons.stop : Icons.arrow_upward),
             ),
           ],
         ),
@@ -919,22 +951,62 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isUser = message.role == LlmRole.user;
     final colors = Theme.of(context).colorScheme;
+    final empty = message.content.isEmpty;
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints:
             BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
         margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
         decoration: BoxDecoration(
           color:
               isUser ? colors.primaryContainer : colors.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(message.content.isEmpty ? '…' : message.content),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (empty)
+              const Text('…')
+            else
+              SelectionArea(
+                child: MarkdownBody(
+                  data: message.content,
+                  selectable: false,
+                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
+                      .copyWith(
+                    code: TextStyle(
+                      fontFamilyFallback: KangoosTheme.monoFallback,
+                      backgroundColor: colors.surface,
+                    ),
+                    codeblockDecoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                visualDensity: VisualDensity.compact,
+                iconSize: 16,
+                tooltip: l10n.copyMessage,
+                onPressed:
+                    empty ? null : () => copyToClipboard(context, message.content),
+                icon: const Icon(Icons.copy_outlined),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
