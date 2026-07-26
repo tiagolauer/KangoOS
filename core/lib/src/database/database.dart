@@ -316,13 +316,34 @@ END;
         ..where((row) => row.capturedAt.isSmallerThanValue(cutoff)))
       .go();
 
-  Future<List<Activity>> activitiesBetween(DateTime start, DateTime end) =>
+  Future<List<Activity>> activitiesBetween(
+    DateTime start,
+    DateTime end, {
+    int? limit,
+  }) async {
+    final query = select(activities)
+      ..where((row) =>
+          row.capturedAt.isBiggerOrEqualValue(start) &
+          row.capturedAt.isSmallerThanValue(end));
+
+    if (limit == null) {
+      query.orderBy([(row) => OrderingTerm.asc(row.capturedAt)]);
+      return query.get();
+    }
+
+    query
+      ..orderBy([(row) => OrderingTerm.desc(row.capturedAt)])
+      ..limit(limit);
+    return (await query.get()).reversed.toList();
+  }
+
+  Stream<List<Activity>> watchActivitiesBetween(DateTime start, DateTime end) =>
       (select(activities)
             ..where((row) =>
                 row.capturedAt.isBiggerOrEqualValue(start) &
                 row.capturedAt.isSmallerThanValue(end))
             ..orderBy([(row) => OrderingTerm.asc(row.capturedAt)]))
-          .get();
+          .watch();
 
   Future<List<Activity>> searchActivities(
     String query, {

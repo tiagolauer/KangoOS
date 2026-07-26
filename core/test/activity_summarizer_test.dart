@@ -18,6 +18,19 @@ class _FakeLlmProvider implements LlmProvider {
   }
 }
 
+class _RecordingLlmProvider implements LlmProvider {
+  String prompt = '';
+
+  @override
+  String get id => 'recording';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) {
+    prompt = messages.map((m) => m.content).join('\n');
+    return Stream.fromIterable(const ['Summary.']);
+  }
+}
+
 class _FailingLlmProvider implements LlmProvider {
   @override
   String get id => 'failing';
@@ -81,6 +94,55 @@ void main() {
     final stored = await database.watchRecentSummaries().first;
     expect(stored, hasLength(1));
     expect(stored.single.content, 'Worked on KangoOS.');
+  });
+
+  test('the prompt carries how long each window was in focus', () async {
+    final start = DateTime.utc(2026, 1, 1, 9);
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'code.exe',
+      windowTitle: 'main.dart',
+      capturedAt: Value(start),
+    ));
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'chrome.exe',
+      windowTitle: 'Docs',
+      capturedAt: Value(start.add(const Duration(minutes: 7))),
+    ));
+
+    final provider = _RecordingLlmProvider();
+    await ActivitySummarizer(database: database).summarize(
+      provider: provider,
+      kind: SummaryKind.periodic,
+      start: start.subtract(const Duration(minutes: 1)),
+      end: start.add(const Duration(minutes: 9)),
+    );
+
+    expect(provider.prompt, contains('main.dart · 7m'));
+    expect(provider.prompt, contains('Docs · 2m'));
+  });
+
+  test('a huge window is trimmed to the most recent entries', () async {
+    final start = DateTime.utc(2026, 1, 1, 9);
+    for (var i = 0; i < 30; i++) {
+      await database.logActivity(ActivitiesCompanion.insert(
+        appName: 'code.exe',
+        windowTitle: 'window $i',
+        capturedAt: Value(start.add(Duration(minutes: i))),
+      ));
+    }
+
+    final provider = _RecordingLlmProvider();
+    await ActivitySummarizer(database: database, maxPromptActivities: 10)
+        .summarize(
+      provider: provider,
+      kind: SummaryKind.periodic,
+      start: start.subtract(const Duration(minutes: 1)),
+      end: start.add(const Duration(minutes: 31)),
+    );
+
+    expect(provider.prompt, contains('20 earlier entries omitted'));
+    expect(provider.prompt, contains('window 29'));
+    expect(provider.prompt, isNot(contains('window 0 ')));
   });
 
   test('summarize returns llmFailed when the provider errors', () async {
