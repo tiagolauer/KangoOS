@@ -13,7 +13,7 @@ Commands:
   search <query> [--semantic] [--limit <n>]                    Search snippets (keyword by default).
   list [--limit <n>]                                           List recent snippets.
   show <id>                                                    Print a snippet in full.
-  edit <id> [--title T] [--content C] [--language L] [--tags a,b]   Update a snippet's fields.
+  edit <id> [--title T] [--content C] [--language L] [--tags a,b]   Update a snippet's fields (--tags "" clears them).
   delete <id>                                                  Delete a snippet.
 
 Env:
@@ -43,6 +43,13 @@ Future<int> runKangoCli(
   final flags = _parseFlags(rest);
   final positionals = _positionals(rest);
 
+  final flagWithoutValue = _flagWithoutValue(flags);
+  if (flagWithoutValue != null) {
+    errorOutput.writeln('Error: --$flagWithoutValue needs a value, '
+        'e.g. `--$flagWithoutValue <value>`.');
+    return 64;
+  }
+
   switch (arguments.first) {
     case 'create':
       return _create(
@@ -67,7 +74,7 @@ Future<int> runKangoCli(
 Future<int> _create(
   KangoosDatabase database,
   SemanticSearch? semanticSearch,
-  Map<String, String> flags,
+  Map<String, String?> flags,
   String Function() readIn,
   StringSink out,
   StringSink err,
@@ -105,7 +112,7 @@ Future<int> _search(
   KangoosDatabase database,
   SemanticSearch? semanticSearch,
   List<String> positionals,
-  Map<String, String> flags,
+  Map<String, String?> flags,
   StringSink out,
   StringSink err,
 ) async {
@@ -146,7 +153,7 @@ Future<int> _search(
 }
 
 Future<int> _list(
-    KangoosDatabase database, Map<String, String> flags, StringSink out) async {
+    KangoosDatabase database, Map<String, String?> flags, StringSink out) async {
   final limit = int.tryParse(flags['limit'] ?? '') ?? 20;
   final snippets = (await database.watchAllSnippets().first).take(limit);
 
@@ -189,7 +196,7 @@ Future<int> _show(
 Future<int> _edit(
   KangoosDatabase database,
   List<String> positionals,
-  Map<String, String> flags,
+  Map<String, String?> flags,
   StringSink out,
   StringSink err,
 ) async {
@@ -269,8 +276,25 @@ List<String> _parseTags(String? raw) => (raw ?? '')
     .where((tag) => tag.isNotEmpty)
     .toList();
 
-Map<String, String> _parseFlags(List<String> args) {
-  final flags = <String, String>{};
+const _flagsThatTakeAValue = {
+  'title',
+  'content',
+  'language',
+  'tags',
+  'limit',
+};
+
+String? _flagWithoutValue(Map<String, String?> flags) {
+  for (final entry in flags.entries) {
+    if (_flagsThatTakeAValue.contains(entry.key) && entry.value == null) {
+      return entry.key;
+    }
+  }
+  return null;
+}
+
+Map<String, String?> _parseFlags(List<String> args) {
+  final flags = <String, String?>{};
   for (var i = 0; i < args.length; i++) {
     final arg = args[i];
     if (!arg.startsWith('--')) continue;
@@ -281,7 +305,7 @@ Map<String, String> _parseFlags(List<String> args) {
       continue;
     }
     final hasValue = i + 1 < args.length && !args[i + 1].startsWith('--');
-    flags[name] = hasValue ? args[++i] : 'true';
+    flags[name] = hasValue ? args[++i] : null;
   }
   return flags;
 }
