@@ -38,7 +38,7 @@ await for (final chunk in ollama.chat([
 }
 ```
 
-Gemini is not implemented yet — add when needed.
+`GeminiProvider` is also implemented, same interface.
 
 ## Semantic search
 
@@ -57,3 +57,19 @@ final matches = await search.search('reverse a string'); // List<SemanticMatch>
 ```
 
 Embeddings are stored as a JSON-encoded `List<double>` in the `snippets.embedding` column (nullable — snippets without one are simply excluded from semantic search).
+
+## Snippet sync
+
+`SnippetSyncClient` reconciles snippets against a [`kangoos_server`](../server) instance over HTTP — pushes local-only snippets, pulls remote-only ones, and resolves conflicts (present on both sides) by `updatedAt`, last write wins. Matching across devices is by a client-generated `syncId`, not the local autoincrement `id` (which is per-database and never portable) — a snippet without one gets assigned one on its first sync.
+
+```dart
+final client = SnippetSyncClient(
+  database: db,
+  baseUrl: Uri.parse('http://localhost:8080'),
+  apiToken: token,
+);
+
+final result = await client.sync(); // SyncResult(pushed, pulled, updated)
+```
+
+Snippets only — `embedding` is excluded from the sync payload (each device re-indexes locally, since the embedding model can differ across machines) and deletions don't propagate (deleting on one side doesn't delete on the other; sync only ever creates or updates).

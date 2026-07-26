@@ -1,6 +1,6 @@
 # kangoos_server
 
-Self-hosted HTTP server exposing [`kangoos_core`](../core) — the same snippet storage, semantic search and RAG chat the desktop app uses, reachable over the network via its own REST API. The desktop app doesn't connect to it yet (no sync client) — today each keeps its own local database; this server is usable standalone via curl/scripts, or as the backend for a future client.
+Self-hosted HTTP server exposing [`kangoos_core`](../core) — the same snippet storage, semantic search and RAG chat the desktop app uses, reachable over the network via its own REST API. The desktop app has a snippet sync client (Server sync icon in the header) that pushes/pulls against this server for multi-device use; it's also usable standalone via curl/scripts, or as the backend for a future client.
 
 ## Run with Docker
 
@@ -40,10 +40,10 @@ All routes below require `Authorization: Bearer <KANGOOS_API_TOKEN>` except `/he
 
 ```
 GET    /health                     no auth, liveness check
-GET    /snippets?q=&mode=          list/search (mode: keyword [default] | semantic)
-POST   /snippets                   create -- { title, content, language?, tags? }
+GET    /snippets?q=&mode=          list/search (mode: keyword [default] | semantic); no q returns all
+POST   /snippets                   create -- { title, content, language?, tags?, syncId?, createdAt?, updatedAt? }
 GET    /snippets/<id>              get one
-PUT    /snippets/<id>              update -- any of { title, content, language, tags }
+PUT    /snippets/<id>              update -- any of { title, content, language, tags, updatedAt }
 DELETE /snippets/<id>              delete
 POST   /snippets/<id>/index        (re)compute the embedding for one snippet
 POST   /index/missing              backfill embeddings for snippets that don't have one
@@ -69,3 +69,5 @@ curl -s -N -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"
 ```
 
 `/chat`'s `history` field is a list of `{"role": "user"|"assistant", "content": "..."}` -- the same shape the app keeps in memory, sent back so the server can reply in context without persisting conversation state server-side.
+
+`syncId`/`createdAt`/`updatedAt` on create, and `updatedAt` on update, exist for the app's sync client (`core`'s `SnippetSyncClient`): `syncId` is a client-generated stable id used to match the same snippet across devices (the row's own `id` is per-database and not portable); `createdAt`/`updatedAt` are epoch-millisecond ints, letting the client preserve its own timestamps instead of getting server-assigned ones on every push. All three are optional -- omit them for a plain manual create/update and the server fills in sensible defaults.

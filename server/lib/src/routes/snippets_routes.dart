@@ -48,12 +48,22 @@ Router snippetsRouter({
     }
     final language = (body['language'] as String?)?.trim();
     final tags = (body['tags'] as List?)?.cast<String>() ?? const <String>[];
+    final syncId = (body['syncId'] as String?)?.trim();
+    final updatedAtMillis = body['updatedAt'] as int?;
+    final createdAtMillis = body['createdAt'] as int?;
 
     final id = await database.createSnippet(SnippetsCompanion.insert(
       title: title,
       content: content,
       language: Value(language == null || language.isEmpty ? null : language),
       tags: Value(tags),
+      syncId: Value(syncId == null || syncId.isEmpty ? null : syncId),
+      createdAt: createdAtMillis == null
+          ? const Value.absent()
+          : Value(DateTime.fromMillisecondsSinceEpoch(createdAtMillis)),
+      updatedAt: updatedAtMillis == null
+          ? const Value.absent()
+          : Value(DateTime.fromMillisecondsSinceEpoch(updatedAtMillis)),
     ));
     final created = await database.getSnippetById(id);
     return Response.ok(jsonEncode(created!.toJson()), headers: jsonHeaders);
@@ -77,6 +87,7 @@ Router snippetsRouter({
     final title = body['title'] as String?;
     final content = body['content'] as String?;
     final tags = (body['tags'] as List?)?.cast<String>();
+    final updatedAtMillis = body['updatedAt'] as int?;
 
     final updated = existing.copyWith(
       title: title ?? existing.title,
@@ -85,7 +96,9 @@ Router snippetsRouter({
           ? Value(_normalize(body['language'] as String?))
           : Value(existing.language),
       tags: tags ?? existing.tags,
-      updatedAt: DateTime.now(),
+      updatedAt: updatedAtMillis == null
+          ? DateTime.now()
+          : DateTime.fromMillisecondsSinceEpoch(updatedAtMillis),
     );
     await database.updateSnippet(updated);
     unawaited(semanticSearch.indexSnippet(updated).catchError((_) {}));

@@ -31,7 +31,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -61,6 +61,9 @@ class KangoosDatabase extends _$KangoosDatabase {
           }
           if (from < 8) {
             await m.addColumn(activities, activities.capturedClipboard);
+          }
+          if (from < 9) {
+            await m.addColumn(snippets, snippets.syncId);
           }
         },
       );

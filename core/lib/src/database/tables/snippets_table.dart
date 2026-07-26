@@ -33,6 +33,7 @@ class Snippets extends Table {
   TextColumn get tags =>
       text().map(const StringListConverter()).withDefault(const Constant('[]'))();
   TextColumn get embedding => text().map(const DoubleListConverter()).nullable()();
+  TextColumn get syncId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

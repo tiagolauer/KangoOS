@@ -8,6 +8,8 @@ import '../capture/capture_settings_repository.dart';
 import '../capture/capture_settings_screen.dart';
 import '../settings_repository.dart';
 import '../settings_screen.dart';
+import '../sync/sync_settings_repository.dart';
+import '../sync/sync_settings_screen.dart';
 import '../theme/kangoos_theme.dart';
 import 'activity_sparkline.dart';
 
@@ -131,6 +133,7 @@ class ChatHomePanel extends StatefulWidget {
 class _ChatHomePanelState extends State<ChatHomePanel> {
   late final _ragChat =
       RagChat(database: widget.database, semanticSearch: widget.semanticSearch);
+  final _syncSettingsRepository = SyncSettingsRepository();
 
   final _history = <LlmMessage>[];
   final _inputController = TextEditingController();
@@ -293,6 +296,12 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             builder: (_) =>
                 SettingsScreen(repository: widget.settingsRepository),
           )),
+          onOpenSyncSettings: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => SyncSettingsScreen(
+              repository: _syncSettingsRepository,
+              database: widget.database,
+            ),
+          )),
         ),
         if (_error != null)
           Container(
@@ -426,6 +435,7 @@ class _Header extends StatelessWidget {
     required this.onIndexMissing,
     required this.onOpenCaptureSettings,
     required this.onOpenLlmSettings,
+    required this.onOpenSyncSettings,
   });
 
   final bool showNewChat;
@@ -433,6 +443,7 @@ class _Header extends StatelessWidget {
   final VoidCallback onIndexMissing;
   final VoidCallback onOpenCaptureSettings;
   final VoidCallback onOpenLlmSettings;
+  final VoidCallback onOpenSyncSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -462,6 +473,11 @@ class _Header extends StatelessWidget {
             icon: const Icon(Icons.privacy_tip_outlined),
             tooltip: 'Activity capture settings',
             onPressed: onOpenCaptureSettings,
+          ),
+          IconButton(
+            icon: const Icon(Icons.sync_outlined),
+            tooltip: 'Server sync',
+            onPressed: onOpenSyncSettings,
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),

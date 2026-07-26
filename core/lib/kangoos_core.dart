@@ -17,4 +17,5 @@ export 'src/llm/providers/ollama_provider.dart';
 export 'src/llm/providers/openai_provider.dart';
 export 'src/search/semantic_search.dart';
 export 'src/summary/activity_summarizer.dart';
+export 'src/sync/snippet_sync_client.dart';
 export 'src/tagging/snippet_tagger.dart';

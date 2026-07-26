@@ -46,6 +46,11 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
       GeneratedColumn<String>('embedding', aliasedName, true,
               type: DriftSqlType.string, requiredDuringInsert: false)
           .withConverter<List<double>?>($SnippetsTable.$converterembeddingn);
+  static const VerificationMeta _syncIdMeta = const VerificationMeta('syncId');
+  @override
+  late final GeneratedColumn<String> syncId = GeneratedColumn<String>(
+      'sync_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -63,8 +68,17 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, title, content, language, tags, embedding, createdAt, updatedAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        title,
+        content,
+        language,
+        tags,
+        embedding,
+        syncId,
+        createdAt,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -93,6 +107,10 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
     if (data.containsKey('language')) {
       context.handle(_languageMeta,
           language.isAcceptableOrUnknown(data['language']!, _languageMeta));
+    }
+    if (data.containsKey('sync_id')) {
+      context.handle(_syncIdMeta,
+          syncId.isAcceptableOrUnknown(data['sync_id']!, _syncIdMeta));
     }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
@@ -124,6 +142,8 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
       embedding: $SnippetsTable.$converterembeddingn.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}embedding'])),
+      syncId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -151,6 +171,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
   final String? language;
   final List<String> tags;
   final List<double>? embedding;
+  final String? syncId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Snippet(
@@ -160,6 +181,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       this.language,
       required this.tags,
       this.embedding,
+      this.syncId,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -178,6 +200,9 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       map['embedding'] = Variable<String>(
           $SnippetsTable.$converterembeddingn.toSql(embedding));
     }
+    if (!nullToAbsent || syncId != null) {
+      map['sync_id'] = Variable<String>(syncId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -195,6 +220,8 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       embedding: embedding == null && nullToAbsent
           ? const Value.absent()
           : Value(embedding),
+      syncId:
+          syncId == null && nullToAbsent ? const Value.absent() : Value(syncId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -210,6 +237,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       language: serializer.fromJson<String?>(json['language']),
       tags: serializer.fromJson<List<String>>(json['tags']),
       embedding: serializer.fromJson<List<double>?>(json['embedding']),
+      syncId: serializer.fromJson<String?>(json['syncId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -224,6 +252,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       'language': serializer.toJson<String?>(language),
       'tags': serializer.toJson<List<String>>(tags),
       'embedding': serializer.toJson<List<double>?>(embedding),
+      'syncId': serializer.toJson<String?>(syncId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -236,6 +265,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
           Value<String?> language = const Value.absent(),
           List<String>? tags,
           Value<List<double>?> embedding = const Value.absent(),
+          Value<String?> syncId = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       Snippet(
@@ -245,6 +275,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
         language: language.present ? language.value : this.language,
         tags: tags ?? this.tags,
         embedding: embedding.present ? embedding.value : this.embedding,
+        syncId: syncId.present ? syncId.value : this.syncId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -256,6 +287,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       language: data.language.present ? data.language.value : this.language,
       tags: data.tags.present ? data.tags.value : this.tags,
       embedding: data.embedding.present ? data.embedding.value : this.embedding,
+      syncId: data.syncId.present ? data.syncId.value : this.syncId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -270,6 +302,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
           ..write('language: $language, ')
           ..write('tags: $tags, ')
           ..write('embedding: $embedding, ')
+          ..write('syncId: $syncId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -277,8 +310,8 @@ class Snippet extends DataClass implements Insertable<Snippet> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, title, content, language, tags, embedding, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, title, content, language, tags, embedding,
+      syncId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -289,6 +322,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
           other.language == this.language &&
           other.tags == this.tags &&
           other.embedding == this.embedding &&
+          other.syncId == this.syncId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -300,6 +334,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
   final Value<String?> language;
   final Value<List<String>> tags;
   final Value<List<double>?> embedding;
+  final Value<String?> syncId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const SnippetsCompanion({
@@ -309,6 +344,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
     this.language = const Value.absent(),
     this.tags = const Value.absent(),
     this.embedding = const Value.absent(),
+    this.syncId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -319,6 +355,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
     this.language = const Value.absent(),
     this.tags = const Value.absent(),
     this.embedding = const Value.absent(),
+    this.syncId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   })  : title = Value(title),
@@ -330,6 +367,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
     Expression<String>? language,
     Expression<String>? tags,
     Expression<String>? embedding,
+    Expression<String>? syncId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -340,6 +378,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       if (language != null) 'language': language,
       if (tags != null) 'tags': tags,
       if (embedding != null) 'embedding': embedding,
+      if (syncId != null) 'sync_id': syncId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -352,6 +391,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       Value<String?>? language,
       Value<List<String>>? tags,
       Value<List<double>?>? embedding,
+      Value<String?>? syncId,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt}) {
     return SnippetsCompanion(
@@ -361,6 +401,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       language: language ?? this.language,
       tags: tags ?? this.tags,
       embedding: embedding ?? this.embedding,
+      syncId: syncId ?? this.syncId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -389,6 +430,9 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       map['embedding'] = Variable<String>(
           $SnippetsTable.$converterembeddingn.toSql(embedding.value));
     }
+    if (syncId.present) {
+      map['sync_id'] = Variable<String>(syncId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -407,6 +451,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
           ..write('language: $language, ')
           ..write('tags: $tags, ')
           ..write('embedding: $embedding, ')
+          ..write('syncId: $syncId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1726,6 +1771,7 @@ typedef $$SnippetsTableCreateCompanionBuilder = SnippetsCompanion Function({
   Value<String?> language,
   Value<List<String>> tags,
   Value<List<double>?> embedding,
+  Value<String?> syncId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
 });
@@ -1736,6 +1782,7 @@ typedef $$SnippetsTableUpdateCompanionBuilder = SnippetsCompanion Function({
   Value<String?> language,
   Value<List<String>> tags,
   Value<List<double>?> embedding,
+  Value<String?> syncId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
 });
@@ -1771,6 +1818,9 @@ class $$SnippetsTableFilterComposer
           column: $table.embedding,
           builder: (column) => ColumnWithTypeConverterFilters(column));
 
+  ColumnFilters<String> get syncId => $composableBuilder(
+      column: $table.syncId, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
 
@@ -1805,6 +1855,9 @@ class $$SnippetsTableOrderingComposer
   ColumnOrderings<String> get embedding => $composableBuilder(
       column: $table.embedding, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get syncId => $composableBuilder(
+      column: $table.syncId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -1838,6 +1891,9 @@ class $$SnippetsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<List<double>?, String> get embedding =>
       $composableBuilder(column: $table.embedding, builder: (column) => column);
+
+  GeneratedColumn<String> get syncId =>
+      $composableBuilder(column: $table.syncId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -1875,6 +1931,7 @@ class $$SnippetsTableTableManager extends RootTableManager<
             Value<String?> language = const Value.absent(),
             Value<List<String>> tags = const Value.absent(),
             Value<List<double>?> embedding = const Value.absent(),
+            Value<String?> syncId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
           }) =>
@@ -1885,6 +1942,7 @@ class $$SnippetsTableTableManager extends RootTableManager<
             language: language,
             tags: tags,
             embedding: embedding,
+            syncId: syncId,
             createdAt: createdAt,
             updatedAt: updatedAt,
           ),
@@ -1895,6 +1953,7 @@ class $$SnippetsTableTableManager extends RootTableManager<
             Value<String?> language = const Value.absent(),
             Value<List<String>> tags = const Value.absent(),
             Value<List<double>?> embedding = const Value.absent(),
+            Value<String?> syncId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
           }) =>
@@ -1905,6 +1964,7 @@ class $$SnippetsTableTableManager extends RootTableManager<
             language: language,
             tags: tags,
             embedding: embedding,
+            syncId: syncId,
             createdAt: createdAt,
             updatedAt: updatedAt,
           ),
