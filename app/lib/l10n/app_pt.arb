@@ -96,6 +96,8 @@
   "llmModel": "Modelo",
   "llmApiKey": "Chave de API",
   "llmBaseUrl": "URL base (opcional)",
+  "embeddingModel": "Modelo de embedding",
+  "embeddingModelHint": "Usado na busca semântica. Roda no servidor Ollama acima; o modelo precisa estar baixado lá.",
   "llmReasoningMode": "Modo de raciocínio",
   "llmReasoningHint": "Só tem efeito em modelos com suporte a raciocínio.",
   "providerOllama": "Ollama (local)",

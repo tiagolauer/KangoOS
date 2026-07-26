@@ -20,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final _modelController = TextEditingController();
   late final _apiKeyController = TextEditingController();
   late final _baseUrlController = TextEditingController();
+  late final _embeddingModelController = TextEditingController();
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _modelController.text = settings.model;
       _apiKeyController.text = settings.apiKey;
       _baseUrlController.text = settings.baseUrl;
+      _embeddingModelController.text = settings.embeddingModel;
       _loading = false;
     });
   }
@@ -43,6 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _modelController.dispose();
     _apiKeyController.dispose();
     _baseUrlController.dispose();
+    _embeddingModelController.dispose();
     super.dispose();
   }
 
@@ -51,6 +54,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       model: _modelController.text.trim(),
       apiKey: _apiKeyController.text.trim(),
       baseUrl: _baseUrlController.text.trim(),
+      embeddingModel: _embeddingModelController.text.trim().isEmpty
+          ? defaultEmbeddingModel
+          : _embeddingModelController.text.trim(),
     );
     await widget.repository.save(settings);
     if (!mounted) return;
@@ -111,10 +117,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 controller: _baseUrlController,
                 decoration: InputDecoration(
                   labelText: l10n.llmBaseUrl,
-                  hintText: 'http://localhost:11434',
+                  hintText: defaultOllamaBaseUrl,
                 ),
               ),
             ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: _embeddingModelController,
+              decoration: InputDecoration(
+                labelText: l10n.embeddingModel,
+                hintText: defaultEmbeddingModel,
+                helperText: l10n.embeddingModelHint,
+                helperMaxLines: 2,
+              ),
+            ),
             if (!isOllama) ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<ReasoningEffort>(
