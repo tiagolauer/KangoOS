@@ -10,6 +10,7 @@ class RagChat {
     this.maxContextSnippets = 5,
     this.maxContextActivities = 30,
     this.maxContextSummaries = 5,
+    this.onSemanticSearchError,
   });
 
   final KangoosDatabase database;
@@ -18,13 +19,17 @@ class RagChat {
   final int maxContextActivities;
   final int maxContextSummaries;
 
+  final void Function(Object error)? onSemanticSearchError;
+
   static const _queryBoundarySlack = Duration(seconds: 1);
 
   Future<List<Snippet>> retrieveContext(String query) async {
     try {
       final matches = await semanticSearch.search(query, limit: maxContextSnippets);
       if (matches.isNotEmpty) return matches.map((match) => match.snippet).toList();
-    } catch (_) {}
+    } catch (error) {
+      onSemanticSearchError?.call(error);
+    }
     final matches = await database.searchByKeyword(query);
     return matches.take(maxContextSnippets).toList();
   }

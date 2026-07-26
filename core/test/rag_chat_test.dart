@@ -135,4 +135,36 @@ void main() {
     expect(context, hasLength(1));
     expect(context.first.title, 'Dart string reverse');
   });
+
+  test('onSemanticSearchError fires when semantic search throws', () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+    final semanticSearch = SemanticSearch(
+        database: database, embeddingProvider: _ThrowingEmbeddingProvider());
+    Object? reported;
+    final ragChat = RagChat(
+      database: database,
+      semanticSearch: semanticSearch,
+      onSemanticSearchError: (e) => reported = e,
+    );
+
+    await database.createSnippet(SnippetsCompanion.insert(
+      title: 'Dart string reverse',
+      content: 'input.split("").reversed.join()',
+    ));
+
+    final context = await ragChat.retrieveContext('reverse');
+    expect(reported, isNotNull);
+    expect(context, hasLength(1));
+    expect(context.first.title, 'Dart string reverse');
+  });
+}
+
+class _ThrowingEmbeddingProvider implements EmbeddingProvider {
+  @override
+  String get id => 'throwing';
+
+  @override
+  Future<List<double>> embed(String text) async =>
+      throw Exception('embedding provider unreachable');
 }

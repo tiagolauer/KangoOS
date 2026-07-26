@@ -131,8 +131,13 @@ class ChatHomePanel extends StatefulWidget {
 }
 
 class _ChatHomePanelState extends State<ChatHomePanel> {
-  late final _ragChat =
-      RagChat(database: widget.database, semanticSearch: widget.semanticSearch);
+  late final _ragChat = RagChat(
+    database: widget.database,
+    semanticSearch: widget.semanticSearch,
+    onSemanticSearchError: (_) {
+      if (mounted) setState(() => _semanticDegraded = true);
+    },
+  );
   final _syncSettingsRepository = SyncSettingsRepository();
 
   final _history = <LlmMessage>[];
@@ -142,6 +147,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   final _random = Random();
   var _sending = false;
   var _capturing = true;
+  var _semanticDegraded = false;
   int? _conversationId;
   String? _error;
   List<String> _freeformSuggestions = _freeformPool.take(2).toList();
@@ -243,6 +249,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   Future<void> _send(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _sending) return;
+    setState(() => _semanticDegraded = false);
 
     final settings = await widget.settingsRepository.load();
     if (settings.model.isEmpty) {
@@ -345,6 +352,30 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
               _error!,
               style: TextStyle(
                   color: Theme.of(context).colorScheme.onErrorContainer),
+            ),
+          ),
+        if (_semanticDegraded)
+          Container(
+            width: double.infinity,
+            color: Theme.of(context).colorScheme.tertiaryContainer,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onTertiaryContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Semantic search unavailable — using keyword search. '
+                    'Check that Ollama is running.',
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onTertiaryContainer),
+                  ),
+                ),
+              ],
             ),
           ),
         Expanded(
@@ -532,6 +563,7 @@ class _Header extends StatelessWidget {
 
 class ConversationHistorySheet extends StatelessWidget {
   const ConversationHistorySheet({
+    super.key,
     required this.database,
     required this.currentConversationId,
   });
