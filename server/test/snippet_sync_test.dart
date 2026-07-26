@@ -132,4 +132,101 @@ void main() {
     expect(await serverDatabase.allSnippets(), hasLength(1));
     expect(await clientDatabase.allSnippets(), hasLength(1));
   });
+
+  group('delete propagation', () {
+    test('a local delete removes the snippet from the server', () async {
+      final id = await clientDatabase.createSnippet(
+          SnippetsCompanion.insert(title: 'doomed', content: 'x'));
+      await syncClient.sync();
+      expect(await serverDatabase.allSnippets(), hasLength(1));
+
+      await clientDatabase.deleteSnippet(id);
+      final result = await syncClient.sync();
+
+      expect(result.deletedRemotely, 1);
+      expect(await serverDatabase.allSnippets(), isEmpty);
+    });
+
+    test('a remote delete removes the snippet locally', () async {
+      await clientDatabase.createSnippet(
+          SnippetsCompanion.insert(title: 'doomed', content: 'x'));
+      await syncClient.sync();
+      final remote = (await serverDatabase.allSnippets()).single;
+
+      await serverDatabase.deleteSnippet(remote.id);
+      final result = await syncClient.sync();
+
+      expect(result.deletedLocally, 1);
+      expect(await clientDatabase.allSnippets(), isEmpty);
+    });
+
+    test('a delete stays deleted across repeated syncs', () async {
+      final id = await clientDatabase.createSnippet(
+          SnippetsCompanion.insert(title: 'doomed', content: 'x'));
+      await syncClient.sync();
+      await clientDatabase.deleteSnippet(id);
+      await syncClient.sync();
+
+      final result = await syncClient.sync();
+
+      expect(result.pushed, 0);
+      expect(result.pulled, 0);
+      expect(await serverDatabase.allSnippets(), isEmpty);
+      expect(await clientDatabase.allSnippets(), isEmpty);
+    });
+
+    test('an edit newer than the remote delete resurrects the snippet',
+        () async {
+      final id = await clientDatabase.createSnippet(
+          SnippetsCompanion.insert(title: 'contested', content: 'x'));
+      await syncClient.sync();
+      final remote = (await serverDatabase.allSnippets()).single;
+      await serverDatabase.deleteSnippet(remote.id);
+
+      final local = (await clientDatabase.getSnippetById(id))!;
+      await clientDatabase.updateSnippet(local.copyWith(
+        title: 'edited after the delete',
+        updatedAt: DateTime.now().add(const Duration(seconds: 5)),
+      ));
+
+      final result = await syncClient.sync();
+
+      expect(result.deletedLocally, 0);
+      expect(result.pushed, 1);
+      expect((await serverDatabase.allSnippets()).single.title,
+          'edited after the delete');
+      expect(await clientDatabase.allSnippets(), hasLength(1));
+    });
+
+    test('a resurrected snippet is not re-deleted on the next sync', () async {
+      final id = await clientDatabase.createSnippet(
+          SnippetsCompanion.insert(title: 'contested', content: 'x'));
+      await syncClient.sync();
+      final remote = (await serverDatabase.allSnippets()).single;
+      await serverDatabase.deleteSnippet(remote.id);
+      final local = (await clientDatabase.getSnippetById(id))!;
+      await clientDatabase.updateSnippet(local.copyWith(
+        title: 'edited after the delete',
+        updatedAt: DateTime.now().add(const Duration(seconds: 5)),
+      ));
+      await syncClient.sync();
+
+      await syncClient.sync();
+
+      expect(await serverDatabase.allSnippets(), hasLength(1));
+      expect(await clientDatabase.allSnippets(), hasLength(1));
+    });
+
+    test('deleting a snippet that was never synced does not touch the server',
+        () async {
+      final id = await clientDatabase.createSnippet(
+          SnippetsCompanion.insert(title: 'never synced', content: 'x'));
+      await clientDatabase.deleteSnippet(id);
+
+      final result = await syncClient.sync();
+
+      expect(result.deletedRemotely, 0);
+      expect(await serverDatabase.allSnippets(), isEmpty);
+    });
+  });
 }

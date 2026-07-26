@@ -1727,6 +1727,197 @@ class ConversationMessagesCompanion
   }
 }
 
+class $DeletedSnippetsTable extends DeletedSnippets
+    with TableInfo<$DeletedSnippetsTable, DeletedSnippet> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeletedSnippetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _syncIdMeta = const VerificationMeta('syncId');
+  @override
+  late final GeneratedColumn<String> syncId = GeneratedColumn<String>(
+      'sync_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [syncId, deletedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deleted_snippets';
+  @override
+  VerificationContext validateIntegrity(Insertable<DeletedSnippet> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('sync_id')) {
+      context.handle(_syncIdMeta,
+          syncId.isAcceptableOrUnknown(data['sync_id']!, _syncIdMeta));
+    } else if (isInserting) {
+      context.missing(_syncIdMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {syncId};
+  @override
+  DeletedSnippet map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeletedSnippet(
+      syncId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_id'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at'])!,
+    );
+  }
+
+  @override
+  $DeletedSnippetsTable createAlias(String alias) {
+    return $DeletedSnippetsTable(attachedDatabase, alias);
+  }
+}
+
+class DeletedSnippet extends DataClass implements Insertable<DeletedSnippet> {
+  final String syncId;
+  final DateTime deletedAt;
+  const DeletedSnippet({required this.syncId, required this.deletedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['sync_id'] = Variable<String>(syncId);
+    map['deleted_at'] = Variable<DateTime>(deletedAt);
+    return map;
+  }
+
+  DeletedSnippetsCompanion toCompanion(bool nullToAbsent) {
+    return DeletedSnippetsCompanion(
+      syncId: Value(syncId),
+      deletedAt: Value(deletedAt),
+    );
+  }
+
+  factory DeletedSnippet.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeletedSnippet(
+      syncId: serializer.fromJson<String>(json['syncId']),
+      deletedAt: serializer.fromJson<DateTime>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'syncId': serializer.toJson<String>(syncId),
+      'deletedAt': serializer.toJson<DateTime>(deletedAt),
+    };
+  }
+
+  DeletedSnippet copyWith({String? syncId, DateTime? deletedAt}) =>
+      DeletedSnippet(
+        syncId: syncId ?? this.syncId,
+        deletedAt: deletedAt ?? this.deletedAt,
+      );
+  DeletedSnippet copyWithCompanion(DeletedSnippetsCompanion data) {
+    return DeletedSnippet(
+      syncId: data.syncId.present ? data.syncId.value : this.syncId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletedSnippet(')
+          ..write('syncId: $syncId, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(syncId, deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeletedSnippet &&
+          other.syncId == this.syncId &&
+          other.deletedAt == this.deletedAt);
+}
+
+class DeletedSnippetsCompanion extends UpdateCompanion<DeletedSnippet> {
+  final Value<String> syncId;
+  final Value<DateTime> deletedAt;
+  final Value<int> rowid;
+  const DeletedSnippetsCompanion({
+    this.syncId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeletedSnippetsCompanion.insert({
+    required String syncId,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : syncId = Value(syncId);
+  static Insertable<DeletedSnippet> custom({
+    Expression<String>? syncId,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (syncId != null) 'sync_id': syncId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeletedSnippetsCompanion copyWith(
+      {Value<String>? syncId, Value<DateTime>? deletedAt, Value<int>? rowid}) {
+    return DeletedSnippetsCompanion(
+      syncId: syncId ?? this.syncId,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (syncId.present) {
+      map['sync_id'] = Variable<String>(syncId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletedSnippetsCompanion(')
+          ..write('syncId: $syncId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KangoosDatabase extends GeneratedDatabase {
   _$KangoosDatabase(QueryExecutor e) : super(e);
   $KangoosDatabaseManager get managers => $KangoosDatabaseManager(this);
@@ -1737,6 +1928,8 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
   late final $ConversationsTable conversations = $ConversationsTable(this);
   late final $ConversationMessagesTable conversationMessages =
       $ConversationMessagesTable(this);
+  late final $DeletedSnippetsTable deletedSnippets =
+      $DeletedSnippetsTable(this);
   late final Index snippetsUpdatedAtIdx = Index('snippets_updated_at_idx',
       'CREATE INDEX snippets_updated_at_idx ON snippets (updated_at)');
   late final Index activitiesCapturedAtIdx = Index('activities_captured_at_idx',
@@ -1747,6 +1940,9 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
   late final Index conversationMessagesConversationIdIdx = Index(
       'conversation_messages_conversation_id_idx',
       'CREATE INDEX conversation_messages_conversation_id_idx ON conversation_messages (conversation_id)');
+  late final Index deletedSnippetsDeletedAtIdx = Index(
+      'deleted_snippets_deleted_at_idx',
+      'CREATE INDEX deleted_snippets_deleted_at_idx ON deleted_snippets (deleted_at)');
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1757,10 +1953,12 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
         activitySummaries,
         conversations,
         conversationMessages,
+        deletedSnippets,
         snippetsUpdatedAtIdx,
         activitiesCapturedAtIdx,
         activitySummariesPeriodEndIdx,
-        conversationMessagesConversationIdIdx
+        conversationMessagesConversationIdIdx,
+        deletedSnippetsDeletedAtIdx
       ];
 }
 
@@ -2682,6 +2880,135 @@ typedef $$ConversationMessagesTableProcessedTableManager
         ),
         ConversationMessage,
         PrefetchHooks Function()>;
+typedef $$DeletedSnippetsTableCreateCompanionBuilder = DeletedSnippetsCompanion
+    Function({
+  required String syncId,
+  Value<DateTime> deletedAt,
+  Value<int> rowid,
+});
+typedef $$DeletedSnippetsTableUpdateCompanionBuilder = DeletedSnippetsCompanion
+    Function({
+  Value<String> syncId,
+  Value<DateTime> deletedAt,
+  Value<int> rowid,
+});
+
+class $$DeletedSnippetsTableFilterComposer
+    extends Composer<_$KangoosDatabase, $DeletedSnippetsTable> {
+  $$DeletedSnippetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get syncId => $composableBuilder(
+      column: $table.syncId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$DeletedSnippetsTableOrderingComposer
+    extends Composer<_$KangoosDatabase, $DeletedSnippetsTable> {
+  $$DeletedSnippetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get syncId => $composableBuilder(
+      column: $table.syncId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DeletedSnippetsTableAnnotationComposer
+    extends Composer<_$KangoosDatabase, $DeletedSnippetsTable> {
+  $$DeletedSnippetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get syncId =>
+      $composableBuilder(column: $table.syncId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$DeletedSnippetsTableTableManager extends RootTableManager<
+    _$KangoosDatabase,
+    $DeletedSnippetsTable,
+    DeletedSnippet,
+    $$DeletedSnippetsTableFilterComposer,
+    $$DeletedSnippetsTableOrderingComposer,
+    $$DeletedSnippetsTableAnnotationComposer,
+    $$DeletedSnippetsTableCreateCompanionBuilder,
+    $$DeletedSnippetsTableUpdateCompanionBuilder,
+    (
+      DeletedSnippet,
+      BaseReferences<_$KangoosDatabase, $DeletedSnippetsTable, DeletedSnippet>
+    ),
+    DeletedSnippet,
+    PrefetchHooks Function()> {
+  $$DeletedSnippetsTableTableManager(
+      _$KangoosDatabase db, $DeletedSnippetsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeletedSnippetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeletedSnippetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeletedSnippetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> syncId = const Value.absent(),
+            Value<DateTime> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DeletedSnippetsCompanion(
+            syncId: syncId,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String syncId,
+            Value<DateTime> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DeletedSnippetsCompanion.insert(
+            syncId: syncId,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$DeletedSnippetsTableProcessedTableManager = ProcessedTableManager<
+    _$KangoosDatabase,
+    $DeletedSnippetsTable,
+    DeletedSnippet,
+    $$DeletedSnippetsTableFilterComposer,
+    $$DeletedSnippetsTableOrderingComposer,
+    $$DeletedSnippetsTableAnnotationComposer,
+    $$DeletedSnippetsTableCreateCompanionBuilder,
+    $$DeletedSnippetsTableUpdateCompanionBuilder,
+    (
+      DeletedSnippet,
+      BaseReferences<_$KangoosDatabase, $DeletedSnippetsTable, DeletedSnippet>
+    ),
+    DeletedSnippet,
+    PrefetchHooks Function()>;
 
 class $KangoosDatabaseManager {
   final _$KangoosDatabase _db;
@@ -2696,4 +3023,6 @@ class $KangoosDatabaseManager {
       $$ConversationsTableTableManager(_db, _db.conversations);
   $$ConversationMessagesTableTableManager get conversationMessages =>
       $$ConversationMessagesTableTableManager(_db, _db.conversationMessages);
+  $$DeletedSnippetsTableTableManager get deletedSnippets =>
+      $$DeletedSnippetsTableTableManager(_db, _db.deletedSnippets);
 }

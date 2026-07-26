@@ -78,7 +78,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       );
       final result = await client.sync();
       setState(() => _status = 'Synced: ${result.pushed} pushed, '
-          '${result.pulled} pulled, ${result.updated} updated.');
+          '${result.pulled} pulled, ${result.updated} updated, '
+          '${result.deletedLocally + result.deletedRemotely} deleted.');
     } catch (e) {
       setState(() => _status = 'Sync failed: $e');
     } finally {

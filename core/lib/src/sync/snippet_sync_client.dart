@@ -7,11 +7,19 @@ import 'package:http/http.dart' as http;
 import '../database/database.dart';
 
 class SyncResult {
-  const SyncResult({required this.pushed, required this.pulled, required this.updated});
+  const SyncResult({
+    required this.pushed,
+    required this.pulled,
+    required this.updated,
+    this.deletedLocally = 0,
+    this.deletedRemotely = 0,
+  });
 
   final int pushed;
   final int pulled;
   final int updated;
+  final int deletedLocally;
+  final int deletedRemotely;
 }
 
 class SyncException implements Exception {
@@ -42,14 +50,8 @@ class SnippetSyncClient {
       };
 
   Future<SyncResult> sync() async {
-    final remoteResponse =
-        await httpClient.get(baseUrl.resolve('/snippets'), headers: _headers);
-    if (remoteResponse.statusCode != 200) {
-      throw SyncException(
-          'Failed to fetch remote snippets: ${remoteResponse.statusCode}');
-    }
-    final remoteList =
-        (jsonDecode(remoteResponse.body) as List).cast<Map<String, dynamic>>();
+    final remoteList = await _fetchRemoteSnippets();
+    final remoteTombstones = await _fetchRemoteTombstones();
 
     final localSnippets = await database.allSnippets();
     final localWithSyncId = <Snippet>[];
@@ -68,38 +70,132 @@ class SnippetSyncClient {
       for (final r in remoteList)
         if (r['syncId'] != null) r['syncId'] as String: r,
     };
+    final localTombstones = {
+      for (final t in await database.snippetTombstones()) t.syncId: t.deletedAt,
+    };
 
     var pushed = 0;
     var pulled = 0;
     var updated = 0;
+    var deletedLocally = 0;
+    var deletedRemotely = 0;
 
-    for (final entry in localBySyncId.entries) {
-      final remote = remoteBySyncId[entry.key];
-      final local = entry.value;
-      if (remote == null) {
+    final allSyncIds = <String>{
+      ...localBySyncId.keys,
+      ...remoteBySyncId.keys,
+      ...localTombstones.keys,
+      ...remoteTombstones.keys,
+    };
+
+    for (final syncId in allSyncIds) {
+      final local = localBySyncId[syncId];
+      final remote = remoteBySyncId[syncId];
+      final localDeletedAt = localTombstones[syncId];
+      final remoteDeletedAt = remoteTombstones[syncId];
+
+      if (local != null && remoteDeletedAt != null) {
+        if (_deletionWins(remoteDeletedAt, local.updatedAt)) {
+          await database.deleteSnippet(local.id);
+          deletedLocally++;
+        } else {
+          await _push(local);
+          pushed++;
+        }
+        continue;
+      }
+
+      if (remote != null && localDeletedAt != null) {
+        final remoteUpdatedAt =
+            DateTime.fromMillisecondsSinceEpoch(remote['updatedAt'] as int);
+        if (_deletionWins(localDeletedAt, remoteUpdatedAt)) {
+          await _deleteRemote(syncId);
+          deletedRemotely++;
+        } else {
+          await database.clearSnippetTombstone(syncId);
+          await _pullCreate(remote);
+          pulled++;
+        }
+        continue;
+      }
+
+      if (local != null && remote == null) {
+        if (remoteDeletedAt != null) continue;
         await _push(local);
         pushed++;
         continue;
       }
-      final remoteUpdatedAt =
-          DateTime.fromMillisecondsSinceEpoch(remote['updatedAt'] as int);
-      if (local.updatedAt.isAfter(remoteUpdatedAt)) {
-        await _pushUpdate(remote['id'] as int, local);
-        updated++;
-      } else if (remoteUpdatedAt.isAfter(local.updatedAt)) {
-        await _pullUpdate(local.id, remote);
-        updated++;
-      }
-    }
 
-    for (final entry in remoteBySyncId.entries) {
-      if (!localBySyncId.containsKey(entry.key)) {
-        await _pullCreate(entry.value);
+      if (remote != null && local == null) {
+        if (localDeletedAt != null) continue;
+        await _pullCreate(remote);
         pulled++;
+        continue;
+      }
+
+      if (local != null && remote != null) {
+        final remoteUpdatedAt =
+            DateTime.fromMillisecondsSinceEpoch(remote['updatedAt'] as int);
+        if (local.updatedAt.isAfter(remoteUpdatedAt)) {
+          await _pushUpdate(remote['id'] as int, local);
+          updated++;
+        } else if (remoteUpdatedAt.isAfter(local.updatedAt)) {
+          await _pullUpdate(local.id, remote);
+          updated++;
+        }
+        continue;
+      }
+
+      if (localDeletedAt != null && remoteDeletedAt == null) {
+        await _deleteRemote(syncId);
+        deletedRemotely++;
       }
     }
 
-    return SyncResult(pushed: pushed, pulled: pulled, updated: updated);
+    return SyncResult(
+      pushed: pushed,
+      pulled: pulled,
+      updated: updated,
+      deletedLocally: deletedLocally,
+      deletedRemotely: deletedRemotely,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRemoteSnippets() async {
+    final response =
+        await httpClient.get(baseUrl.resolve('/snippets'), headers: _headers);
+    if (response.statusCode != 200) {
+      throw SyncException(
+          'Failed to fetch remote snippets: ${response.statusCode}');
+    }
+    return (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, DateTime>> _fetchRemoteTombstones() async {
+    final response = await httpClient.get(
+        baseUrl.resolve('/snippets/deleted'),
+        headers: _headers);
+    if (response.statusCode == 404) return const {};
+    if (response.statusCode != 200) {
+      throw SyncException(
+          'Failed to fetch remote deletions: ${response.statusCode}');
+    }
+    final list = (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
+    return {
+      for (final t in list)
+        t['syncId'] as String:
+            DateTime.fromMillisecondsSinceEpoch(t['deletedAt'] as int),
+    };
+  }
+
+  Future<void> _deleteRemote(String syncId) async {
+    final response = await httpClient.delete(
+      baseUrl.resolve('/snippets/by-sync-id/$syncId'),
+      headers: _headers,
+    );
+    if (response.statusCode != 204 && response.statusCode != 404) {
+      throw SyncException(
+          'Failed to delete remote snippet: ${response.statusCode}');
+    }
   }
 
   Future<void> _push(Snippet local) async {
@@ -161,6 +257,9 @@ class SnippetSyncClient {
       updatedAt: DateTime.fromMillisecondsSinceEpoch(remote['updatedAt'] as int),
     ));
   }
+
+  static bool _deletionWins(DateTime deletedAt, DateTime updatedAt) =>
+      !deletedAt.isBefore(updatedAt);
 
   static String _generateSyncId() {
     final random = Random.secure();

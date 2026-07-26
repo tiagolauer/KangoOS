@@ -8,6 +8,7 @@ import '../llm/llm_provider.dart';
 import 'tables/activities_table.dart';
 import 'tables/activity_summaries_table.dart';
 import 'tables/conversations_table.dart';
+import 'tables/deleted_snippets_table.dart';
 import 'tables/snippets_table.dart';
 
 part 'database.g.dart';
@@ -18,6 +19,7 @@ part 'database.g.dart';
   ActivitySummaries,
   Conversations,
   ConversationMessages,
+  DeletedSnippets,
 ])
 class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase(super.executor);
@@ -31,7 +33,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +70,9 @@ class KangoosDatabase extends _$KangoosDatabase {
           }
           if (from < 10) {
             await _createActivitiesFts();
+          }
+          if (from < 11) {
+            await m.createTable(deletedSnippets);
           }
         },
       );
@@ -137,8 +142,37 @@ END;
 
   Future<bool> updateSnippet(Snippet entry) => update(snippets).replace(entry);
 
-  Future<int> deleteSnippet(int id) =>
-      (delete(snippets)..where((row) => row.id.equals(id))).go();
+  Future<int> deleteSnippet(int id) => transaction(() async {
+        final existing = await getSnippetById(id);
+        final removed =
+            await (delete(snippets)..where((row) => row.id.equals(id))).go();
+        final syncId = existing?.syncId;
+        if (removed > 0 && syncId != null && syncId.isNotEmpty) {
+          await recordSnippetTombstone(syncId);
+        }
+        return removed;
+      });
+
+  Future<void> recordSnippetTombstone(String syncId, {DateTime? deletedAt}) =>
+      into(deletedSnippets).insertOnConflictUpdate(DeletedSnippetsCompanion(
+        syncId: Value(syncId),
+        deletedAt:
+            deletedAt == null ? const Value.absent() : Value(deletedAt),
+      ));
+
+  Future<List<DeletedSnippet>> snippetTombstones() =>
+      select(deletedSnippets).get();
+
+  Future<DeletedSnippet?> snippetTombstoneFor(String syncId) =>
+      (select(deletedSnippets)..where((row) => row.syncId.equals(syncId)))
+          .getSingleOrNull();
+
+  Future<void> clearSnippetTombstone(String syncId) =>
+      (delete(deletedSnippets)..where((row) => row.syncId.equals(syncId))).go();
+
+  Future<Snippet?> getSnippetBySyncId(String syncId) =>
+      (select(snippets)..where((row) => row.syncId.equals(syncId)))
+          .getSingleOrNull();
 
   Future<Snippet?> getSnippetById(int id) =>
       (select(snippets)..where((row) => row.id.equals(id))).getSingleOrNull();

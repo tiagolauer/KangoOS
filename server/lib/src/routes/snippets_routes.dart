@@ -52,6 +52,10 @@ Router snippetsRouter({
     final updatedAtMillis = body['updatedAt'] as int?;
     final createdAtMillis = body['createdAt'] as int?;
 
+    if (syncId != null && syncId.isNotEmpty) {
+      await database.clearSnippetTombstone(syncId);
+    }
+
     final id = await database.createSnippet(SnippetsCompanion.insert(
       title: title,
       content: content,
@@ -67,6 +71,29 @@ Router snippetsRouter({
     ));
     final created = await database.getSnippetById(id);
     return Response.ok(jsonEncode(created!.toJson()), headers: jsonHeaders);
+  });
+
+  router.get('/deleted', (Request request) async {
+    final tombstones = await database.snippetTombstones();
+    return Response.ok(
+      jsonEncode(tombstones
+          .map((t) => {
+                'syncId': t.syncId,
+                'deletedAt': t.deletedAt.millisecondsSinceEpoch,
+              })
+          .toList()),
+      headers: jsonHeaders,
+    );
+  });
+
+  router.delete('/by-sync-id/<syncId>', (Request request, String syncId) async {
+    final existing = await database.getSnippetBySyncId(syncId);
+    if (existing != null) {
+      await database.deleteSnippet(existing.id);
+    } else {
+      await database.recordSnippetTombstone(syncId);
+    }
+    return Response(204);
   });
 
   router.get('/<id>', (Request request, String id) async {
