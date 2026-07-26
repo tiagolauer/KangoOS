@@ -45,7 +45,8 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
     final app = _excludeController.text.trim();
     if (app.isEmpty || _settings.excludedApps.contains(app)) return;
     _excludeController.clear();
-    await _apply(_settings.copyWith(excludedApps: [..._settings.excludedApps, app]));
+    await _apply(
+        _settings.copyWith(excludedApps: [..._settings.excludedApps, app]));
   }
 
   Future<void> _removeExcludedApp(String app) => _apply(
@@ -72,7 +73,21 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
               'KangoOS is open.',
             ),
             value: !_settings.paused,
-            onChanged: (enabled) => _apply(_settings.copyWith(paused: !enabled)),
+            onChanged: (enabled) =>
+                _apply(_settings.copyWith(paused: !enabled)),
+          ),
+          SwitchListTile(
+            title: const Text('Capture browser URLs'),
+            subtitle: const Text(
+              'Also records the active tab\'s URL for Chrome/Edge/Brave/Safari. '
+              'This is content, not just metadata: off by default. On Windows/'
+              'Linux this reads the address bar via accessibility APIs '
+              '(best-effort, may not always work); on macOS it requires '
+              'granting Accessibility permission to KangoOS.',
+            ),
+            value: _settings.captureBrowserUrls,
+            onChanged: (enabled) =>
+                _apply(_settings.copyWith(captureBrowserUrls: enabled)),
           ),
           SwitchListTile(
             title: const Text('Capture visible text (experimental)'),
@@ -87,12 +102,14 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                 _apply(_settings.copyWith(captureVisibleText: enabled)),
           ),
           const SizedBox(height: 16),
-          Text('Keep history for', style: Theme.of(context).textTheme.titleMedium),
+          Text('Keep history for',
+              style: Theme.of(context).textTheme.titleMedium),
           const Text('Older activity is purged automatically.'),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             value: _settings.retentionDays,
-            decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+            decoration: const InputDecoration(
+                border: OutlineInputBorder(), isDense: true),
             items: const [
               DropdownMenuItem(value: 7, child: Text('7 days')),
               DropdownMenuItem(value: 30, child: Text('30 days')),
@@ -100,7 +117,9 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
               DropdownMenuItem(value: 0, child: Text('Forever')),
             ],
             onChanged: (value) {
-              if (value != null) _apply(_settings.copyWith(retentionDays: value));
+              if (value != null) {
+                _apply(_settings.copyWith(retentionDays: value));
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -121,7 +140,8 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton(onPressed: _addExcludedApp, icon: const Icon(Icons.add)),
+              IconButton(
+                  onPressed: _addExcludedApp, icon: const Icon(Icons.add)),
             ],
           ),
           const SizedBox(height: 8),

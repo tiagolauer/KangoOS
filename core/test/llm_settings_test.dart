@@ -25,11 +25,30 @@ void main() {
     ).buildProvider();
     expect(openAi, isA<OpenAiProvider>());
     expect(openAi.id, 'openai');
+
+    final gemini = const LlmSettings(
+      provider: LlmProviderKind.gemini,
+      model: 'gemini-2.5-flash',
+      apiKey: 'key',
+    ).buildProvider();
+    expect(gemini, isA<GeminiProvider>());
+    expect(gemini.id, 'gemini');
+  });
+
+  test('reasoningEffort flows from settings into the built provider', () {
+    final anthropic = const LlmSettings(
+      provider: LlmProviderKind.anthropic,
+      model: 'claude-opus-4-8',
+      apiKey: 'key',
+      reasoningEffort: ReasoningEffort.thinking,
+    ).buildProvider() as AnthropicProvider;
+    expect(anthropic.reasoningEffort, ReasoningEffort.thinking);
   });
 
   test('ollama defaults to localhost when baseUrl is empty', () {
-    final provider = const LlmSettings(provider: LlmProviderKind.ollama, model: 'llama3')
-        .buildProvider() as OllamaProvider;
+    final provider =
+        const LlmSettings(provider: LlmProviderKind.ollama, model: 'llama3')
+            .buildProvider() as OllamaProvider;
     expect(provider.baseUrl, 'http://localhost:11434');
   });
 }

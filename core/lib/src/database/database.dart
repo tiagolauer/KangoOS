@@ -4,11 +4,12 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
 import 'tables/activities_table.dart';
+import 'tables/activity_summaries_table.dart';
 import 'tables/snippets_table.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Snippets, Activities])
+@DriftDatabase(tables: [Snippets, Activities, ActivitySummaries])
 class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase(super.executor);
 
@@ -17,11 +18,14 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
+        onCreate: (m) async {
+          await m.createAll();
+          await _createSnippetsFts();
+        },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.addColumn(snippets, snippets.embedding);
@@ -29,8 +33,48 @@ class KangoosDatabase extends _$KangoosDatabase {
           if (from < 3) {
             await m.createTable(activities);
           }
+          if (from < 4) {
+            await m.createTable(activitySummaries);
+          }
+          if (from < 5) {
+            await _createSnippetsFts();
+          }
+          if (from < 6) {
+            await m.addColumn(activities, activities.capturedUrl);
+          }
         },
       );
+
+  /// External-content FTS5 index over snippets, kept in sync via triggers
+  /// (external content mode doesn't auto-sync on writes).
+  Future<void> _createSnippetsFts() async {
+    await customStatement('''
+CREATE VIRTUAL TABLE IF NOT EXISTS snippets_fts USING fts5(
+  title, content, tags,
+  content='snippets', content_rowid='id'
+);
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS snippets_fts_ai AFTER INSERT ON snippets BEGIN
+  INSERT INTO snippets_fts(rowid, title, content, tags)
+  VALUES (new.id, new.title, new.content, new.tags);
+END;
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS snippets_fts_ad AFTER DELETE ON snippets BEGIN
+  INSERT INTO snippets_fts(snippets_fts, rowid, title, content, tags)
+  VALUES ('delete', old.id, old.title, old.content, old.tags);
+END;
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS snippets_fts_au AFTER UPDATE ON snippets BEGIN
+  INSERT INTO snippets_fts(snippets_fts, rowid, title, content, tags)
+  VALUES ('delete', old.id, old.title, old.content, old.tags);
+  INSERT INTO snippets_fts(rowid, title, content, tags)
+  VALUES (new.id, new.title, new.content, new.tags);
+END;
+''');
+  }
 
   Future<int> createSnippet(SnippetsCompanion entry) =>
       into(snippets).insert(entry);
@@ -47,11 +91,23 @@ class KangoosDatabase extends _$KangoosDatabase {
       (select(snippets)..orderBy([(row) => OrderingTerm.desc(row.updatedAt)]))
           .watch();
 
-  Future<List<Snippet>> searchByKeyword(String query) {
-    final pattern = '%$query%';
-    return (select(snippets)
-          ..where((row) => row.title.like(pattern) | row.content.like(pattern)))
-        .get();
+  /// Full-text search over title, content and tags, ranked by relevance
+  /// (SQLite FTS5's bm25-based `rank`). Tokens are treated as independent
+  /// prefix matches (implicit AND), so "reverse str" matches a snippet
+  /// containing both "reverse…" and "str…" anywhere, in any order.
+  Future<List<Snippet>> searchByKeyword(String query) async {
+    final matchQuery = _ftsMatchQuery(query);
+    if (matchQuery.isEmpty) return const [];
+
+    final rows = await customSelect(
+      'SELECT s.* FROM snippets s '
+      'JOIN snippets_fts ON snippets_fts.rowid = s.id '
+      'WHERE snippets_fts MATCH ? ORDER BY rank',
+      variables: [Variable.withString(matchQuery)],
+      readsFrom: {snippets},
+    ).get();
+
+    return Future.wait(rows.map((row) => Future.value(snippets.map(row.data))));
   }
 
   Future<List<Snippet>> allSnippets() => select(snippets).get();
@@ -65,11 +121,10 @@ class KangoosDatabase extends _$KangoosDatabase {
   Future<int> logActivity(ActivitiesCompanion entry) =>
       into(activities).insert(entry);
 
-  Future<Activity?> lastActivity() =>
-      (select(activities)
-            ..orderBy([(row) => OrderingTerm.desc(row.capturedAt)])
-            ..limit(1))
-          .getSingleOrNull();
+  Future<Activity?> lastActivity() => (select(activities)
+        ..orderBy([(row) => OrderingTerm.desc(row.capturedAt)])
+        ..limit(1))
+      .getSingleOrNull();
 
   Stream<List<Activity>> watchRecentActivities({int limit = 200}) =>
       (select(activities)
@@ -77,6 +132,34 @@ class KangoosDatabase extends _$KangoosDatabase {
             ..limit(limit))
           .watch();
 
-  Future<int> purgeActivitiesOlderThan(DateTime cutoff) =>
-      (delete(activities)..where((row) => row.capturedAt.isSmallerThanValue(cutoff))).go();
+  Future<int> purgeActivitiesOlderThan(DateTime cutoff) => (delete(activities)
+        ..where((row) => row.capturedAt.isSmallerThanValue(cutoff)))
+      .go();
+
+  Future<List<Activity>> activitiesBetween(DateTime start, DateTime end) =>
+      (select(activities)
+            ..where((row) =>
+                row.capturedAt.isBiggerOrEqualValue(start) &
+                row.capturedAt.isSmallerThanValue(end))
+            ..orderBy([(row) => OrderingTerm.asc(row.capturedAt)]))
+          .get();
+
+  Future<int> insertActivitySummary(ActivitySummariesCompanion entry) =>
+      into(activitySummaries).insert(entry);
+
+  Stream<List<ActivitySummary>> watchRecentSummaries({int limit = 50}) =>
+      (select(activitySummaries)
+            ..orderBy([(row) => OrderingTerm.desc(row.periodEnd)])
+            ..limit(limit))
+          .watch();
+}
+
+/// Builds an FTS5 MATCH expression from free-form user input: each word
+/// becomes its own quoted-prefix term (implicit AND between terms), so
+/// punctuation in the query (":", "-", "(", etc, which FTS5's query syntax
+/// would otherwise try to parse as operators) can't produce a syntax error.
+String _ftsMatchQuery(String query) {
+  final tokens =
+      query.trim().split(RegExp(r'\s+')).where((token) => token.isNotEmpty);
+  return tokens.map((token) => '"${token.replaceAll('"', '""')}"*').join(' ');
 }

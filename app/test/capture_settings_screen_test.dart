@@ -10,13 +10,17 @@ void main() {
       (tester) async {
     SharedPreferences.setMockInitialValues({});
     final repository = CaptureSettingsRepository();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
 
     await tester.pumpWidget(MaterialApp(
       home: CaptureSettingsScreen(repository: repository),
     ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(Switch).first);
+    await tester
+        .tap(find.widgetWithText(SwitchListTile, 'Capture active window'));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'keepass.exe');
@@ -29,15 +33,38 @@ void main() {
     expect(saved.paused, isTrue);
     expect(saved.excludedApps, ['keepass.exe']);
 
+    await tester.ensureVisible(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
 
     expect((await repository.load()).excludedApps, isEmpty);
   });
 
+  testWidgets('toggling browser URL capture persists', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = CaptureSettingsRepository();
+
+    await tester.pumpWidget(MaterialApp(
+      home: CaptureSettingsScreen(repository: repository),
+    ));
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).captureBrowserUrls, isFalse);
+
+    await tester
+        .tap(find.widgetWithText(SwitchListTile, 'Capture browser URLs'));
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).captureBrowserUrls, isTrue);
+  });
+
   testWidgets('changing retention persists', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final repository = CaptureSettingsRepository();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
 
     await tester.pumpWidget(MaterialApp(
       home: CaptureSettingsScreen(repository: repository),
@@ -65,7 +92,8 @@ void main() {
 
     expect((await repository.load()).captureVisibleText, isFalse);
 
-    await tester.tap(find.byType(Switch).last);
+    await tester.tap(find.widgetWithText(
+        SwitchListTile, 'Capture visible text (experimental)'));
     await tester.pumpAndSettle();
 
     expect((await repository.load()).captureVisibleText, isTrue);

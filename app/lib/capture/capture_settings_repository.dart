@@ -8,6 +8,7 @@ class CaptureSettings {
     this.excludedApps = const [],
     this.retentionDays = defaultRetentionDays,
     this.captureVisibleText = false,
+    this.captureBrowserUrls = false,
   });
 
   final bool paused;
@@ -15,17 +16,22 @@ class CaptureSettings {
   final int retentionDays;
   final bool captureVisibleText;
 
+  /// Opt-in: also records the active tab's URL for recognized browsers.
+  final bool captureBrowserUrls;
+
   CaptureSettings copyWith({
     bool? paused,
     List<String>? excludedApps,
     int? retentionDays,
     bool? captureVisibleText,
+    bool? captureBrowserUrls,
   }) {
     return CaptureSettings(
       paused: paused ?? this.paused,
       excludedApps: excludedApps ?? this.excludedApps,
       retentionDays: retentionDays ?? this.retentionDays,
       captureVisibleText: captureVisibleText ?? this.captureVisibleText,
+      captureBrowserUrls: captureBrowserUrls ?? this.captureBrowserUrls,
     );
   }
 }
@@ -35,6 +41,7 @@ class CaptureSettingsRepository {
   static const _excludedAppsKey = 'capture_excluded_apps';
   static const _retentionDaysKey = 'capture_retention_days';
   static const _captureVisibleTextKey = 'capture_visible_text';
+  static const _captureBrowserUrlsKey = 'capture_browser_urls';
 
   Future<CaptureSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -43,6 +50,7 @@ class CaptureSettingsRepository {
       excludedApps: prefs.getStringList(_excludedAppsKey) ?? const [],
       retentionDays: prefs.getInt(_retentionDaysKey) ?? defaultRetentionDays,
       captureVisibleText: prefs.getBool(_captureVisibleTextKey) ?? false,
+      captureBrowserUrls: prefs.getBool(_captureBrowserUrlsKey) ?? false,
     );
   }
 
@@ -52,5 +60,6 @@ class CaptureSettingsRepository {
     await prefs.setStringList(_excludedAppsKey, settings.excludedApps);
     await prefs.setInt(_retentionDaysKey, settings.retentionDays);
     await prefs.setBool(_captureVisibleTextKey, settings.captureVisibleText);
+    await prefs.setBool(_captureBrowserUrlsKey, settings.captureBrowserUrls);
   }
 }

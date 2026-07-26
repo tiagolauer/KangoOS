@@ -70,7 +70,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: const Text('LLM settings'),
         actions: [
-          IconButton(onPressed: _save, icon: const Icon(Icons.check), tooltip: 'Save'),
+          IconButton(
+              onPressed: _save, icon: const Icon(Icons.check), tooltip: 'Save'),
         ],
       ),
       body: Padding(
@@ -81,7 +82,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: _settings.provider,
               decoration: const InputDecoration(labelText: 'Provider'),
               items: LlmProviderKind.values
-                  .map((kind) => DropdownMenuItem(value: kind, child: Text(_label(kind))))
+                  .map((kind) =>
+                      DropdownMenuItem(value: kind, child: Text(_label(kind))))
                   .toList(),
               onChanged: (value) {
                 if (value == null) return;
@@ -111,6 +113,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ],
+            if (!isOllama) ...[
+              const SizedBox(height: 12),
+              DropdownButtonFormField<ReasoningEffort>(
+                value: _settings.reasoningEffort,
+                decoration: const InputDecoration(
+                  labelText: 'Reasoning mode',
+                  helperText: 'Only takes effect on reasoning-capable models '
+                      '(e.g. o-series/gpt-5, Claude with thinking, Gemini 2.5).',
+                  helperMaxLines: 2,
+                ),
+                items: ReasoningEffort.values
+                    .map((effort) => DropdownMenuItem(
+                        value: effort, child: Text(_effortLabel(effort))))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() =>
+                      _settings = _settings.copyWith(reasoningEffort: value));
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -125,6 +148,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return 'Anthropic';
       case LlmProviderKind.openAi:
         return 'OpenAI';
+      case LlmProviderKind.gemini:
+        return 'Gemini';
+    }
+  }
+
+  String _effortLabel(ReasoningEffort effort) {
+    switch (effort) {
+      case ReasoningEffort.fast:
+        return 'Fast';
+      case ReasoningEffort.balanced:
+        return 'Balanced';
+      case ReasoningEffort.thinking:
+        return 'Extra thinking';
     }
   }
 }

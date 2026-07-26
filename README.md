@@ -22,13 +22,47 @@ KangoOS/
 ## MVP scope
 
 - Snippet CRUD with automatic tagging (via LLM)
-- Full-text + semantic search (local embeddings)
+- Full-text search (real SQLite FTS5, bm25-ranked, prefix matching) + semantic search (local embeddings, brute-force cosine — fine at snippet-manager scale, no ANN index)
 - Contextual chat over saved snippets (RAG)
-- LLM provider configuration (local Ollama or third-party API key)
+- LLM provider configuration (local Ollama, or Anthropic/OpenAI/Gemini via API key, stored in the OS keychain — Credential Manager/Keychain/Secret Service, never plaintext on disk), with a reasoning-mode picker (Fast/Balanced/Extra Thinking) mapped to each provider's own mechanism — only takes effect on reasoning-capable models
 
 - Self-hosted HTTP server (Docker) for sharing snippets/chat across clients
+- Activity capture (Windows/Linux/macOS, app + window title by default) with retention/purge
+  - Linux requires an X11 session (or XWayland); macOS requires granting Accessibility permission to the app so "System Events" can read other apps' window titles
+- Timeline: automatic activity summaries every 20 minutes, plus on-demand day recap (via LLM)
+- Opt-in browser URL capture (off by default, real content — not just metadata): reads the active tab's URL for Chrome/Edge/Brave/Safari.
+  - macOS: via AppleScript (reliable — browsers expose this directly).
+  - Windows: via UI Automation reading the address bar (best-effort heuristic, unverified against a real browser at time of writing).
+  - Linux: via AT-SPI/D-Bus tree walk (best-effort, needs an AT-SPI-enabled desktop session; Firefox untested, lowest-confidence of the three).
+- CLI (`kango`, see below) for snippet create/search/list/show/edit/delete, embedding `core` directly — no server required.
+- MCP server (`kango_mcp`, see below) so IDE assistants (Cursor, GitHub Copilot, Claude Desktop) can search/create/edit snippets as tools.
 
-Out of scope for now (future roadmap): automatic context capture (timeline/LTM), VS Code extension, browser extension, mobile app, plugin system.
+Out of scope for now (future roadmap): page content beyond the URL, VS Code extension, browser extension, mobile app, plugin system.
+
+## CLI
+
+```bash
+cd core
+echo "input.split('').reversed.join()" | dart run bin/kango.dart create --title "Reverse a string" --language dart --tags strings,dart
+dart run bin/kango.dart search reverse
+dart run bin/kango.dart list
+dart run bin/kango.dart show 1
+dart run bin/kango.dart edit 1 --title "New title"
+dart run bin/kango.dart delete 1
+```
+
+Uses its own database file by default (`KangoOS/kangoos.db` under the OS's app-data folder) — **not** the same file the desktop app uses, since replicating Flutter's `path_provider` folder resolution from a plain Dart binary would be fragile. Point `KANGOOS_DB_PATH` at the app's db file to share storage, or run `kango` standalone for a separate CLI-only snippet store. `--semantic` search and `KANGOOS_OLLAMA_BASE_URL`/`KANGOOS_EMBEDDING_MODEL` work the same way as the app. No `kango chat` yet (LLM settings live in the app's local prefs, not readable from a plain Dart binary) — could take env vars like the server does; not built here.
+
+## MCP server
+
+```bash
+cd core
+dart run bin/kango_mcp.dart
+```
+
+Speaks MCP over stdio: point Cursor/Claude Desktop/Copilot's MCP config at `dart run <path-to-core>/bin/kango_mcp.dart` (same `KANGOOS_DB_PATH`/`KANGOOS_OLLAMA_BASE_URL`/`KANGOOS_EMBEDDING_MODEL` env vars as the CLI). Exposes `search_snippets`, `create_snippet`, `list_snippets`, `get_snippet`, `update_snippet`, `delete_snippet` as tools — same shape as the CLI, just callable by an IDE assistant instead of a human.
+
+This project pins Dart SDK `^3.6.1`; the official `package:dart_mcp` (labs.dart.dev) needs `>=3.7.0`, so the stdio JSON-RPC transport here is hand-rolled rather than pulled from that package — deliberately minimal (tools only, no resources/prompts/sampling). Swap in `package:dart_mcp` once the SDK floor moves to 3.7+.
 
 ## Stack
 
@@ -43,6 +77,11 @@ Out of scope for now (future roadmap): automatic context capture (timeline/LTM),
 cd core && dart pub get
 cd ../app && flutter pub get && flutter run -d windows
 ```
+
+API keys are stored via [`flutter_secure_storage`](https://pub.dev/packages/flutter_secure_storage) (OS keychain), which has its own native requirements per platform:
+- **Windows**: needs the C++ ATL component of Visual Studio Build Tools (same VS install Flutter Windows desktop already requires — check the "C++ ATL" optional component is ticked).
+- **macOS**: needs the `keychain-access-groups` entitlement (already added to `app/macos/Runner/*.entitlements`).
+- **Linux**: needs libsecret at build and runtime (`sudo apt install libsecret-1-0 libsecret-1-dev` on Debian/Ubuntu) plus a running keyring service (`gnome-keyring`, `kwallet`, or similar — usually already present on a desktop session).
 
 Self-hosted server: see [server/README.md](server/README.md).
 

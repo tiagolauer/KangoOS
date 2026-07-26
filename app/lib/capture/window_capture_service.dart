@@ -1,24 +1,22 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
-import 'package:ffi/ffi.dart';
 import 'package:kangoos_core/kangoos_core.dart';
-import 'package:path/path.dart' as p;
-import 'package:win32/win32.dart';
 
+import 'browser_url_reader_linux.dart';
+import 'browser_url_reader_macos.dart';
+import 'browser_url_reader_windows.dart';
 import 'capture_settings_repository.dart';
+import 'window_reader_linux.dart';
+import 'window_reader_macos.dart';
+import 'window_reader_windows.dart';
+import 'window_snapshot.dart';
+
+export 'window_snapshot.dart';
 
 const uiaHelperTimeout = Duration(seconds: 3);
-
-class WindowSnapshot {
-  const WindowSnapshot({required this.appName, required this.windowTitle});
-
-  final String appName;
-  final String windowTitle;
-}
 
 class WindowCaptureService {
   WindowCaptureService({
@@ -27,20 +25,49 @@ class WindowCaptureService {
     this.pollInterval = const Duration(seconds: 5),
     WindowSnapshot? Function()? readWindow,
     Future<String?> Function()? captureVisibleText,
-  })  : readWindow = readWindow ?? readForegroundWindow,
-        captureVisibleText = captureVisibleText ?? _captureVisibleTextViaHelper;
+    Future<String?> Function(String appName)? browserUrlReader,
+  })  : readWindow = readWindow ?? defaultWindowReader(),
+        captureVisibleText =
+            captureVisibleText ?? _captureVisibleTextViaHelper,
+        browserUrlReader = browserUrlReader ?? defaultBrowserUrlReader();
 
   final KangoosDatabase database;
   final CaptureSettingsRepository settingsRepository;
   final Duration pollInterval;
 
+  /// Overridable for tests; defaults to the platform-appropriate reader.
   final WindowSnapshot? Function() readWindow;
+
+  /// Overridable for tests; defaults to the Windows UI Automation helper.
   final Future<String?> Function() captureVisibleText;
+
+  /// Overridable for tests; defaults to the platform-appropriate browser URL
+  /// reader. Only called when [CaptureSettings.captureBrowserUrls] is on.
+  final Future<String?> Function(String appName) browserUrlReader;
 
   Timer? _timer;
   String? _lastKey;
 
-  static bool get isSupported => Platform.isWindows;
+  static bool get isSupported =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+  static WindowSnapshot? Function() defaultWindowReader() {
+    if (Platform.isWindows) return readForegroundWindowWindows;
+    if (Platform.isLinux) return readForegroundWindowLinux;
+    if (Platform.isMacOS) return readForegroundWindowMacOS;
+    return () => null;
+  }
+
+  static Future<String?> Function(String appName) defaultBrowserUrlReader() {
+    if (Platform.isWindows) {
+      return (appName) async => readBrowserUrlWindows(appName);
+    }
+    if (Platform.isMacOS) {
+      return (appName) async => readBrowserUrlMacOS(appName);
+    }
+    if (Platform.isLinux) return readBrowserUrlLinux;
+    return (_) async => null;
+  }
 
   void start() {
     if (!isSupported || _timer != null) return;
@@ -71,11 +98,15 @@ class WindowCaptureService {
 
     final visibleText =
         settings.captureVisibleText ? await captureVisibleText() : null;
+    final url = settings.captureBrowserUrls
+        ? await browserUrlReader(snapshot.appName)
+        : null;
 
     await database.logActivity(ActivitiesCompanion.insert(
       appName: snapshot.appName,
       windowTitle: snapshot.windowTitle,
       capturedText: Value(visibleText),
+      capturedUrl: Value(url),
     ));
   }
 
@@ -103,61 +134,6 @@ class WindowCaptureService {
       return text.isEmpty ? null : text;
     } catch (_) {
       return null;
-    }
-  }
-
-  static WindowSnapshot? readForegroundWindow() {
-    final hwnd = GetForegroundWindow();
-    if (hwnd == 0) return null;
-
-    final title = _windowTitle(hwnd);
-    if (title == null || title.trim().isEmpty) return null;
-
-    return WindowSnapshot(appName: _processName(hwnd), windowTitle: title);
-  }
-
-  static String? _windowTitle(int hwnd) {
-    final length = GetWindowTextLength(hwnd);
-    if (length == 0) return null;
-
-    final buffer = wsalloc(length + 1);
-    try {
-      GetWindowText(hwnd, buffer, length + 1);
-      return buffer.toDartString();
-    } finally {
-      free(buffer);
-    }
-  }
-
-  static String _processName(int hwnd) {
-    final pidPtr = calloc<Uint32>();
-    final int pid;
-    try {
-      GetWindowThreadProcessId(hwnd, pidPtr);
-      pid = pidPtr.value;
-    } finally {
-      free(pidPtr);
-    }
-
-    final process = OpenProcess(
-      PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION,
-      0,
-      pid,
-    );
-    if (process == 0) return 'pid:$pid';
-
-    try {
-      final sizePtr = calloc<Uint32>()..value = MAX_PATH;
-      final nameBuffer = wsalloc(MAX_PATH);
-      try {
-        final ok = QueryFullProcessImageName(process, 0, nameBuffer, sizePtr);
-        return ok == 0 ? 'pid:$pid' : p.basename(nameBuffer.toDartString());
-      } finally {
-        free(sizePtr);
-        free(nameBuffer);
-      }
-    } finally {
-      CloseHandle(process);
     }
   }
 }

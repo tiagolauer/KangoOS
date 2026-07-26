@@ -3,7 +3,7 @@ import 'package:kangoos_core/kangoos_core.dart';
 
 import 'relative_time.dart';
 
-enum SidebarTab { snippets, activity }
+enum SidebarTab { snippets, activity, timeline }
 
 class Sidebar extends StatefulWidget {
   const Sidebar({
@@ -12,12 +12,14 @@ class Sidebar extends StatefulWidget {
     required this.semanticSearch,
     required this.onSelectSnippet,
     required this.onCreateSnippet,
+    required this.onGenerateDayRecap,
   });
 
   final KangoosDatabase database;
   final SemanticSearch semanticSearch;
   final void Function(Snippet snippet) onSelectSnippet;
   final VoidCallback onCreateSnippet;
+  final Future<SummaryResult> Function() onGenerateDayRecap;
 
   @override
   State<Sidebar> createState() => _SidebarState();
@@ -27,6 +29,26 @@ class _SidebarState extends State<Sidebar> {
   var _tab = SidebarTab.snippets;
   var _query = '';
   var _semantic = false;
+  var _generatingRecap = false;
+
+  Future<void> _generateDayRecap() async {
+    if (_generatingRecap) return;
+    setState(() => _generatingRecap = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await widget.onGenerateDayRecap();
+      final message = switch (result) {
+        SummarySuccess() => 'Day recap generated.',
+        SummaryFailure(error: SummaryError.noActivity) =>
+          'No activity captured today yet.',
+        SummaryFailure(error: SummaryError.llmFailed) =>
+          'Day recap failed: could not reach the LLM.',
+      };
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _generatingRecap = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,11 +68,16 @@ class _SidebarState extends State<Sidebar> {
                 Expanded(
                   child: SegmentedButton<SidebarTab>(
                     segments: const [
-                      ButtonSegment(value: SidebarTab.snippets, label: Text('Snippets')),
-                      ButtonSegment(value: SidebarTab.activity, label: Text('Activity')),
+                      ButtonSegment(
+                          value: SidebarTab.snippets, label: Text('Snippets')),
+                      ButtonSegment(
+                          value: SidebarTab.activity, label: Text('Activity')),
+                      ButtonSegment(
+                          value: SidebarTab.timeline, label: Text('Timeline')),
                     ],
                     selected: {_tab},
-                    onSelectionChanged: (selection) => setState(() => _tab = selection.first),
+                    onSelectionChanged: (selection) =>
+                        setState(() => _tab = selection.first),
                     showSelectedIcon: false,
                   ),
                 ),
@@ -62,6 +89,20 @@ class _SidebarState extends State<Sidebar> {
                     tooltip: 'New snippet',
                   ),
                 ],
+                if (_tab == SidebarTab.timeline) ...[
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: _generatingRecap ? null : _generateDayRecap,
+                    icon: _generatingRecap
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome),
+                    tooltip: 'Generate day recap',
+                  ),
+                ],
               ],
             ),
           ),
@@ -71,10 +112,15 @@ class _SidebarState extends State<Sidebar> {
               child: TextField(
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: _semantic ? 'Filter snippets (semantic)' : 'Filter snippets',
+                  hintText: _semantic
+                      ? 'Filter snippets (semantic)'
+                      : 'Filter snippets',
                   prefixIcon: IconButton(
-                    icon: Icon(_semantic ? Icons.auto_awesome : Icons.search, size: 18),
-                    tooltip: _semantic ? 'Switch to keyword search' : 'Switch to semantic search',
+                    icon: Icon(_semantic ? Icons.auto_awesome : Icons.search,
+                        size: 18),
+                    tooltip: _semantic
+                        ? 'Switch to keyword search'
+                        : 'Switch to semantic search',
                     onPressed: () => setState(() => _semantic = !_semantic),
                   ),
                 ),
@@ -82,7 +128,11 @@ class _SidebarState extends State<Sidebar> {
               ),
             ),
           Expanded(
-            child: _tab == SidebarTab.snippets ? _buildSnippets(context) : _buildActivity(context),
+            child: switch (_tab) {
+              SidebarTab.snippets => _buildSnippets(context),
+              SidebarTab.activity => _buildActivity(context),
+              SidebarTab.timeline => _buildTimeline(context),
+            },
           ),
         ],
       ),
@@ -104,7 +154,8 @@ class _SidebarState extends State<Sidebar> {
         future: widget.semanticSearch.search(_query),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return _SidebarMessage(text: 'Semantic search failed: ${snapshot.error}');
+            return _SidebarMessage(
+                text: 'Semantic search failed: ${snapshot.error}');
           }
           return _SnippetList(
             snippets: snapshot.data?.map((match) => match.snippet).toList(),
@@ -145,7 +196,8 @@ class _SidebarState extends State<Sidebar> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-              subtitle: Text(activity.appName, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(activity.appName,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
               trailing: Text(
                 formatClockTime(activity.capturedAt),
                 style: Theme.of(context).textTheme.bodySmall,
@@ -154,6 +206,63 @@ class _SidebarState extends State<Sidebar> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildTimeline(BuildContext context) {
+    return StreamBuilder<List<ActivitySummary>>(
+      stream: widget.database.watchRecentSummaries(),
+      builder: (context, snapshot) {
+        final summaries = snapshot.data;
+        if (summaries == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (summaries.isEmpty) {
+          return const _SidebarMessage(
+            text:
+                'No summaries yet. Automatic recaps show up here every 20 minutes '
+                'of captured activity, or tap the sparkle to generate one now.',
+          );
+        }
+        return ListView.builder(
+          itemCount: summaries.length,
+          itemBuilder: (context, index) =>
+              _SummaryTile(summary: summaries[index]),
+        );
+      },
+    );
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  const _SummaryTile({required this.summary});
+
+  final ActivitySummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final label = switch (summary.kind) {
+      SummaryKind.periodic => 'Auto recap',
+      SummaryKind.dayRecap => 'Day recap',
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(label, style: textTheme.labelSmall),
+              const Spacer(),
+              Text(formatClockTime(summary.periodEnd),
+                  style: textTheme.labelSmall),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(summary.content, style: textTheme.bodySmall),
+        ],
+      ),
     );
   }
 }
@@ -208,7 +317,8 @@ class _SnippetList extends StatelessWidget {
                   snippet.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 if (snippet.language != null && snippet.language!.isNotEmpty)
                   Padding(
@@ -223,7 +333,8 @@ class _SnippetList extends StatelessWidget {
                   style: textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
-                Text(formatRelativeTime(snippet.updatedAt), style: textTheme.labelSmall),
+                Text(formatRelativeTime(snippet.updatedAt),
+                    style: textTheme.labelSmall),
               ],
             ),
           ),
