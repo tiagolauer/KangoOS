@@ -12,14 +12,22 @@ class SemanticMatch {
   final double score;
 }
 
+const defaultMinSimilarity = 0.5;
+
 class SemanticSearch {
-  SemanticSearch({required this.database, required this.embeddingProvider});
+  SemanticSearch({
+    required this.database,
+    required this.embeddingProvider,
+    this.minSimilarity = defaultMinSimilarity,
+  });
 
   final KangoosDatabase database;
   final EmbeddingProvider embeddingProvider;
+  final double minSimilarity;
 
   Future<void> indexSnippet(Snippet snippet) async {
-    final embedding = await embeddingProvider.embed('${snippet.title}\n${snippet.content}');
+    final embedding =
+        await embeddingProvider.embed('${snippet.title}\n${snippet.content}');
     await database.updateSnippet(snippet.copyWith(embedding: Value(embedding)));
   }
 
@@ -31,19 +39,26 @@ class SemanticSearch {
     return missing.length;
   }
 
-  Future<List<SemanticMatch>> search(String query, {int limit = 5}) async {
+  Future<List<SemanticMatch>> search(
+    String query, {
+    int limit = 5,
+    double? minSimilarity,
+  }) async {
+    final floor = minSimilarity ?? this.minSimilarity;
     final queryEmbedding = await embeddingProvider.embed(query);
     final vectors = await database.snippetVectors();
 
-    final scored = vectors
-        .map((vector) => (
-              id: vector.id,
-              score: cosineSimilarity(queryEmbedding, vector.embedding),
-            ))
-        .toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
+    final scored = [
+      for (final vector in vectors)
+        if (vector.embedding.length == queryEmbedding.length)
+          (
+            id: vector.id,
+            score: cosineSimilarity(queryEmbedding, vector.embedding),
+          ),
+    ]..sort((a, b) => b.score.compareTo(a.score));
 
-    final top = scored.take(limit).toList();
+    final top =
+        scored.where((match) => match.score >= floor).take(limit).toList();
     final scoreById = {for (final match in top) match.id: match.score};
     final snippets =
         await database.snippetsByIds([for (final match in top) match.id]);
@@ -56,11 +71,15 @@ class SemanticSearch {
 }
 
 double cosineSimilarity(List<double> a, List<double> b) {
-  final length = min(a.length, b.length);
+  if (a.length != b.length) {
+    throw ArgumentError(
+        'Embeddings have different dimensions (${a.length} vs ${b.length}); '
+        'they come from different models and cannot be compared.');
+  }
   var dot = 0.0;
   var normA = 0.0;
   var normB = 0.0;
-  for (var i = 0; i < length; i++) {
+  for (var i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
     normA += a[i] * a[i];
     normB += b[i] * b[i];
