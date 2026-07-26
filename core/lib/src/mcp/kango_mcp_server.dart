@@ -282,12 +282,16 @@ class KangoMcpServer {
     final language = (args['language'] as String?)?.trim();
     final tags = (args['tags'] as List?)?.cast<String>() ?? const <String>[];
 
-    final id = await database.createSnippet(SnippetsCompanion.insert(
+    final entry = SnippetsCompanion.insert(
       title: title,
       content: content,
       language: Value(language == null || language.isEmpty ? null : language),
       tags: Value(tags),
-    ));
+    );
+    final search = semanticSearch;
+    final id = search == null
+        ? await database.createSnippet(entry)
+        : await search.createAndIndex(entry);
     final created = await database.getSnippetById(id);
     return _toolJson(created!.toJson());
   }

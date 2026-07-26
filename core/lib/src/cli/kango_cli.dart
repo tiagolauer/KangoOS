@@ -45,7 +45,8 @@ Future<int> runKangoCli(
 
   switch (arguments.first) {
     case 'create':
-      return _create(database, flags, readIn, output, errorOutput);
+      return _create(
+          database, semanticSearch, flags, readIn, output, errorOutput);
     case 'search':
       return _search(
           database, semanticSearch, positionals, flags, output, errorOutput);
@@ -65,6 +66,7 @@ Future<int> runKangoCli(
 
 Future<int> _create(
   KangoosDatabase database,
+  SemanticSearch? semanticSearch,
   Map<String, String> flags,
   String Function() readIn,
   StringSink out,
@@ -86,12 +88,15 @@ Future<int> _create(
   final tags = _parseTags(flags['tags']);
   final language = flags['language']?.trim();
 
-  final id = await database.createSnippet(SnippetsCompanion.insert(
+  final entry = SnippetsCompanion.insert(
     title: title,
     content: content,
     language: Value(language == null || language.isEmpty ? null : language),
     tags: Value(tags),
-  ));
+  );
+  final id = semanticSearch == null
+      ? await database.createSnippet(entry)
+      : await semanticSearch.createAndIndex(entry);
   out.writeln('Created snippet #$id: $title');
   return 0;
 }

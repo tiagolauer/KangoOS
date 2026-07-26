@@ -2,6 +2,14 @@ import 'package:kangoos_core/kangoos_core.dart';
 import 'package:kangoos_core/src/cli/kango_cli.dart';
 import 'package:test/test.dart';
 
+class _FakeEmbeddingProvider implements EmbeddingProvider {
+  @override
+  String get id => 'fake';
+
+  @override
+  Future<List<double>> embed(String text) async => [1, 0, 0];
+}
+
 void main() {
   late KangoosDatabase database;
   late StringBuffer out;
@@ -145,5 +153,25 @@ void main() {
     final code = await run([]);
     expect(code, 64);
     expect(err.toString(), contains('Usage: kango'));
+  });
+
+  test('create indexes the snippet when semantic search is available',
+      () async {
+    final semanticSearch = SemanticSearch(
+      database: database,
+      embeddingProvider: _FakeEmbeddingProvider(),
+    );
+
+    final code = await runKangoCli(
+      ['create', '--title', 'Reverse a string'],
+      database: database,
+      semanticSearch: semanticSearch,
+      out: out,
+      err: err,
+      readStdin: () => 'input.split("").reversed.join()',
+    );
+
+    expect(code, 0);
+    expect(await database.snippetsMissingEmbedding(), isEmpty);
   });
 }

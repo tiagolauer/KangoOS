@@ -272,7 +272,10 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   Future<void> _importSnippets() async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final exchange = SnippetExchange(database: widget.database);
+    final exchange = SnippetExchange(
+      database: widget.database,
+      semanticSearch: widget.semanticSearch,
+    );
     try {
       final file = await openFile(
         acceptedTypeGroups: const [
@@ -384,6 +387,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             builder: (_) => SyncSettingsScreen(
               repository: _syncSettingsRepository,
               database: widget.database,
+              semanticSearch: widget.semanticSearch,
             ),
           )),
           onExportSnippets: _exportSnippets,

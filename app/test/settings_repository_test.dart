@@ -95,4 +95,36 @@ void main() {
     expect(settings.baseUrl, 'https://example.com');
     expect(settings.reasoningEffort, ReasoningEffort.thinking);
   });
+
+  test('the embedding provider follows the configured base URL and model',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository =
+        SettingsRepository(secureStore: _FakeSecureCredentialStore());
+
+    await repository.save(const LlmSettings(
+      provider: LlmProviderKind.ollama,
+      model: 'llama3',
+      baseUrl: 'http://nas.local:11434',
+      embeddingModel: 'mxbai-embed-large',
+    ));
+
+    final provider = (await repository.loadEmbeddingSettings())
+        .buildEmbeddingProvider() as OllamaEmbeddingProvider;
+
+    expect(provider.baseUrl, 'http://nas.local:11434');
+    expect(provider.model, 'mxbai-embed-large');
+  });
+
+  test('the embedding provider falls back to the Ollama defaults', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository =
+        SettingsRepository(secureStore: _FakeSecureCredentialStore());
+
+    final provider = (await repository.loadEmbeddingSettings())
+        .buildEmbeddingProvider() as OllamaEmbeddingProvider;
+
+    expect(provider.baseUrl, defaultOllamaBaseUrl);
+    expect(provider.model, defaultEmbeddingModel);
+  });
 }
