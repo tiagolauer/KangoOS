@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:sqlite3/sqlite3.dart' show Database;
+import 'package:sqlite3/sqlite3.dart' show Database, sqlite3;
 
 import '../llm/llm_provider.dart';
 import 'tables/activities_table.dart';
@@ -330,6 +330,46 @@ END;
 
   Future<int> clearAllSummaries() => delete(activitySummaries).go();
 
+  static final _sqliteMagic = 'SQLite format 3 '.codeUnits;
+
+  static bool isPlaintextDatabase(File file) {
+    if (!file.existsSync()) return false;
+    final handle = file.openSync();
+    try {
+      final header = handle.readSync(_sqliteMagic.length);
+      if (header.length < _sqliteMagic.length) return false;
+      for (var i = 0; i < _sqliteMagic.length; i++) {
+        if (header[i] != _sqliteMagic[i]) return false;
+      }
+      return true;
+    } finally {
+      handle.closeSync();
+    }
+  }
+
+  static void encryptPlaintextDatabase(File file, String encryptionKey) {
+    final escaped = encryptionKey.replaceAll("'", "''");
+    final encryptedPath = '${file.path}.encrypting';
+    final encrypted = File(encryptedPath);
+    if (encrypted.existsSync()) encrypted.deleteSync();
+
+    final db = sqlite3.open(file.path);
+    try {
+      db.execute("ATTACH DATABASE '$encryptedPath' AS encrypted KEY '$escaped';");
+      db.select("SELECT sqlcipher_export('encrypted');");
+      db.execute('DETACH DATABASE encrypted;');
+    } finally {
+      db.dispose();
+    }
+
+    var backupPath = '${file.path}.plaintext-backup';
+    for (var i = 2; File(backupPath).existsSync(); i++) {
+      backupPath = '${file.path}.plaintext-backup-$i';
+    }
+    file.renameSync(backupPath);
+    encrypted.renameSync(file.path);
+  }
+
   static void Function(Database) _setupCipher(String encryptionKey) {
     return (db) {
       final escaped = encryptionKey.replaceAll("'", "''");
@@ -338,6 +378,14 @@ END;
         throw StateError(
             'SQLCipher native library not found; refusing to open the '
             'database in plaintext.');
+      }
+      try {
+        db.select('SELECT count(*) FROM sqlite_master;');
+      } catch (e) {
+        throw StateError(
+            'Could not read the database with the given encryption key '
+            '(wrong key, or the file is corrupted or not actually '
+            'encrypted): $e');
       }
     };
   }

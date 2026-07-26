@@ -20,10 +20,20 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supportDir = await getApplicationSupportDirectory();
   final encryptionKey = await DatabaseEncryptionKeyProvider().getOrCreateKey();
-  final database = KangoosDatabase.native(
-    File(p.join(supportDir.path, 'kangoos.db')),
-    encryptionKey: encryptionKey,
-  );
+  final databaseFile = File(p.join(supportDir.path, 'kangoos.db'));
+
+  final KangoosDatabase database;
+  try {
+    if (KangoosDatabase.isPlaintextDatabase(databaseFile)) {
+      KangoosDatabase.encryptPlaintextDatabase(databaseFile, encryptionKey);
+    }
+    database = KangoosDatabase.native(databaseFile, encryptionKey: encryptionKey);
+    await database.allSnippets();
+  } catch (e) {
+    runApp(DatabaseErrorApp(error: e, databasePath: databaseFile.path));
+    return;
+  }
+
   final semanticSearch = SemanticSearch(
     database: database,
     embeddingProvider: OllamaEmbeddingProvider(model: defaultEmbeddingModel),
@@ -49,6 +59,57 @@ Future<void> main() async {
     captureSettingsRepository: captureSettingsRepository,
     needsCaptureConsent: needsCaptureConsent,
   ));
+}
+
+class DatabaseErrorApp extends StatelessWidget {
+  const DatabaseErrorApp({
+    super.key,
+    required this.error,
+    required this.databasePath,
+  });
+
+  final Object error;
+  final String databasePath;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'KangoOS',
+      theme: KangoosTheme.light,
+      darkTheme: KangoosTheme.dark,
+      themeMode: ThemeMode.system,
+      home: Scaffold(
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Could not open your database',
+                      style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'KangoOS encrypts its database with a key kept in the '
+                    'Windows Credential Manager. If that key was removed, or '
+                    'the database was copied from another machine, it can no '
+                    'longer be read.',
+                  ),
+                  const SizedBox(height: 12),
+                  SelectableText('Database: $databasePath'),
+                  const SizedBox(height: 12),
+                  SelectableText('$error',
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class KangoosApp extends StatelessWidget {

@@ -30,4 +30,34 @@ void main() {
       await database.allSnippets();
     }, throwsA(isA<StateError>()));
   });
+
+  group('isPlaintextDatabase', () {
+    test('detects a real unencrypted database', () async {
+      final file = File('${tempDir.path}/plain.db');
+      final database = KangoosDatabase.native(file);
+      await database.createSnippet(
+          SnippetsCompanion.insert(title: 'a', content: 'b'));
+      await database.close();
+
+      expect(KangoosDatabase.isPlaintextDatabase(file), isTrue);
+    });
+
+    test('is false for a missing file', () {
+      expect(
+          KangoosDatabase.isPlaintextDatabase(
+              File('${tempDir.path}/nope.db')),
+          isFalse);
+    });
+
+    test('is false for a file that does not start with the SQLite header', () {
+      final file = File('${tempDir.path}/encrypted-looking.db')
+        ..writeAsBytesSync(List<int>.generate(64, (i) => (i * 7) % 251));
+      expect(KangoosDatabase.isPlaintextDatabase(file), isFalse);
+    });
+
+    test('is false for a file shorter than the header', () {
+      final file = File('${tempDir.path}/tiny.db')..writeAsStringSync('SQL');
+      expect(KangoosDatabase.isPlaintextDatabase(file), isFalse);
+    });
+  });
 }
