@@ -61,4 +61,39 @@ void main() {
     final remaining = await database.watchRecentActivities().first;
     expect(remaining.map((a) => a.windowTitle), ['recent']);
   });
+
+  test('summariesBetween returns only summaries overlapping the range', () async {
+    await database.insertActivitySummary(ActivitySummariesCompanion.insert(
+      kind: SummaryKind.periodic,
+      periodStart: DateTime.utc(2026, 1, 1),
+      periodEnd: DateTime.utc(2026, 1, 1, 1),
+      content: 'in range',
+    ));
+    await database.insertActivitySummary(ActivitySummariesCompanion.insert(
+      kind: SummaryKind.periodic,
+      periodStart: DateTime.utc(2026, 1, 5),
+      periodEnd: DateTime.utc(2026, 1, 5, 1),
+      content: 'out of range',
+    ));
+
+    final results = await database.summariesBetween(
+        DateTime.utc(2025, 12, 31), DateTime.utc(2026, 1, 2));
+
+    expect(results, hasLength(1));
+    expect(results.single.content, 'in range');
+  });
+
+  test('getSummaryById returns the matching row or null', () async {
+    expect(await database.getSummaryById(999), isNull);
+
+    final id = await database.insertActivitySummary(ActivitySummariesCompanion.insert(
+      kind: SummaryKind.manual,
+      periodStart: DateTime.utc(2026, 1, 1),
+      periodEnd: DateTime.utc(2026, 1, 1),
+      content: 'a note',
+    ));
+
+    final fetched = await database.getSummaryById(id);
+    expect(fetched?.content, 'a note');
+  });
 }

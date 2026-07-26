@@ -3,7 +3,9 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
 
+import '../chat/temporal_query.dart';
 import '../database/database.dart';
+import '../database/tables/activity_summaries_table.dart';
 import '../search/semantic_search.dart';
 
 typedef _ToolHandler = FutureOr<Map<String, dynamic>> Function(
@@ -32,12 +34,17 @@ class _McpTool {
 /// floor moves to 3.7+ — [handleMessage] is decoupled from stdio, so only
 /// the `bin/kango_mcp.dart` entrypoint would need to change.
 class KangoMcpServer {
-  KangoMcpServer({required this.database, this.semanticSearch}) {
+  KangoMcpServer({
+    required this.database,
+    this.semanticSearch,
+    this.maxLtmActivities = 100,
+  }) {
     _registerTools();
   }
 
   final KangoosDatabase database;
   final SemanticSearch? semanticSearch;
+  final int maxLtmActivities;
   final _tools = <String, _McpTool>{};
 
   void _registerTools() {
@@ -137,6 +144,40 @@ class KangoMcpServer {
         'required': ['id'],
       },
       handler: _deleteSnippet,
+    );
+
+    _tools['ask_kango_ltm'] = _McpTool(
+      description:
+          "Query KangoOS's long-term memory: captured window/app activity "
+          'and recap summaries. The query can reference a time range in '
+          'plain English (today, yesterday, this week, last week); it '
+          'defaults to today when none is mentioned.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'query': {
+            'type': 'string',
+            'description': 'e.g. "what did I work on yesterday?"',
+          },
+        },
+        'required': ['query'],
+      },
+      handler: _askLtm,
+    );
+
+    _tools['create_kango_memory'] = _McpTool(
+      description:
+          'Explicitly save a durable memory, independent of activity '
+          'capture. Shows up in the Timeline and is retrievable by '
+          'ask_kango_ltm and chat.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'content': {'type': 'string'},
+        },
+        'required': ['content'],
+      },
+      handler: _createMemory,
     );
   }
 
@@ -286,6 +327,46 @@ class KangoMcpServer {
     if (deleted == 0) return _toolError('snippet #$id not found');
     return _toolText('Deleted snippet #$id.');
   }
+
+  Future<Map<String, dynamic>> _askLtm(Map<String, dynamic> args) async {
+    final query = (args['query'] as String?)?.trim() ?? '';
+    if (query.isEmpty) return _toolError('query is required');
+
+    final range = parseTemporalRange(query);
+    final queryEnd = range.end.add(const Duration(seconds: 1));
+    final activities =
+        (await database.activitiesBetween(range.start, queryEnd))
+            .take(maxLtmActivities)
+            .toList();
+    final summaries = await database.summariesBetween(range.start, queryEnd);
+
+    return _toolJson({
+      'rangeStart': range.start.toIso8601String(),
+      'rangeEnd': range.end.toIso8601String(),
+      'activities': activities.map((a) => a.toJson()).toList(),
+      'summaries': summaries.map(_summaryJson).toList(),
+    });
+  }
+
+  Future<Map<String, dynamic>> _createMemory(Map<String, dynamic> args) async {
+    final content = (args['content'] as String?)?.trim() ?? '';
+    if (content.isEmpty) return _toolError('content is required');
+
+    final now = DateTime.now();
+    final id =
+        await database.insertActivitySummary(ActivitySummariesCompanion.insert(
+      kind: SummaryKind.manual,
+      periodStart: now,
+      periodEnd: now,
+      content: content,
+      createdAt: Value(now),
+    ));
+    final created = await database.getSummaryById(id);
+    return _toolJson(_summaryJson(created!));
+  }
+
+  Map<String, dynamic> _summaryJson(ActivitySummary summary) =>
+      {...summary.toJson(), 'kind': summary.kind.name};
 
   String? _normalize(String? value) =>
       value == null || value.isEmpty ? null : value;

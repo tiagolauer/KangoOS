@@ -147,6 +147,18 @@ END;
   Future<int> insertActivitySummary(ActivitySummariesCompanion entry) =>
       into(activitySummaries).insert(entry);
 
+  Future<ActivitySummary?> getSummaryById(int id) => (select(activitySummaries)
+        ..where((row) => row.id.equals(id)))
+      .getSingleOrNull();
+
+  Future<List<ActivitySummary>> summariesBetween(DateTime start, DateTime end) =>
+      (select(activitySummaries)
+            ..where((row) =>
+                row.periodEnd.isBiggerThanValue(start) &
+                row.periodStart.isSmallerThanValue(end))
+            ..orderBy([(row) => OrderingTerm.asc(row.periodStart)]))
+          .get();
+
   Stream<List<ActivitySummary>> watchRecentSummaries({int limit = 50}) =>
       (select(activitySummaries)
             ..orderBy([(row) => OrderingTerm.desc(row.periodEnd)])

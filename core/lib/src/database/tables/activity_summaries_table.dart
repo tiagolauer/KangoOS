@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-enum SummaryKind { periodic, dayRecap }
+enum SummaryKind { periodic, dayRecap, manual }
 
 class SummaryKindConverter extends TypeConverter<SummaryKind, String> {
   const SummaryKindConverter();

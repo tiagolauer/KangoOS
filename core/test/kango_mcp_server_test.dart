@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:kangoos_core/src/mcp/kango_mcp_server.dart';
 import 'package:test/test.dart';
@@ -72,7 +73,7 @@ void main() {
     expect(response!['error']['code'], -32601);
   });
 
-  test('tools/list advertises all six snippet tools', () async {
+  test('tools/list advertises all eight tools', () async {
     final response = await server
         .handleMessage({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'});
     final names =
@@ -86,6 +87,8 @@ void main() {
         'get_snippet',
         'update_snippet',
         'delete_snippet',
+        'ask_kango_ltm',
+        'create_kango_memory',
       },
     );
   });
@@ -163,6 +166,53 @@ void main() {
     expect(response!['error'], isNull);
     expect(response['result']['isError'], true);
     expect(_text(response), contains('Unknown tool'));
+  });
+
+  test('ask_kango_ltm returns activity and summaries within the parsed range',
+      () async {
+    final now = DateTime.now();
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'code.exe',
+      windowTitle: 'today-work.dart',
+      capturedAt: Value(now),
+    ));
+    await database.insertActivitySummary(ActivitySummariesCompanion.insert(
+      kind: SummaryKind.periodic,
+      periodStart: now.subtract(const Duration(minutes: 20)),
+      periodEnd: now,
+      content: 'Recap of today.',
+    ));
+
+    final response = await server
+        .handleMessage(_call('ask_kango_ltm', {'query': 'what did I do today?'}));
+    final result = jsonDecode(_text(response!)) as Map<String, dynamic>;
+
+    expect((result['activities'] as List).single['windowTitle'], 'today-work.dart');
+    expect((result['summaries'] as List).single['content'], 'Recap of today.');
+  });
+
+  test('ask_kango_ltm requires a query', () async {
+    final response = await server.handleMessage(_call('ask_kango_ltm'));
+    expect(response!['result']['isError'], true);
+  });
+
+  test('create_kango_memory saves a manual summary retrievable by ask_kango_ltm',
+      () async {
+    final createResponse = await server
+        .handleMessage(_call('create_kango_memory', {'content': 'Remember this.'}));
+    final created = jsonDecode(_text(createResponse!)) as Map<String, dynamic>;
+    expect(created['kind'], 'manual');
+    expect(created['content'], 'Remember this.');
+
+    final askResponse =
+        await server.handleMessage(_call('ask_kango_ltm', {'query': 'today'}));
+    final result = jsonDecode(_text(askResponse!)) as Map<String, dynamic>;
+    expect((result['summaries'] as List).single['content'], 'Remember this.');
+  });
+
+  test('create_kango_memory requires content', () async {
+    final response = await server.handleMessage(_call('create_kango_memory'));
+    expect(response!['result']['isError'], true);
   });
 
   test('semantic search without a semantic search instance reports an error',

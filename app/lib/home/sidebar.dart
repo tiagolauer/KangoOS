@@ -273,6 +273,7 @@ class _SummaryTile extends StatelessWidget {
     final label = switch (summary.kind) {
       SummaryKind.periodic => 'Auto recap',
       SummaryKind.dayRecap => 'Day recap',
+      SummaryKind.manual => 'Memory',
     };
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
