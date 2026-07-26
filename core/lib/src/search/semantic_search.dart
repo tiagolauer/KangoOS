@@ -31,6 +31,23 @@ class SemanticSearch {
     await database.updateSnippet(snippet.copyWith(embedding: Value(embedding)));
   }
 
+  Future<int> createAndIndex(SnippetsCompanion entry) async {
+    final id = await database.createSnippet(entry);
+    final snippet = await database.getSnippetById(id);
+    if (snippet != null) {
+      await indexSnippet(snippet).catchError((Object _) {});
+    }
+    return id;
+  }
+
+  Future<int> indexMissingQuietly() async {
+    try {
+      return await indexMissing();
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Future<int> indexMissing() async {
     final missing = await database.snippetsMissingEmbedding();
     for (final snippet in missing) {

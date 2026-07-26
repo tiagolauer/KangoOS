@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:http/http.dart' as http;
 
 import '../database/database.dart';
+import '../search/semantic_search.dart';
 
 class SyncResult {
   const SyncResult({
@@ -36,12 +37,14 @@ class SnippetSyncClient {
     required this.database,
     required this.baseUrl,
     required this.apiToken,
+    this.semanticSearch,
     http.Client? httpClient,
   }) : httpClient = httpClient ?? http.Client();
 
   final KangoosDatabase database;
   final Uri baseUrl;
   final String apiToken;
+  final SemanticSearch? semanticSearch;
   final http.Client httpClient;
 
   Map<String, String> get _headers => {
@@ -150,6 +153,8 @@ class SnippetSyncClient {
         deletedRemotely++;
       }
     }
+
+    if (pulled > 0) await semanticSearch?.indexMissingQuietly();
 
     return SyncResult(
       pushed: pushed,

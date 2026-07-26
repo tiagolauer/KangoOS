@@ -56,7 +56,7 @@ Router snippetsRouter({
       await database.clearSnippetTombstone(syncId);
     }
 
-    final id = await database.createSnippet(SnippetsCompanion.insert(
+    final id = await semanticSearch.createAndIndex(SnippetsCompanion.insert(
       title: title,
       content: content,
       language: Value(language == null || language.isEmpty ? null : language),

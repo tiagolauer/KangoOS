@@ -19,6 +19,15 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
   }
 }
 
+class _FailingEmbeddingProvider implements EmbeddingProvider {
+  @override
+  String get id => 'failing';
+
+  @override
+  Future<List<double>> embed(String text) async =>
+      throw StateError('ollama unreachable');
+}
+
 void main() {
   test('cosineSimilarity ranks identical vectors above orthogonal ones', () {
     expect(cosineSimilarity([1, 0, 0], [1, 0, 0]), closeTo(1, 1e-9));
@@ -120,6 +129,43 @@ void main() {
     final results = await semanticSearch.search('query');
     expect(results, hasLength(1));
     expect(results.single.snippet.id, matchingId);
+  });
+
+  test('createAndIndex embeds the snippet it just created', () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+
+    final semanticSearch = SemanticSearch(
+      database: database,
+      embeddingProvider: _FakeEmbeddingProvider({
+        'Reverse': [1, 0, 0],
+      }),
+    );
+
+    final id = await semanticSearch.createAndIndex(SnippetsCompanion.insert(
+      title: 'Reverse a string',
+      content: 'input.split("").reversed.join()',
+    ));
+
+    expect(await database.snippetsMissingEmbedding(), isEmpty);
+    expect((await database.snippetVectors()).single.id, id);
+  });
+
+  test('createAndIndex still creates the snippet when embedding fails',
+      () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+
+    final semanticSearch = SemanticSearch(
+      database: database,
+      embeddingProvider: _FailingEmbeddingProvider(),
+    );
+
+    final id = await semanticSearch.createAndIndex(
+        SnippetsCompanion.insert(title: 'Offline', content: 'no ollama here'));
+
+    expect((await database.getSnippetById(id))!.title, 'Offline');
+    expect(await database.snippetsMissingEmbedding(), hasLength(1));
   });
 
   test('indexMissing only embeds snippets without one and returns the count',
