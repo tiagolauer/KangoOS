@@ -26,7 +26,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -53,6 +53,9 @@ class KangoosDatabase extends _$KangoosDatabase {
           if (from < 7) {
             await m.createTable(conversations);
             await m.createTable(conversationMessages);
+          }
+          if (from < 8) {
+            await m.addColumn(activities, activities.capturedClipboard);
           }
         },
       );

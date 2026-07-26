@@ -219,4 +219,43 @@ void main() {
     final logged = await database.watchRecentActivities().first;
     expect(logged.single.capturedText, isNull);
   });
+
+  test('tick records the clipboard when captureClipboard is on', () async {
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(captureClipboard: true));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () =>
+          const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
+      clipboardReader: () async => 'copied text',
+    );
+
+    await service.tick();
+
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedClipboard, 'copied text');
+  });
+
+  test('tick does not call clipboardReader when captureClipboard is off',
+      () async {
+    var called = false;
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: CaptureSettingsRepository(),
+      readWindow: () =>
+          const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
+      clipboardReader: () async {
+        called = true;
+        return 'copied text';
+      },
+    );
+
+    await service.tick();
+
+    expect(called, isFalse);
+    final logged = await database.watchRecentActivities().first;
+    expect(logged.single.capturedClipboard, isNull);
+  });
 }

@@ -80,6 +80,9 @@ class RagChat {
         buffer.write('[${_time(activity.capturedAt)}] '
             '${activity.appName} — ${activity.windowTitle}');
         if (activity.capturedUrl != null) buffer.write(' (${activity.capturedUrl})');
+        if (activity.capturedClipboard != null) {
+          buffer.write(' [clipboard: ${activity.capturedClipboard}]');
+        }
         buffer.writeln();
       }
     }

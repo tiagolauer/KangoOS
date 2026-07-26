@@ -453,6 +453,12 @@ class $ActivitiesTable extends Activities
   late final GeneratedColumn<String> capturedUrl = GeneratedColumn<String>(
       'captured_url', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _capturedClipboardMeta =
+      const VerificationMeta('capturedClipboard');
+  @override
+  late final GeneratedColumn<String> capturedClipboard =
+      GeneratedColumn<String>('captured_clipboard', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _capturedAtMeta =
       const VerificationMeta('capturedAt');
   @override
@@ -462,8 +468,15 @@ class $ActivitiesTable extends Activities
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, appName, windowTitle, capturedText, capturedUrl, capturedAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        appName,
+        windowTitle,
+        capturedText,
+        capturedUrl,
+        capturedClipboard,
+        capturedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -503,6 +516,12 @@ class $ActivitiesTable extends Activities
           capturedUrl.isAcceptableOrUnknown(
               data['captured_url']!, _capturedUrlMeta));
     }
+    if (data.containsKey('captured_clipboard')) {
+      context.handle(
+          _capturedClipboardMeta,
+          capturedClipboard.isAcceptableOrUnknown(
+              data['captured_clipboard']!, _capturedClipboardMeta));
+    }
     if (data.containsKey('captured_at')) {
       context.handle(
           _capturedAtMeta,
@@ -528,6 +547,8 @@ class $ActivitiesTable extends Activities
           .read(DriftSqlType.string, data['${effectivePrefix}captured_text']),
       capturedUrl: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}captured_url']),
+      capturedClipboard: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}captured_clipboard']),
       capturedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}captured_at'])!,
     );
@@ -545,6 +566,7 @@ class Activity extends DataClass implements Insertable<Activity> {
   final String windowTitle;
   final String? capturedText;
   final String? capturedUrl;
+  final String? capturedClipboard;
   final DateTime capturedAt;
   const Activity(
       {required this.id,
@@ -552,6 +574,7 @@ class Activity extends DataClass implements Insertable<Activity> {
       required this.windowTitle,
       this.capturedText,
       this.capturedUrl,
+      this.capturedClipboard,
       required this.capturedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -564,6 +587,9 @@ class Activity extends DataClass implements Insertable<Activity> {
     }
     if (!nullToAbsent || capturedUrl != null) {
       map['captured_url'] = Variable<String>(capturedUrl);
+    }
+    if (!nullToAbsent || capturedClipboard != null) {
+      map['captured_clipboard'] = Variable<String>(capturedClipboard);
     }
     map['captured_at'] = Variable<DateTime>(capturedAt);
     return map;
@@ -580,6 +606,9 @@ class Activity extends DataClass implements Insertable<Activity> {
       capturedUrl: capturedUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(capturedUrl),
+      capturedClipboard: capturedClipboard == null && nullToAbsent
+          ? const Value.absent()
+          : Value(capturedClipboard),
       capturedAt: Value(capturedAt),
     );
   }
@@ -593,6 +622,8 @@ class Activity extends DataClass implements Insertable<Activity> {
       windowTitle: serializer.fromJson<String>(json['windowTitle']),
       capturedText: serializer.fromJson<String?>(json['capturedText']),
       capturedUrl: serializer.fromJson<String?>(json['capturedUrl']),
+      capturedClipboard:
+          serializer.fromJson<String?>(json['capturedClipboard']),
       capturedAt: serializer.fromJson<DateTime>(json['capturedAt']),
     );
   }
@@ -605,6 +636,7 @@ class Activity extends DataClass implements Insertable<Activity> {
       'windowTitle': serializer.toJson<String>(windowTitle),
       'capturedText': serializer.toJson<String?>(capturedText),
       'capturedUrl': serializer.toJson<String?>(capturedUrl),
+      'capturedClipboard': serializer.toJson<String?>(capturedClipboard),
       'capturedAt': serializer.toJson<DateTime>(capturedAt),
     };
   }
@@ -615,6 +647,7 @@ class Activity extends DataClass implements Insertable<Activity> {
           String? windowTitle,
           Value<String?> capturedText = const Value.absent(),
           Value<String?> capturedUrl = const Value.absent(),
+          Value<String?> capturedClipboard = const Value.absent(),
           DateTime? capturedAt}) =>
       Activity(
         id: id ?? this.id,
@@ -623,6 +656,9 @@ class Activity extends DataClass implements Insertable<Activity> {
         capturedText:
             capturedText.present ? capturedText.value : this.capturedText,
         capturedUrl: capturedUrl.present ? capturedUrl.value : this.capturedUrl,
+        capturedClipboard: capturedClipboard.present
+            ? capturedClipboard.value
+            : this.capturedClipboard,
         capturedAt: capturedAt ?? this.capturedAt,
       );
   Activity copyWithCompanion(ActivitiesCompanion data) {
@@ -636,6 +672,9 @@ class Activity extends DataClass implements Insertable<Activity> {
           : this.capturedText,
       capturedUrl:
           data.capturedUrl.present ? data.capturedUrl.value : this.capturedUrl,
+      capturedClipboard: data.capturedClipboard.present
+          ? data.capturedClipboard.value
+          : this.capturedClipboard,
       capturedAt:
           data.capturedAt.present ? data.capturedAt.value : this.capturedAt,
     );
@@ -649,14 +688,15 @@ class Activity extends DataClass implements Insertable<Activity> {
           ..write('windowTitle: $windowTitle, ')
           ..write('capturedText: $capturedText, ')
           ..write('capturedUrl: $capturedUrl, ')
+          ..write('capturedClipboard: $capturedClipboard, ')
           ..write('capturedAt: $capturedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, appName, windowTitle, capturedText, capturedUrl, capturedAt);
+  int get hashCode => Object.hash(id, appName, windowTitle, capturedText,
+      capturedUrl, capturedClipboard, capturedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -666,6 +706,7 @@ class Activity extends DataClass implements Insertable<Activity> {
           other.windowTitle == this.windowTitle &&
           other.capturedText == this.capturedText &&
           other.capturedUrl == this.capturedUrl &&
+          other.capturedClipboard == this.capturedClipboard &&
           other.capturedAt == this.capturedAt);
 }
 
@@ -675,6 +716,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
   final Value<String> windowTitle;
   final Value<String?> capturedText;
   final Value<String?> capturedUrl;
+  final Value<String?> capturedClipboard;
   final Value<DateTime> capturedAt;
   const ActivitiesCompanion({
     this.id = const Value.absent(),
@@ -682,6 +724,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     this.windowTitle = const Value.absent(),
     this.capturedText = const Value.absent(),
     this.capturedUrl = const Value.absent(),
+    this.capturedClipboard = const Value.absent(),
     this.capturedAt = const Value.absent(),
   });
   ActivitiesCompanion.insert({
@@ -690,6 +733,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     required String windowTitle,
     this.capturedText = const Value.absent(),
     this.capturedUrl = const Value.absent(),
+    this.capturedClipboard = const Value.absent(),
     this.capturedAt = const Value.absent(),
   })  : appName = Value(appName),
         windowTitle = Value(windowTitle);
@@ -699,6 +743,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     Expression<String>? windowTitle,
     Expression<String>? capturedText,
     Expression<String>? capturedUrl,
+    Expression<String>? capturedClipboard,
     Expression<DateTime>? capturedAt,
   }) {
     return RawValuesInsertable({
@@ -707,6 +752,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
       if (windowTitle != null) 'window_title': windowTitle,
       if (capturedText != null) 'captured_text': capturedText,
       if (capturedUrl != null) 'captured_url': capturedUrl,
+      if (capturedClipboard != null) 'captured_clipboard': capturedClipboard,
       if (capturedAt != null) 'captured_at': capturedAt,
     });
   }
@@ -717,6 +763,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
       Value<String>? windowTitle,
       Value<String?>? capturedText,
       Value<String?>? capturedUrl,
+      Value<String?>? capturedClipboard,
       Value<DateTime>? capturedAt}) {
     return ActivitiesCompanion(
       id: id ?? this.id,
@@ -724,6 +771,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
       windowTitle: windowTitle ?? this.windowTitle,
       capturedText: capturedText ?? this.capturedText,
       capturedUrl: capturedUrl ?? this.capturedUrl,
+      capturedClipboard: capturedClipboard ?? this.capturedClipboard,
       capturedAt: capturedAt ?? this.capturedAt,
     );
   }
@@ -746,6 +794,9 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     if (capturedUrl.present) {
       map['captured_url'] = Variable<String>(capturedUrl.value);
     }
+    if (capturedClipboard.present) {
+      map['captured_clipboard'] = Variable<String>(capturedClipboard.value);
+    }
     if (capturedAt.present) {
       map['captured_at'] = Variable<DateTime>(capturedAt.value);
     }
@@ -760,6 +811,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
           ..write('windowTitle: $windowTitle, ')
           ..write('capturedText: $capturedText, ')
           ..write('capturedUrl: $capturedUrl, ')
+          ..write('capturedClipboard: $capturedClipboard, ')
           ..write('capturedAt: $capturedAt')
           ..write(')'))
         .toString();
@@ -1881,6 +1933,7 @@ typedef $$ActivitiesTableCreateCompanionBuilder = ActivitiesCompanion Function({
   required String windowTitle,
   Value<String?> capturedText,
   Value<String?> capturedUrl,
+  Value<String?> capturedClipboard,
   Value<DateTime> capturedAt,
 });
 typedef $$ActivitiesTableUpdateCompanionBuilder = ActivitiesCompanion Function({
@@ -1889,6 +1942,7 @@ typedef $$ActivitiesTableUpdateCompanionBuilder = ActivitiesCompanion Function({
   Value<String> windowTitle,
   Value<String?> capturedText,
   Value<String?> capturedUrl,
+  Value<String?> capturedClipboard,
   Value<DateTime> capturedAt,
 });
 
@@ -1915,6 +1969,10 @@ class $$ActivitiesTableFilterComposer
 
   ColumnFilters<String> get capturedUrl => $composableBuilder(
       column: $table.capturedUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get capturedClipboard => $composableBuilder(
+      column: $table.capturedClipboard,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get capturedAt => $composableBuilder(
       column: $table.capturedAt, builder: (column) => ColumnFilters(column));
@@ -1945,6 +2003,10 @@ class $$ActivitiesTableOrderingComposer
   ColumnOrderings<String> get capturedUrl => $composableBuilder(
       column: $table.capturedUrl, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get capturedClipboard => $composableBuilder(
+      column: $table.capturedClipboard,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get capturedAt => $composableBuilder(
       column: $table.capturedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -1972,6 +2034,9 @@ class $$ActivitiesTableAnnotationComposer
 
   GeneratedColumn<String> get capturedUrl => $composableBuilder(
       column: $table.capturedUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get capturedClipboard => $composableBuilder(
+      column: $table.capturedClipboard, builder: (column) => column);
 
   GeneratedColumn<DateTime> get capturedAt => $composableBuilder(
       column: $table.capturedAt, builder: (column) => column);
@@ -2005,6 +2070,7 @@ class $$ActivitiesTableTableManager extends RootTableManager<
             Value<String> windowTitle = const Value.absent(),
             Value<String?> capturedText = const Value.absent(),
             Value<String?> capturedUrl = const Value.absent(),
+            Value<String?> capturedClipboard = const Value.absent(),
             Value<DateTime> capturedAt = const Value.absent(),
           }) =>
               ActivitiesCompanion(
@@ -2013,6 +2079,7 @@ class $$ActivitiesTableTableManager extends RootTableManager<
             windowTitle: windowTitle,
             capturedText: capturedText,
             capturedUrl: capturedUrl,
+            capturedClipboard: capturedClipboard,
             capturedAt: capturedAt,
           ),
           createCompanionCallback: ({
@@ -2021,6 +2088,7 @@ class $$ActivitiesTableTableManager extends RootTableManager<
             required String windowTitle,
             Value<String?> capturedText = const Value.absent(),
             Value<String?> capturedUrl = const Value.absent(),
+            Value<String?> capturedClipboard = const Value.absent(),
             Value<DateTime> capturedAt = const Value.absent(),
           }) =>
               ActivitiesCompanion.insert(
@@ -2029,6 +2097,7 @@ class $$ActivitiesTableTableManager extends RootTableManager<
             windowTitle: windowTitle,
             capturedText: capturedText,
             capturedUrl: capturedUrl,
+            capturedClipboard: capturedClipboard,
             capturedAt: capturedAt,
           ),
           withReferenceMapper: (p0) => p0

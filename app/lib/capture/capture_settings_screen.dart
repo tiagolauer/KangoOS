@@ -157,6 +157,18 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
             onChanged: (enabled) =>
                 _apply(_settings.copyWith(captureVisibleText: enabled)),
           ),
+          SwitchListTile(
+            title: const Text('Capture clipboard'),
+            subtitle: const Text(
+              'Also records whatever you copy. This is the most sensitive '
+              'capture source — copied passwords or tokens would be stored '
+              'too. Off by default; excluded apps are still skipped, but the '
+              'clipboard can outlive the app you copied it from.',
+            ),
+            value: _settings.captureClipboard,
+            onChanged: (enabled) =>
+                _apply(_settings.copyWith(captureClipboard: enabled)),
+          ),
           const SizedBox(height: 16),
           Text('Keep history for',
               style: Theme.of(context).textTheme.titleMedium),

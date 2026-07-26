@@ -9,6 +9,7 @@ class CaptureSettings {
     this.retentionDays = defaultRetentionDays,
     this.captureVisibleText = false,
     this.captureBrowserUrls = false,
+    this.captureClipboard = false,
   });
 
   final bool paused;
@@ -19,12 +20,15 @@ class CaptureSettings {
   /// Opt-in: also records the active tab's URL for recognized browsers.
   final bool captureBrowserUrls;
 
+  final bool captureClipboard;
+
   CaptureSettings copyWith({
     bool? paused,
     List<String>? excludedApps,
     int? retentionDays,
     bool? captureVisibleText,
     bool? captureBrowserUrls,
+    bool? captureClipboard,
   }) {
     return CaptureSettings(
       paused: paused ?? this.paused,
@@ -32,6 +36,7 @@ class CaptureSettings {
       retentionDays: retentionDays ?? this.retentionDays,
       captureVisibleText: captureVisibleText ?? this.captureVisibleText,
       captureBrowserUrls: captureBrowserUrls ?? this.captureBrowserUrls,
+      captureClipboard: captureClipboard ?? this.captureClipboard,
     );
   }
 }
@@ -42,6 +47,7 @@ class CaptureSettingsRepository {
   static const _retentionDaysKey = 'capture_retention_days';
   static const _captureVisibleTextKey = 'capture_visible_text';
   static const _captureBrowserUrlsKey = 'capture_browser_urls';
+  static const _captureClipboardKey = 'capture_clipboard';
   static const _consentShownKey = 'capture_consent_shown';
 
   Future<CaptureSettings> load() async {
@@ -52,6 +58,7 @@ class CaptureSettingsRepository {
       retentionDays: prefs.getInt(_retentionDaysKey) ?? defaultRetentionDays,
       captureVisibleText: prefs.getBool(_captureVisibleTextKey) ?? false,
       captureBrowserUrls: prefs.getBool(_captureBrowserUrlsKey) ?? false,
+      captureClipboard: prefs.getBool(_captureClipboardKey) ?? false,
     );
   }
 
@@ -62,6 +69,7 @@ class CaptureSettingsRepository {
     await prefs.setInt(_retentionDaysKey, settings.retentionDays);
     await prefs.setBool(_captureVisibleTextKey, settings.captureVisibleText);
     await prefs.setBool(_captureBrowserUrlsKey, settings.captureBrowserUrls);
+    await prefs.setBool(_captureClipboardKey, settings.captureClipboard);
   }
 
   Future<bool> hasShownConsent() async {

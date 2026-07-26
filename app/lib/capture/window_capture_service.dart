@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/services.dart' show Clipboard;
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:path/path.dart' as p;
 
@@ -18,6 +19,7 @@ import 'window_snapshot.dart';
 export 'window_snapshot.dart';
 
 const uiaHelperTimeout = Duration(seconds: 3);
+const maxCapturedClipboardLength = 2000;
 
 class WindowCaptureService {
   WindowCaptureService({
@@ -27,10 +29,12 @@ class WindowCaptureService {
     WindowSnapshot? Function()? readWindow,
     Future<String?> Function()? captureVisibleText,
     Future<String?> Function(String appName)? browserUrlReader,
+    Future<String?> Function()? clipboardReader,
   })  : readWindow = readWindow ?? defaultWindowReader(),
         captureVisibleText =
             captureVisibleText ?? _captureVisibleTextViaHelper,
-        browserUrlReader = browserUrlReader ?? defaultBrowserUrlReader();
+        browserUrlReader = browserUrlReader ?? defaultBrowserUrlReader(),
+        clipboardReader = clipboardReader ?? _readClipboard;
 
   final KangoosDatabase database;
   final CaptureSettingsRepository settingsRepository;
@@ -44,6 +48,8 @@ class WindowCaptureService {
   /// Overridable for tests; defaults to the platform-appropriate browser URL
   /// reader. Only called when [CaptureSettings.captureBrowserUrls] is on.
   final Future<String?> Function(String appName) browserUrlReader;
+
+  final Future<String?> Function() clipboardReader;
 
   Timer? _timer;
   String? _lastKey;
@@ -101,13 +107,29 @@ class WindowCaptureService {
     final url = settings.captureBrowserUrls
         ? await browserUrlReader(snapshot.appName)
         : null;
+    final clipboard =
+        settings.captureClipboard ? await clipboardReader() : null;
 
     await database.logActivity(ActivitiesCompanion.insert(
       appName: snapshot.appName,
       windowTitle: snapshot.windowTitle,
       capturedText: Value(visibleText),
       capturedUrl: Value(url),
+      capturedClipboard: Value(clipboard),
     ));
+  }
+
+  static Future<String?> _readClipboard() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim();
+      if (text == null || text.isEmpty) return null;
+      return text.length > maxCapturedClipboardLength
+          ? text.substring(0, maxCapturedClipboardLength)
+          : text;
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<String?> _captureVisibleTextViaHelper() async {
