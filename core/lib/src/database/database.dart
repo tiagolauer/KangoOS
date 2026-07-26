@@ -152,6 +152,12 @@ END;
             ..orderBy([(row) => OrderingTerm.desc(row.periodEnd)])
             ..limit(limit))
           .watch();
+
+  Future<List<ActivitySummary>> recentSummaries({int limit = 5}) =>
+      (select(activitySummaries)
+            ..orderBy([(row) => OrderingTerm.desc(row.periodEnd)])
+            ..limit(limit))
+          .get();
 }
 
 /// Builds an FTS5 MATCH expression from free-form user input: each word

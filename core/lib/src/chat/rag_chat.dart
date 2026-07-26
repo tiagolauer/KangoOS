@@ -7,11 +7,15 @@ class RagChat {
     required this.database,
     required this.semanticSearch,
     this.maxContextSnippets = 5,
+    this.maxContextActivities = 30,
+    this.maxContextSummaries = 5,
   });
 
   final KangoosDatabase database;
   final SemanticSearch semanticSearch;
   final int maxContextSnippets;
+  final int maxContextActivities;
+  final int maxContextSummaries;
 
   Future<List<Snippet>> retrieveContext(String query) async {
     try {
@@ -22,12 +26,38 @@ class RagChat {
     return matches.take(maxContextSnippets).toList();
   }
 
-  String buildSystemPrompt(List<Snippet> context) {
+  /// Today's captured activity (local time), most recent first, capped at
+  /// [maxContextActivities]. There's no time-range parsing on the user's
+  /// query yet, so "today" is the fixed window every reply grounds against.
+  Future<List<Activity>> retrieveRecentActivity() async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    // +1s guards against the exclusive upper bound clipping activity
+    // captured in the same second this query runs (sqlite truncates
+    // DateTime storage to whole seconds).
+    final activities = await database.activitiesBetween(
+        startOfDay, now.add(const Duration(seconds: 1)));
+    final recent = activities.length > maxContextActivities
+        ? activities.sublist(activities.length - maxContextActivities)
+        : activities;
+    return recent.reversed.toList();
+  }
+
+  Future<List<ActivitySummary>> retrieveRecentSummaries() =>
+      database.recentSummaries(limit: maxContextSummaries);
+
+  String buildSystemPrompt(
+    List<Snippet> snippets,
+    List<Activity> activities,
+    List<ActivitySummary> summaries,
+  ) {
     final buffer = StringBuffer(
-      'You are the KangoOS assistant. Answer using the snippets below when '
-      'relevant. If none are relevant, say so and answer generally.',
+      'You are the KangoOS assistant. Answer using the snippets and captured '
+      "activity below when relevant. If nothing is relevant, say so and "
+      'answer generally.',
     );
-    for (final snippet in context) {
+
+    for (final snippet in snippets) {
       buffer.writeln();
       buffer.writeln('---');
       buffer.writeln('Title: ${snippet.title}');
@@ -36,17 +66,47 @@ class RagChat {
       }
       buffer.writeln(snippet.content);
     }
+
+    if (summaries.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('--- Recent activity summaries ---');
+      for (final summary in summaries) {
+        buffer.writeln(
+            '[${summary.kind.name} ${_time(summary.periodStart)}-${_time(summary.periodEnd)}] '
+            '${summary.content}');
+      }
+    }
+
+    if (activities.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln("--- Today's captured activity ---");
+      for (final activity in activities) {
+        buffer.write('[${_time(activity.capturedAt)}] '
+            '${activity.appName} — ${activity.windowTitle}');
+        if (activity.capturedUrl != null) buffer.write(' (${activity.capturedUrl})');
+        buffer.writeln();
+      }
+    }
+
     return buffer.toString();
   }
+
+  String _time(DateTime value) =>
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 
   Stream<String> reply({
     required LlmProvider provider,
     required List<LlmMessage> history,
     required String userMessage,
   }) async* {
-    final context = await retrieveContext(userMessage);
+    final snippets = await retrieveContext(userMessage);
+    final activities = await retrieveRecentActivity();
+    final summaries = await retrieveRecentSummaries();
     final requestMessages = [
-      LlmMessage(role: LlmRole.system, content: buildSystemPrompt(context)),
+      LlmMessage(
+        role: LlmRole.system,
+        content: buildSystemPrompt(snippets, activities, summaries),
+      ),
       ...history,
       LlmMessage(role: LlmRole.user, content: userMessage),
     ];
