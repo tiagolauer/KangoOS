@@ -35,10 +35,12 @@ class EnvConfig {
       );
     }
 
-    final providerName = env['KANGOOS_LLM_PROVIDER'] ?? LlmProviderKind.ollama.name;
+    final providerName =
+        env['KANGOOS_LLM_PROVIDER'] ?? LlmProviderKind.ollama.name;
     final provider = LlmProviderKind.values.firstWhere(
       (kind) => kind.name == providerName,
-      orElse: () => throw StateError('Unknown KANGOOS_LLM_PROVIDER: $providerName'),
+      orElse: () =>
+          throw StateError('Unknown KANGOOS_LLM_PROVIDER: $providerName'),
     );
 
     return EnvConfig(

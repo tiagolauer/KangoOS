@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
@@ -35,6 +37,68 @@ void main() {
     final logged = await database.watchRecentActivities().first;
     expect(logged, hasLength(2));
     expect(logged.map((a) => a.windowTitle), ['Docs', 'main.dart']);
+  });
+
+  test('excluded apps match regardless of case', () async {
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(excludedApps: ['keepass.exe']));
+
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () =>
+          const WindowSnapshot(appName: 'KeePass.exe', windowTitle: 'Vault'),
+    );
+
+    await service.tick();
+
+    expect(await database.watchRecentActivities().first, isEmpty);
+  });
+
+  test('a slow tick does not overlap with the next one', () async {
+    final repository = CaptureSettingsRepository();
+    await repository.save(const CaptureSettings(captureVisibleText: true));
+
+    final blocked = Completer<String?>();
+    var windowReads = 0;
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: repository,
+      readWindow: () {
+        windowReads++;
+        return WindowSnapshot(
+            appName: 'code.exe', windowTitle: 'window $windowReads');
+      },
+      captureVisibleText: () => blocked.future,
+    );
+
+    final first = service.tickSafely();
+    await Future<void>.delayed(Duration.zero);
+    await service.tickSafely();
+
+    expect(windowReads, 1);
+
+    blocked.complete('visible text');
+    await first;
+
+    expect(await database.watchRecentActivities().first, hasLength(1));
+  });
+
+  test('a throwing tick is reported instead of escaping the timer', () async {
+    final errors = <Object>[];
+    final service = WindowCaptureService(
+      database: database,
+      settingsRepository: CaptureSettingsRepository(),
+      readWindow: () => throw StateError('window reader exploded'),
+      onError: (error, _) => errors.add(error),
+    );
+
+    await service.tickSafely();
+
+    await service.tickSafely();
+
+    expect(errors, hasLength(2));
+    expect(errors.first, isA<StateError>());
   });
 
   test('tick does nothing while capture is paused', () async {
