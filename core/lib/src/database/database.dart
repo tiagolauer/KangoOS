@@ -3,13 +3,21 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
+import '../llm/llm_provider.dart';
 import 'tables/activities_table.dart';
 import 'tables/activity_summaries_table.dart';
+import 'tables/conversations_table.dart';
 import 'tables/snippets_table.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Snippets, Activities, ActivitySummaries])
+@DriftDatabase(tables: [
+  Snippets,
+  Activities,
+  ActivitySummaries,
+  Conversations,
+  ConversationMessages,
+])
 class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase(super.executor);
 
@@ -18,7 +26,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -41,6 +49,10 @@ class KangoosDatabase extends _$KangoosDatabase {
           }
           if (from < 6) {
             await m.addColumn(activities, activities.capturedUrl);
+          }
+          if (from < 7) {
+            await m.createTable(conversations);
+            await m.createTable(conversationMessages);
           }
         },
       );
@@ -132,6 +144,8 @@ END;
             ..limit(limit))
           .watch();
 
+  Future<List<Activity>> allActivities() => select(activities).get();
+
   Future<int> purgeActivitiesOlderThan(DateTime cutoff) => (delete(activities)
         ..where((row) => row.capturedAt.isSmallerThanValue(cutoff)))
       .go();
@@ -165,11 +179,47 @@ END;
             ..limit(limit))
           .watch();
 
+  Future<List<ActivitySummary>> allSummaries() => select(activitySummaries).get();
+
   Future<List<ActivitySummary>> recentSummaries({int limit = 5}) =>
       (select(activitySummaries)
             ..orderBy([(row) => OrderingTerm.desc(row.periodEnd)])
             ..limit(limit))
           .get();
+
+  Future<int> createConversation() =>
+      into(conversations).insert(ConversationsCompanion.insert());
+
+  Future<int?> latestConversationId() async {
+    final lastMessage = await (select(conversationMessages)
+          ..orderBy([(row) => OrderingTerm.desc(row.id)])
+          ..limit(1))
+        .getSingleOrNull();
+    if (lastMessage != null) return lastMessage.conversationId;
+
+    final lastConversation = await (select(conversations)
+          ..orderBy([(row) => OrderingTerm.desc(row.id)])
+          ..limit(1))
+        .getSingleOrNull();
+    return lastConversation?.id;
+  }
+
+  Future<int> appendMessage(int conversationId, LlmRole role, String content) =>
+      into(conversationMessages).insert(ConversationMessagesCompanion.insert(
+          conversationId: conversationId, role: role, content: content));
+
+  Future<List<ConversationMessage>> messagesForConversation(int conversationId) =>
+      (select(conversationMessages)
+            ..where((row) => row.conversationId.equals(conversationId))
+            ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
+          .get();
+
+  Future<int> deleteActivity(int id) =>
+      (delete(activities)..where((row) => row.id.equals(id))).go();
+
+  Future<int> clearAllActivity() => delete(activities).go();
+
+  Future<int> clearAllSummaries() => delete(activitySummaries).go();
 }
 
 /// Builds an FTS5 MATCH expression from free-form user input: each word

@@ -42,6 +42,7 @@ class CaptureSettingsRepository {
   static const _retentionDaysKey = 'capture_retention_days';
   static const _captureVisibleTextKey = 'capture_visible_text';
   static const _captureBrowserUrlsKey = 'capture_browser_urls';
+  static const _consentShownKey = 'capture_consent_shown';
 
   Future<CaptureSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -61,5 +62,15 @@ class CaptureSettingsRepository {
     await prefs.setInt(_retentionDaysKey, settings.retentionDays);
     await prefs.setBool(_captureVisibleTextKey, settings.captureVisibleText);
     await prefs.setBool(_captureBrowserUrlsKey, settings.captureBrowserUrls);
+  }
+
+  Future<bool> hasShownConsent() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_consentShownKey) ?? false;
+  }
+
+  Future<void> markConsentShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_consentShownKey, true);
   }
 }

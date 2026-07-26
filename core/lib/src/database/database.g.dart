@@ -1106,6 +1106,530 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
   }
 }
 
+class $ConversationsTable extends Conversations
+    with TableInfo<$ConversationsTable, Conversation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ConversationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [id, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'conversations';
+  @override
+  VerificationContext validateIntegrity(Insertable<Conversation> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Conversation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Conversation(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $ConversationsTable createAlias(String alias) {
+    return $ConversationsTable(attachedDatabase, alias);
+  }
+}
+
+class Conversation extends DataClass implements Insertable<Conversation> {
+  final int id;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const Conversation(
+      {required this.id, required this.createdAt, required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ConversationsCompanion toCompanion(bool nullToAbsent) {
+    return ConversationsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Conversation.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Conversation(
+      id: serializer.fromJson<int>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  Conversation copyWith({int? id, DateTime? createdAt, DateTime? updatedAt}) =>
+      Conversation(
+        id: id ?? this.id,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  Conversation copyWithCompanion(ConversationsCompanion data) {
+    return Conversation(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Conversation(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Conversation &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ConversationsCompanion extends UpdateCompanion<Conversation> {
+  final Value<int> id;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const ConversationsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ConversationsCompanion.insert({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  static Insertable<Conversation> custom({
+    Expression<int>? id,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ConversationsCompanion copyWith(
+      {Value<int>? id,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return ConversationsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConversationsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ConversationMessagesTable extends ConversationMessages
+    with TableInfo<$ConversationMessagesTable, ConversationMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ConversationMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _conversationIdMeta =
+      const VerificationMeta('conversationId');
+  @override
+  late final GeneratedColumn<int> conversationId = GeneratedColumn<int>(
+      'conversation_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  late final GeneratedColumnWithTypeConverter<LlmRole, String> role =
+      GeneratedColumn<String>('role', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<LlmRole>($ConversationMessagesTable.$converterrole);
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, conversationId, role, content, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'conversation_messages';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<ConversationMessage> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+          _conversationIdMeta,
+          conversationId.isAcceptableOrUnknown(
+              data['conversation_id']!, _conversationIdMeta));
+    } else if (isInserting) {
+      context.missing(_conversationIdMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(_contentMeta,
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ConversationMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ConversationMessage(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      conversationId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}conversation_id'])!,
+      role: $ConversationMessagesTable.$converterrole.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}role'])!),
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $ConversationMessagesTable createAlias(String alias) {
+    return $ConversationMessagesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<LlmRole, String> $converterrole =
+      const LlmRoleConverter();
+}
+
+class ConversationMessage extends DataClass
+    implements Insertable<ConversationMessage> {
+  final int id;
+  final int conversationId;
+  final LlmRole role;
+  final String content;
+  final DateTime createdAt;
+  const ConversationMessage(
+      {required this.id,
+      required this.conversationId,
+      required this.role,
+      required this.content,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['conversation_id'] = Variable<int>(conversationId);
+    {
+      map['role'] = Variable<String>(
+          $ConversationMessagesTable.$converterrole.toSql(role));
+    }
+    map['content'] = Variable<String>(content);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ConversationMessagesCompanion toCompanion(bool nullToAbsent) {
+    return ConversationMessagesCompanion(
+      id: Value(id),
+      conversationId: Value(conversationId),
+      role: Value(role),
+      content: Value(content),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ConversationMessage.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ConversationMessage(
+      id: serializer.fromJson<int>(json['id']),
+      conversationId: serializer.fromJson<int>(json['conversationId']),
+      role: serializer.fromJson<LlmRole>(json['role']),
+      content: serializer.fromJson<String>(json['content']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'conversationId': serializer.toJson<int>(conversationId),
+      'role': serializer.toJson<LlmRole>(role),
+      'content': serializer.toJson<String>(content),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ConversationMessage copyWith(
+          {int? id,
+          int? conversationId,
+          LlmRole? role,
+          String? content,
+          DateTime? createdAt}) =>
+      ConversationMessage(
+        id: id ?? this.id,
+        conversationId: conversationId ?? this.conversationId,
+        role: role ?? this.role,
+        content: content ?? this.content,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  ConversationMessage copyWithCompanion(ConversationMessagesCompanion data) {
+    return ConversationMessage(
+      id: data.id.present ? data.id.value : this.id,
+      conversationId: data.conversationId.present
+          ? data.conversationId.value
+          : this.conversationId,
+      role: data.role.present ? data.role.value : this.role,
+      content: data.content.present ? data.content.value : this.content,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConversationMessage(')
+          ..write('id: $id, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, conversationId, role, content, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ConversationMessage &&
+          other.id == this.id &&
+          other.conversationId == this.conversationId &&
+          other.role == this.role &&
+          other.content == this.content &&
+          other.createdAt == this.createdAt);
+}
+
+class ConversationMessagesCompanion
+    extends UpdateCompanion<ConversationMessage> {
+  final Value<int> id;
+  final Value<int> conversationId;
+  final Value<LlmRole> role;
+  final Value<String> content;
+  final Value<DateTime> createdAt;
+  const ConversationMessagesCompanion({
+    this.id = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.content = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ConversationMessagesCompanion.insert({
+    this.id = const Value.absent(),
+    required int conversationId,
+    required LlmRole role,
+    required String content,
+    this.createdAt = const Value.absent(),
+  })  : conversationId = Value(conversationId),
+        role = Value(role),
+        content = Value(content);
+  static Insertable<ConversationMessage> custom({
+    Expression<int>? id,
+    Expression<int>? conversationId,
+    Expression<String>? role,
+    Expression<String>? content,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (role != null) 'role': role,
+      if (content != null) 'content': content,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ConversationMessagesCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? conversationId,
+      Value<LlmRole>? role,
+      Value<String>? content,
+      Value<DateTime>? createdAt}) {
+    return ConversationMessagesCompanion(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      role: role ?? this.role,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<int>(conversationId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(
+          $ConversationMessagesTable.$converterrole.toSql(role.value));
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConversationMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KangoosDatabase extends GeneratedDatabase {
   _$KangoosDatabase(QueryExecutor e) : super(e);
   $KangoosDatabaseManager get managers => $KangoosDatabaseManager(this);
@@ -1113,6 +1637,9 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
   late final $ActivitiesTable activities = $ActivitiesTable(this);
   late final $ActivitySummariesTable activitySummaries =
       $ActivitySummariesTable(this);
+  late final $ConversationsTable conversations = $ConversationsTable(this);
+  late final $ConversationMessagesTable conversationMessages =
+      $ConversationMessagesTable(this);
   late final Index snippetsUpdatedAtIdx = Index('snippets_updated_at_idx',
       'CREATE INDEX snippets_updated_at_idx ON snippets (updated_at)');
   late final Index activitiesCapturedAtIdx = Index('activities_captured_at_idx',
@@ -1120,6 +1647,9 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
   late final Index activitySummariesPeriodEndIdx = Index(
       'activity_summaries_period_end_idx',
       'CREATE INDEX activity_summaries_period_end_idx ON activity_summaries (period_end)');
+  late final Index conversationMessagesConversationIdIdx = Index(
+      'conversation_messages_conversation_id_idx',
+      'CREATE INDEX conversation_messages_conversation_id_idx ON conversation_messages (conversation_id)');
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1128,9 +1658,12 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
         snippets,
         activities,
         activitySummaries,
+        conversations,
+        conversationMessages,
         snippetsUpdatedAtIdx,
         activitiesCapturedAtIdx,
-        activitySummariesPeriodEndIdx
+        activitySummariesPeriodEndIdx,
+        conversationMessagesConversationIdIdx
       ];
 }
 
@@ -1705,6 +2238,321 @@ typedef $$ActivitySummariesTableProcessedTableManager = ProcessedTableManager<
     ),
     ActivitySummary,
     PrefetchHooks Function()>;
+typedef $$ConversationsTableCreateCompanionBuilder = ConversationsCompanion
+    Function({
+  Value<int> id,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+});
+typedef $$ConversationsTableUpdateCompanionBuilder = ConversationsCompanion
+    Function({
+  Value<int> id,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+});
+
+class $$ConversationsTableFilterComposer
+    extends Composer<_$KangoosDatabase, $ConversationsTable> {
+  $$ConversationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$ConversationsTableOrderingComposer
+    extends Composer<_$KangoosDatabase, $ConversationsTable> {
+  $$ConversationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$ConversationsTableAnnotationComposer
+    extends Composer<_$KangoosDatabase, $ConversationsTable> {
+  $$ConversationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ConversationsTableTableManager extends RootTableManager<
+    _$KangoosDatabase,
+    $ConversationsTable,
+    Conversation,
+    $$ConversationsTableFilterComposer,
+    $$ConversationsTableOrderingComposer,
+    $$ConversationsTableAnnotationComposer,
+    $$ConversationsTableCreateCompanionBuilder,
+    $$ConversationsTableUpdateCompanionBuilder,
+    (
+      Conversation,
+      BaseReferences<_$KangoosDatabase, $ConversationsTable, Conversation>
+    ),
+    Conversation,
+    PrefetchHooks Function()> {
+  $$ConversationsTableTableManager(
+      _$KangoosDatabase db, $ConversationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ConversationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ConversationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ConversationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+          }) =>
+              ConversationsCompanion(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+          }) =>
+              ConversationsCompanion.insert(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$ConversationsTableProcessedTableManager = ProcessedTableManager<
+    _$KangoosDatabase,
+    $ConversationsTable,
+    Conversation,
+    $$ConversationsTableFilterComposer,
+    $$ConversationsTableOrderingComposer,
+    $$ConversationsTableAnnotationComposer,
+    $$ConversationsTableCreateCompanionBuilder,
+    $$ConversationsTableUpdateCompanionBuilder,
+    (
+      Conversation,
+      BaseReferences<_$KangoosDatabase, $ConversationsTable, Conversation>
+    ),
+    Conversation,
+    PrefetchHooks Function()>;
+typedef $$ConversationMessagesTableCreateCompanionBuilder
+    = ConversationMessagesCompanion Function({
+  Value<int> id,
+  required int conversationId,
+  required LlmRole role,
+  required String content,
+  Value<DateTime> createdAt,
+});
+typedef $$ConversationMessagesTableUpdateCompanionBuilder
+    = ConversationMessagesCompanion Function({
+  Value<int> id,
+  Value<int> conversationId,
+  Value<LlmRole> role,
+  Value<String> content,
+  Value<DateTime> createdAt,
+});
+
+class $$ConversationMessagesTableFilterComposer
+    extends Composer<_$KangoosDatabase, $ConversationMessagesTable> {
+  $$ConversationMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get conversationId => $composableBuilder(
+      column: $table.conversationId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<LlmRole, LlmRole, String> get role =>
+      $composableBuilder(
+          column: $table.role,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$ConversationMessagesTableOrderingComposer
+    extends Composer<_$KangoosDatabase, $ConversationMessagesTable> {
+  $$ConversationMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get conversationId => $composableBuilder(
+      column: $table.conversationId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get role => $composableBuilder(
+      column: $table.role, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$ConversationMessagesTableAnnotationComposer
+    extends Composer<_$KangoosDatabase, $ConversationMessagesTable> {
+  $$ConversationMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get conversationId => $composableBuilder(
+      column: $table.conversationId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<LlmRole, String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ConversationMessagesTableTableManager extends RootTableManager<
+    _$KangoosDatabase,
+    $ConversationMessagesTable,
+    ConversationMessage,
+    $$ConversationMessagesTableFilterComposer,
+    $$ConversationMessagesTableOrderingComposer,
+    $$ConversationMessagesTableAnnotationComposer,
+    $$ConversationMessagesTableCreateCompanionBuilder,
+    $$ConversationMessagesTableUpdateCompanionBuilder,
+    (
+      ConversationMessage,
+      BaseReferences<_$KangoosDatabase, $ConversationMessagesTable,
+          ConversationMessage>
+    ),
+    ConversationMessage,
+    PrefetchHooks Function()> {
+  $$ConversationMessagesTableTableManager(
+      _$KangoosDatabase db, $ConversationMessagesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ConversationMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ConversationMessagesTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ConversationMessagesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> conversationId = const Value.absent(),
+            Value<LlmRole> role = const Value.absent(),
+            Value<String> content = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              ConversationMessagesCompanion(
+            id: id,
+            conversationId: conversationId,
+            role: role,
+            content: content,
+            createdAt: createdAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int conversationId,
+            required LlmRole role,
+            required String content,
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              ConversationMessagesCompanion.insert(
+            id: id,
+            conversationId: conversationId,
+            role: role,
+            content: content,
+            createdAt: createdAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$ConversationMessagesTableProcessedTableManager
+    = ProcessedTableManager<
+        _$KangoosDatabase,
+        $ConversationMessagesTable,
+        ConversationMessage,
+        $$ConversationMessagesTableFilterComposer,
+        $$ConversationMessagesTableOrderingComposer,
+        $$ConversationMessagesTableAnnotationComposer,
+        $$ConversationMessagesTableCreateCompanionBuilder,
+        $$ConversationMessagesTableUpdateCompanionBuilder,
+        (
+          ConversationMessage,
+          BaseReferences<_$KangoosDatabase, $ConversationMessagesTable,
+              ConversationMessage>
+        ),
+        ConversationMessage,
+        PrefetchHooks Function()>;
 
 class $KangoosDatabaseManager {
   final _$KangoosDatabase _db;
@@ -1715,4 +2563,8 @@ class $KangoosDatabaseManager {
       $$ActivitiesTableTableManager(_db, _db.activities);
   $$ActivitySummariesTableTableManager get activitySummaries =>
       $$ActivitySummariesTableTableManager(_db, _db.activitySummaries);
+  $$ConversationsTableTableManager get conversations =>
+      $$ConversationsTableTableManager(_db, _db.conversations);
+  $$ConversationMessagesTableTableManager get conversationMessages =>
+      $$ConversationMessagesTableTableManager(_db, _db.conversationMessages);
 }

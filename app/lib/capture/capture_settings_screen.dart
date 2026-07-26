@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:kangoos_core/kangoos_core.dart';
 
 import '../autostart/autostart_service.dart';
 import 'capture_settings_repository.dart';
 
 class CaptureSettingsScreen extends StatefulWidget {
-  const CaptureSettingsScreen({super.key, required this.repository});
+  const CaptureSettingsScreen({
+    super.key,
+    required this.repository,
+    required this.database,
+  });
 
   final CaptureSettingsRepository repository;
+  final KangoosDatabase database;
 
   @override
   State<CaptureSettingsScreen> createState() => _CaptureSettingsScreenState();
@@ -63,6 +69,37 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
           excludedApps: _settings.excludedApps.where((a) => a != app).toList(),
         ),
       );
+
+  Future<void> _clearAllActivity() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear all captured activity?'),
+        content: const Text(
+          'This permanently deletes every recorded window/app entry and '
+          'recap summary. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final activityCount = await widget.database.clearAllActivity();
+    final summaryCount = await widget.database.clearAllSummaries();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            Text('Cleared $activityCount entries and $summaryCount recaps.')));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +210,15 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                 onPressed: () => _removeExcludedApp(app),
               ),
             ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: _clearAllActivity,
+            icon: const Icon(Icons.delete_forever_outlined),
+            label: const Text('Clear all captured activity'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
         ],
       ),
     );

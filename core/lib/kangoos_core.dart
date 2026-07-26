@@ -5,6 +5,7 @@ export 'src/chat/temporal_query.dart';
 export 'src/database/database.dart';
 export 'src/database/tables/activities_table.dart';
 export 'src/database/tables/activity_summaries_table.dart';
+export 'src/database/tables/conversations_table.dart';
 export 'src/database/tables/snippets_table.dart';
 export 'src/embedding/embedding_provider.dart';
 export 'src/embedding/providers/ollama_embedding_provider.dart';

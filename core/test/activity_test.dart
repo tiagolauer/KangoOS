@@ -96,4 +96,45 @@ void main() {
     final fetched = await database.getSummaryById(id);
     expect(fetched?.content, 'a note');
   });
+
+  test('deleteActivity removes only the given row', () async {
+    final keepId = await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'A',
+      windowTitle: 'keep',
+    ));
+    final deleteId = await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'B',
+      windowTitle: 'delete me',
+    ));
+
+    final deleted = await database.deleteActivity(deleteId);
+    expect(deleted, 1);
+
+    final remaining = await database.watchRecentActivities().first;
+    expect(remaining.map((a) => a.id), [keepId]);
+  });
+
+  test('clearAllActivity removes every row', () async {
+    await database.logActivity(
+        ActivitiesCompanion.insert(appName: 'A', windowTitle: 'one'));
+    await database.logActivity(
+        ActivitiesCompanion.insert(appName: 'B', windowTitle: 'two'));
+
+    final cleared = await database.clearAllActivity();
+    expect(cleared, 2);
+    expect(await database.watchRecentActivities().first, isEmpty);
+  });
+
+  test('clearAllSummaries removes every summary', () async {
+    await database.insertActivitySummary(ActivitySummariesCompanion.insert(
+      kind: SummaryKind.periodic,
+      periodStart: DateTime.utc(2026, 1, 1),
+      periodEnd: DateTime.utc(2026, 1, 1, 1),
+      content: 'a summary',
+    ));
+
+    final cleared = await database.clearAllSummaries();
+    expect(cleared, 1);
+    expect(await database.watchRecentSummaries().first, isEmpty);
+  });
 }

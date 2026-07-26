@@ -139,6 +139,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   final _random = Random();
   var _sending = false;
   var _capturing = true;
+  int? _conversationId;
   String? _error;
   List<String> _freeformSuggestions = _freeformPool.take(2).toList();
 
@@ -148,6 +149,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   void initState() {
     super.initState();
     _loadCaptureState();
+    _loadConversation();
   }
 
   @override
@@ -161,6 +163,28 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   Future<void> _loadCaptureState() async {
     final settings = await widget.captureSettingsRepository.load();
     if (mounted) setState(() => _capturing = !settings.paused);
+  }
+
+  Future<void> _loadConversation() async {
+    final id = await widget.database.latestConversationId();
+    if (id == null || !mounted) return;
+    final messages = await widget.database.messagesForConversation(id);
+    if (!mounted) return;
+    setState(() {
+      _conversationId = id;
+      _history
+        ..clear()
+        ..addAll(messages
+            .map((m) => LlmMessage(role: m.role, content: m.content)));
+    });
+  }
+
+  void _startNewChat() {
+    setState(() {
+      _conversationId = null;
+      _history.clear();
+      _error = null;
+    });
   }
 
   void _shuffleFreeformSuggestions() {
@@ -197,6 +221,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     }
 
     final priorHistory = List<LlmMessage>.of(_history);
+    _conversationId ??= await widget.database.createConversation();
+    await widget.database.appendMessage(_conversationId!, LlmRole.user, trimmed);
 
     setState(() {
       _error = null;
@@ -224,6 +250,10 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
         });
         _scrollToEnd();
       }
+      if (buffer.isNotEmpty) {
+        await widget.database
+            .appendMessage(_conversationId!, LlmRole.assistant, buffer.toString());
+      }
     } catch (e) {
       setState(() => _error = 'Request failed: $e');
     } finally {
@@ -247,11 +277,15 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     return Column(
       children: [
         _Header(
+          showNewChat: _started,
+          onNewChat: _startNewChat,
           onIndexMissing: _indexMissing,
           onOpenCaptureSettings: () async {
             await Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => CaptureSettingsScreen(
-                  repository: widget.captureSettingsRepository),
+                repository: widget.captureSettingsRepository,
+                database: widget.database,
+              ),
             ));
             _loadCaptureState();
           },
@@ -387,11 +421,15 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
 
 class _Header extends StatelessWidget {
   const _Header({
+    required this.showNewChat,
+    required this.onNewChat,
     required this.onIndexMissing,
     required this.onOpenCaptureSettings,
     required this.onOpenLlmSettings,
   });
 
+  final bool showNewChat;
+  final VoidCallback onNewChat;
   final VoidCallback onIndexMissing;
   final VoidCallback onOpenCaptureSettings;
   final VoidCallback onOpenLlmSettings;
@@ -409,6 +447,12 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 8),
           Text('KangoOS', style: Theme.of(context).textTheme.titleMedium),
           const Spacer(),
+          if (showNewChat)
+            IconButton(
+              icon: const Icon(Icons.add_comment_outlined),
+              tooltip: 'New chat',
+              onPressed: onNewChat,
+            ),
           IconButton(
             icon: const Icon(Icons.auto_awesome_outlined),
             tooltip: 'Index snippets for semantic search',

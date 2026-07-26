@@ -191,19 +191,31 @@ class _SidebarState extends State<Sidebar> {
             final row = rows[index];
             if (row is DateTime) return _DayHeader(day: row);
             final activity = row as Activity;
-            return ListTile(
-              dense: true,
-              title: Text(
-                activity.windowTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+            return Dismissible(
+              key: ValueKey(activity.id),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                color: Theme.of(context).colorScheme.errorContainer,
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 16),
+                child: Icon(Icons.delete_outline,
+                    color: Theme.of(context).colorScheme.onErrorContainer),
               ),
-              subtitle: Text(activity.appName,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-              trailing: Text(
-                formatClockTime(activity.capturedAt),
-                style: Theme.of(context).textTheme.bodySmall,
+              onDismissed: (_) => widget.database.deleteActivity(activity.id),
+              child: ListTile(
+                dense: true,
+                title: Text(
+                  activity.windowTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(activity.appName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: Text(
+                  formatClockTime(activity.capturedAt),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ),
             );
           },

@@ -25,6 +25,11 @@ Future<void> main() async {
     embeddingProvider: OllamaEmbeddingProvider(model: defaultEmbeddingModel),
   );
   final captureSettingsRepository = CaptureSettingsRepository();
+  final needsCaptureConsent =
+      !(await captureSettingsRepository.hasShownConsent());
+  if (needsCaptureConsent) {
+    await captureSettingsRepository.save(const CaptureSettings(paused: true));
+  }
   WindowCaptureService(
           database: database, settingsRepository: captureSettingsRepository)
       .start();
@@ -38,6 +43,7 @@ Future<void> main() async {
     database: database,
     semanticSearch: semanticSearch,
     captureSettingsRepository: captureSettingsRepository,
+    needsCaptureConsent: needsCaptureConsent,
   ));
 }
 
@@ -47,11 +53,13 @@ class KangoosApp extends StatelessWidget {
     required this.database,
     required this.semanticSearch,
     required this.captureSettingsRepository,
+    this.needsCaptureConsent = false,
   });
 
   final KangoosDatabase database;
   final SemanticSearch semanticSearch;
   final CaptureSettingsRepository captureSettingsRepository;
+  final bool needsCaptureConsent;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +72,7 @@ class KangoosApp extends StatelessWidget {
         database: database,
         semanticSearch: semanticSearch,
         captureSettingsRepository: captureSettingsRepository,
+        needsCaptureConsent: needsCaptureConsent,
       ),
     );
   }
