@@ -73,6 +73,18 @@
   "serverUrl": "URL do servidor",
   "serverApiToken": "Token de API",
   "syncNow": "Sincronizar agora",
+  "syncInvalidUrl": "Isso não é uma URL de servidor válida. Use algo como https://kango.exemplo.com.",
+  "syncUnsupportedScheme": "Só há suporte para URLs de servidor http e https.",
+  "syncInsecureTitle": "Enviar o token por HTTP puro?",
+  "syncInsecureBody": "{host} não está nesta máquina, e http envia seu token de API e todos os snippets em texto puro. Qualquer um no caminho da rede pode ler. Use https, ou um túnel como Tailscale ou WireGuard.",
+  "@syncInsecureBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "syncInsecureContinue": "Sincronizar mesmo assim",
   "syncSetUrlAndTokenFirst": "Defina a URL do servidor e o token de API primeiro.",
   "syncSucceeded": "Sincronizado: {pushed} enviados, {pulled} recebidos, {updated} atualizados, {deleted} excluídos.",
   "@syncSucceeded": {

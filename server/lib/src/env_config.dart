@@ -17,12 +17,21 @@ class EnvConfig {
   final String ollamaBaseUrl;
   final int port;
 
+  static const minApiTokenLength = 32;
+
   factory EnvConfig.fromEnvironment(Map<String, String> env) {
     final apiToken = env['KANGOOS_API_TOKEN'];
     if (apiToken == null || apiToken.isEmpty) {
       throw StateError(
         'KANGOOS_API_TOKEN is required. Set it to a random secret and send '
         'the same value as "Authorization: Bearer <token>" from clients.',
+      );
+    }
+    if (apiToken.length < minApiTokenLength) {
+      throw StateError(
+        'KANGOOS_API_TOKEN is too short: it must be at least '
+        '$minApiTokenLength characters. Generate one with '
+        '`openssl rand -hex 32`.',
       );
     }
 

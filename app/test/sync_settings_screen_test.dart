@@ -74,4 +74,56 @@ void main() {
 
     expect(find.text('Set a server URL and API token first.'), findsOneWidget);
   });
+
+  testWidgets('plain http to a remote host asks before sending the token',
+      (tester) async {
+    final repository =
+        SyncSettingsRepository(secureStore: _FakeSecureCredentialStore());
+
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: SyncSettingsScreen(repository: repository, database: database),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Server URL'), 'http://nas.local:8080');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'API token'), 'dev-token');
+    await tester.tap(find.text('Sync now'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Send the token over plain HTTP?'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Send the token over plain HTTP?'), findsNothing);
+  });
+
+  testWidgets('an unparseable server URL never reaches the sync client',
+      (tester) async {
+    final repository =
+        SyncSettingsRepository(secureStore: _FakeSecureCredentialStore());
+
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: SyncSettingsScreen(repository: repository, database: database),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Server URL'), 'not a url');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'API token'), 'dev-token');
+    await tester.tap(find.text('Sync now'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('not a valid server URL'),
+      findsOneWidget,
+    );
+  });
 }
