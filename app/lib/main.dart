@@ -14,6 +14,7 @@ import 'capture/window_capture_service.dart';
 import 'database_encryption.dart';
 import 'embedding/settings_embedding_provider.dart';
 import 'home/app_shell.dart';
+import 'quick_capture_service.dart';
 import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
 import 'tray/tray_service.dart';
@@ -68,8 +69,14 @@ Future<void> _startKangoos() async {
     settingsRepository: captureSettingsRepository,
     modelRepository: WhisperModelRepository(),
   ).start();
-  await TrayService(captureSettingsRepository: captureSettingsRepository)
-      .init();
+  final quickCapture = QuickCaptureService(
+    database: database,
+    semanticSearch: semanticSearch,
+  );
+  await TrayService(
+    captureSettingsRepository: captureSettingsRepository,
+    onSaveClipboardAsSnippet: quickCapture.saveClipboard,
+  ).init();
 
   runApp(KangoosApp(
     database: database,
