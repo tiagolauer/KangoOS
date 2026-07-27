@@ -4,8 +4,9 @@ import '../activity/activity_span.dart';
 import '../database/database.dart';
 import '../database/tables/activity_summaries_table.dart';
 import '../llm/llm_provider.dart';
+import '../llm/llm_stream.dart';
 
-enum SummaryError { noActivity, llmFailed }
+enum SummaryError { noActivity, llmFailed, cancelled }
 
 sealed class SummaryResult {
   const SummaryResult();
@@ -39,6 +40,7 @@ class ActivitySummarizer {
     required SummaryKind kind,
     required DateTime start,
     required DateTime end,
+    CancelToken? cancelToken,
   }) async {
     final activities = await database.activitiesBetween(start, end);
     if (activities.isEmpty) {
@@ -46,17 +48,19 @@ class ActivitySummarizer {
     }
 
     final prompt = _buildPrompt(activities, end);
-    final buffer = StringBuffer();
+    final String content;
     try {
-      await for (final chunk
-          in provider.chat([LlmMessage(role: LlmRole.user, content: prompt)])) {
-        buffer.write(chunk);
-      }
+      content = await collectLlmReply(
+        provider.chat([LlmMessage(role: LlmRole.user, content: prompt)]),
+        cancelToken: cancelToken,
+      );
     } catch (_) {
       return const SummaryFailure(SummaryError.llmFailed);
     }
+    if (cancelToken?.isCancelled ?? false) {
+      return const SummaryFailure(SummaryError.cancelled);
+    }
 
-    final content = buffer.toString();
     final createdAt = DateTime.now();
     final id =
         await database.insertActivitySummary(ActivitySummariesCompanion.insert(

@@ -63,6 +63,19 @@
   "dayRecapGenerated": "Resumo do dia gerado.",
   "dayRecapNoActivity": "Nenhuma atividade capturada hoje ainda.",
   "dayRecapLlmFailed": "Falha ao gerar o resumo: não foi possível acessar o LLM.",
+  "dayRecapCancelled": "Geração do resumo interrompida.",
+  "llmTimedOut": "o modelo não respondeu em {seconds} segundos",
+  "@llmTimedOut": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "stopGenerating": "Interromper geração",
+  "thinking": "Pensando…",
+  "copyToClipboard": "Copiar para a área de transferência",
+  "copiedToClipboard": "Copiado para a área de transferência.",
   "semanticSearchFailed": "Falha na busca semântica: {error}",
   "@semanticSearchFailed": {
     "placeholders": {

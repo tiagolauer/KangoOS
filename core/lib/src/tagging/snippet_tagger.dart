@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../llm/llm_provider.dart';
+import '../llm/llm_stream.dart';
 
 const _maxTags = 6;
 const _maxTagLength = 30;
@@ -13,15 +14,17 @@ class SnippetTagger {
     required String title,
     required String content,
     String? language,
+    CancelToken? cancelToken,
   }) async {
-    final buffer = StringBuffer();
-    await for (final chunk in provider.chat([
-      LlmMessage(
-          role: LlmRole.user, content: _buildPrompt(title, content, language)),
-    ])) {
-      buffer.write(chunk);
-    }
-    return _parseTags(buffer.toString());
+    final raw = await collectLlmReply(
+      provider.chat([
+        LlmMessage(
+            role: LlmRole.user, content: _buildPrompt(title, content, language)),
+      ]),
+      cancelToken: cancelToken,
+    );
+    if (cancelToken?.isCancelled ?? false) return const [];
+    return _parseTags(raw);
   }
 
   String _buildPrompt(String title, String content, String? language) {

@@ -15,6 +15,7 @@ export 'src/exchange/snippet_exchange.dart';
 export 'src/embedding/providers/ollama_embedding_provider.dart';
 export 'src/llm/llm_http.dart';
 export 'src/llm/llm_provider.dart';
+export 'src/llm/llm_stream.dart';
 export 'src/llm/llm_settings.dart';
 export 'src/llm/providers/anthropic_provider.dart';
 export 'src/llm/providers/gemini_provider.dart';

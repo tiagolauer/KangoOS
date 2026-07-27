@@ -74,7 +74,7 @@ class _AppShellState extends State<AppShell> {
         .save(current.copyWith(paused: enable != true));
   }
 
-  Future<SummaryResult> _generateDayRecap() async {
+  Future<SummaryResult> _generateDayRecap(CancelToken cancelToken) async {
     final settings = await _settingsRepository.load();
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
@@ -83,6 +83,7 @@ class _AppShellState extends State<AppShell> {
       kind: SummaryKind.dayRecap,
       start: startOfDay,
       end: now,
+      cancelToken: cancelToken,
     );
   }
 
