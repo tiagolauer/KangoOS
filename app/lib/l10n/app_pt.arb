@@ -2,6 +2,41 @@
   "@@locale": "pt",
   "appTitle": "KangoOS",
   "commonSave": "Salvar",
+  "chatRequestFailed": "Falha na requisição: {error}",
+  "@chatRequestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "commonUndo": "Desfazer",
+  "activityDeleted": "Registro de atividade excluído.",
+  "deleteSnippetTitle": "Excluir este snippet?",
+  "deleteSnippetBody": "\"{title}\" vai embora de vez, a menos que você tenha uma exportação.",
+  "@deleteSnippetBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteConversationTitle": "Excluir esta conversa?",
+  "deleteConversationBody": "\"{preview}\" e todas as mensagens dela serão excluídas.",
+  "@deleteConversationBody": {
+    "placeholders": {
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "discardChangesTitle": "Descartar suas alterações?",
+  "discardChangesBody": "Este snippet tem edições que você ainda não salvou.",
+  "discardChangesConfirm": "Descartar",
+  "snippetTitleRequired": "O título é obrigatório.",
+  "snippetContentRequired": "O código é obrigatório.",
+  "startupErrorTitle": "O KangoOS não conseguiu iniciar",
+  "startupErrorBody": "Algo falhou antes de a janela abrir: o cofre de credenciais do sistema, o banco criptografado ou o ícone da bandeja. Os detalhes abaixo dizem qual.",
   "commonCancel": "Cancelar",
   "commonDelete": "Excluir",
   "commonBack": "Voltar",

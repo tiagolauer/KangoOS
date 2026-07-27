@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
@@ -206,7 +207,7 @@ class _SidebarState extends State<Sidebar> {
                 child: Icon(Icons.delete_outline,
                     color: Theme.of(context).colorScheme.onErrorContainer),
               ),
-              onDismissed: (_) => widget.database.deleteActivity(activity.id),
+              onDismissed: (_) => _deleteActivityWithUndo(context, activity),
               child: ListTile(
                 dense: true,
                 title: Text(
@@ -227,6 +228,32 @@ class _SidebarState extends State<Sidebar> {
         );
       },
     );
+  }
+
+  Future<void> _deleteActivityWithUndo(
+      BuildContext context, Activity activity) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    await widget.database.deleteActivity(activity.id);
+
+    messenger.showSnackBar(SnackBar(
+      content: Text(l10n.activityDeleted),
+      action: SnackBarAction(
+        label: l10n.commonUndo,
+        onPressed: () => widget.database.logActivity(
+          ActivitiesCompanion.insert(
+            appName: activity.appName,
+            windowTitle: activity.windowTitle,
+            capturedText: Value(activity.capturedText),
+            capturedUrl: Value(activity.capturedUrl),
+            capturedClipboard: Value(activity.capturedClipboard),
+            capturedScreenText: Value(activity.capturedScreenText),
+            capturedAudioText: Value(activity.capturedAudioText),
+            capturedAt: Value(activity.capturedAt),
+          ),
+        ),
+      ),
+    ));
   }
 
   Widget _buildTimeline(BuildContext context) {

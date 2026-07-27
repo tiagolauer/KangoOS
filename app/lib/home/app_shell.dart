@@ -3,6 +3,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import '../capture/capture_settings_repository.dart';
+import '../confirm_dialog.dart';
 import '../settings_repository.dart';
 import '../snippet_editor_screen.dart';
 import 'chat_home_panel.dart';
@@ -31,6 +32,7 @@ class _AppShellState extends State<AppShell> {
   late final _summarizer = ActivitySummarizer(database: widget.database);
   Snippet? _editingSnippet;
   var _editing = false;
+  var _editorDirty = false;
 
   @override
   void initState() {
@@ -84,8 +86,19 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _openEditor([Snippet? snippet]) {
+  Future<void> _openEditor([Snippet? snippet]) async {
+    if (_editorDirty) {
+      final l10n = AppLocalizations.of(context);
+      final discard = await confirmDestructiveAction(
+        context: context,
+        title: l10n.discardChangesTitle,
+        body: l10n.discardChangesBody,
+        confirmLabel: l10n.discardChangesConfirm,
+      );
+      if (!discard) return;
+    }
     setState(() {
+      _editorDirty = false;
       _editingSnippet = snippet;
       _editing = true;
     });
@@ -93,6 +106,7 @@ class _AppShellState extends State<AppShell> {
 
   void _closeEditor() {
     setState(() {
+      _editorDirty = false;
       _editing = false;
       _editingSnippet = null;
     });
@@ -119,6 +133,7 @@ class _AppShellState extends State<AppShell> {
                     settingsRepository: _settingsRepository,
                     snippet: _editingSnippet,
                     onDone: _closeEditor,
+                    onDirtyChanged: (dirty) => _editorDirty = dirty,
                   )
                 : ChatHomePanel(
                     database: widget.database,

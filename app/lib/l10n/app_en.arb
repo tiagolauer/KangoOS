@@ -2,6 +2,41 @@
   "@@locale": "en",
   "appTitle": "KangoOS",
   "commonSave": "Save",
+  "chatRequestFailed": "Request failed: {error}",
+  "@chatRequestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "commonUndo": "Undo",
+  "activityDeleted": "Activity entry deleted.",
+  "deleteSnippetTitle": "Delete this snippet?",
+  "deleteSnippetBody": "\"{title}\" will be gone for good unless you have an export.",
+  "@deleteSnippetBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteConversationTitle": "Delete this conversation?",
+  "deleteConversationBody": "\"{preview}\" and every message in it will be deleted.",
+  "@deleteConversationBody": {
+    "placeholders": {
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "discardChangesTitle": "Discard your changes?",
+  "discardChangesBody": "This snippet has edits you have not saved yet.",
+  "discardChangesConfirm": "Discard",
+  "snippetTitleRequired": "A title is required.",
+  "snippetContentRequired": "Some code is required.",
+  "startupErrorTitle": "KangoOS could not start",
+  "startupErrorBody": "Something failed before the window could open: the OS credential store, the encrypted database, or the tray icon. The details below say which.",
   "commonCancel": "Cancel",
   "commonDelete": "Delete",
   "commonBack": "Back",

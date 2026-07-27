@@ -9,6 +9,7 @@ import 'package:kangoos_core/kangoos_core.dart';
 
 import '../capture/capture_settings_repository.dart';
 import '../capture/capture_settings_screen.dart';
+import '../confirm_dialog.dart';
 import '../settings_repository.dart';
 import '../settings_screen.dart';
 import '../sync/sync_settings_repository.dart';
@@ -310,7 +311,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
 
     final priorHistory = List<LlmMessage>.of(_history);
     _conversationId ??= await widget.database.createConversation();
-    await widget.database.appendMessage(_conversationId!, LlmRole.user, trimmed);
+    final userMessageId = await widget.database
+        .appendMessage(_conversationId!, LlmRole.user, trimmed);
 
     setState(() {
       _error = null;
@@ -338,15 +340,29 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
         });
         _scrollToEnd();
       }
-      if (buffer.isNotEmpty) {
-        await widget.database
-            .appendMessage(_conversationId!, LlmRole.assistant, buffer.toString());
-      }
     } catch (e) {
-      setState(() => _error = 'Request failed: $e');
+      setState(() => _error = l10n.chatRequestFailed('$e'));
     } finally {
+      await _persistReply(userMessageId, buffer.toString(), trimmed);
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  Future<void> _persistReply(
+      int userMessageId, String reply, String userMessage) async {
+    if (reply.isNotEmpty) {
+      await widget.database
+          .appendMessage(_conversationId!, LlmRole.assistant, reply);
+      return;
+    }
+
+    await widget.database.deleteMessage(userMessageId);
+    if (!mounted) return;
+    setState(() {
+      _history.removeLast();
+      _history.removeLast();
+      _inputController.text = userMessage;
+    });
   }
 
   void _scrollToEnd() {
@@ -699,8 +715,19 @@ class ConversationHistorySheet extends StatelessWidget {
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
                     tooltip: l10n.commonDelete,
-                    onPressed: () =>
-                        database.deleteConversation(conversation.id),
+                    onPressed: () async {
+                      final confirmed = await confirmDestructiveAction(
+                        context: context,
+                        title: l10n.deleteConversationTitle,
+                        body: l10n.deleteConversationBody(
+                            conversation.preview.isEmpty
+                                ? l10n.newChat
+                                : conversation.preview),
+                      );
+                      if (confirmed) {
+                        await database.deleteConversation(conversation.id);
+                      }
+                    },
                   ),
                   onTap: () => Navigator.of(context).pop(conversation.id),
                 );
