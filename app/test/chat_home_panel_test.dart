@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,7 @@ import 'package:kangoos_core/kangoos_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kangoos_app/capture/capture_settings_repository.dart';
+import 'package:kangoos_app/code_block.dart';
 import 'package:kangoos_app/home/chat_home_panel.dart';
 import 'package:kangoos_app/secure_credential_store.dart';
 import 'package:kangoos_app/settings_repository.dart';
@@ -46,6 +49,30 @@ class _BreakingLlmProvider implements LlmProvider {
     }
     throw StateError('stream died');
   }
+}
+
+class _StallingLlmProvider implements LlmProvider {
+  final _chunks = StreamController<String>();
+
+  @override
+  String get id => 'stalling';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) => _chunks.stream;
+
+  void emit(String chunk) => _chunks.add(chunk);
+}
+
+class _FixedLlmProvider implements LlmProvider {
+  _FixedLlmProvider(this.reply);
+
+  final String reply;
+
+  @override
+  String get id => 'fixed';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) => Stream.value(reply);
 }
 
 void main() {
@@ -103,6 +130,46 @@ void main() {
     final messages = await database.messagesForConversation(conversationId);
     expect(messages.map((m) => m.role), [LlmRole.user, LlmRole.assistant]);
     expect(messages.last.content, 'Half an answer');
+
+    await drainStreams(tester);
+  });
+
+  testWidgets('stopping a streaming reply keeps the text that already arrived',
+      (tester) async {
+    final provider = _StallingLlmProvider();
+    await pumpPanel(tester, provider);
+
+    await send(tester, 'tell me everything');
+    provider.emit('the first half');
+    await tester.pump();
+
+    expect(find.textContaining('the first half'), findsOneWidget);
+    expect(find.byIcon(Icons.stop), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.stop));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(find.byIcon(Icons.stop), findsNothing);
+    expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+
+    final conversationId = (await database.latestConversationId())!;
+    final messages = await database.messagesForConversation(conversationId);
+    expect(messages.last.content, 'the first half');
+
+    await drainStreams(tester);
+  });
+
+  testWidgets('a fenced code block renders as a highlighted code block',
+      (tester) async {
+    await pumpPanel(
+        tester, _FixedLlmProvider('Try:\n\n```dart\nvoid main() {}\n```\n'));
+
+    await send(tester, 'how do I start?');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CodeBlock), findsOneWidget);
+    expect(find.textContaining('```'), findsNothing);
 
     await drainStreams(tester);
   });

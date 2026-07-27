@@ -10,12 +10,15 @@ import 'package:kangoos_core/kangoos_core.dart';
 import '../capture/capture_settings_repository.dart';
 import '../capture/capture_settings_screen.dart';
 import '../confirm_dialog.dart';
+import '../copy_button.dart';
+import '../llm_error.dart';
 import '../settings_repository.dart';
 import '../settings_screen.dart';
 import '../sync/sync_settings_repository.dart';
 import '../sync/sync_settings_screen.dart';
 import '../theme/kangoos_theme.dart';
 import 'activity_sparkline.dart';
+import 'markdown_message.dart';
 
 enum _AccentRole { primary, done, next, later }
 
@@ -148,6 +151,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   var _sending = false;
   var _capturing = true;
   var _semanticDegraded = false;
+  CancelToken? _replyCancelToken;
   int? _conversationId;
   String? _error;
   List<String>? _freeformSuggestions;
@@ -163,6 +167,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
 
   @override
   void dispose() {
+    _replyCancelToken?.cancel();
     _inputController.dispose();
     _inputFocusNode.dispose();
     _scrollController.dispose();
@@ -314,39 +319,55 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     final userMessageId = await widget.database
         .appendMessage(_conversationId!, LlmRole.user, trimmed);
 
+    final cancelToken = CancelToken();
     setState(() {
       _error = null;
       _history.add(LlmMessage(role: LlmRole.user, content: trimmed));
       _history.add(const LlmMessage(role: LlmRole.assistant, content: ''));
       _inputController.clear();
       _sending = true;
+      _replyCancelToken = cancelToken;
     });
     _scrollToEnd();
 
     final buildProvider = widget.providerBuilder ?? (s) => s.buildProvider();
     final provider = buildProvider(settings);
 
-    final buffer = StringBuffer();
+    var reply = '';
     try {
-      await for (final chunk in _ragChat.reply(
-        provider: provider,
-        history: priorHistory,
-        userMessage: trimmed,
-      )) {
-        buffer.write(chunk);
-        setState(() {
-          _history[_history.length - 1] =
-              LlmMessage(role: LlmRole.assistant, content: buffer.toString());
-        });
-        _scrollToEnd();
-      }
+      reply = await collectLlmReply(
+        _ragChat.reply(
+          provider: provider,
+          history: priorHistory,
+          userMessage: trimmed,
+        ),
+        cancelToken: cancelToken,
+        onPartial: (partial) {
+          reply = partial;
+          if (!mounted) return;
+          setState(() {
+            _history[_history.length - 1] =
+                LlmMessage(role: LlmRole.assistant, content: partial);
+          });
+          _scrollToEnd();
+        },
+      );
     } catch (e) {
-      setState(() => _error = l10n.chatRequestFailed('$e'));
+      if (mounted) {
+        setState(() => _error = l10n.chatRequestFailed(describeLlmError(l10n, e)));
+      }
     } finally {
-      await _persistReply(userMessageId, buffer.toString(), trimmed);
-      if (mounted) setState(() => _sending = false);
+      await _persistReply(userMessageId, reply, trimmed);
+      if (mounted) {
+        setState(() {
+          _sending = false;
+          _replyCancelToken = null;
+        });
+      }
     }
   }
+
+  void _stopReply() => _replyCancelToken?.cancel();
 
   Future<void> _persistReply(
       int userMessageId, String reply, String userMessage) async {
@@ -452,6 +473,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           focusNode: _inputFocusNode,
           sending: _sending,
           onSubmit: _send,
+          onStop: _stopReply,
         ),
       ],
     );
@@ -560,7 +582,12 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
       itemCount: _history.length,
-      itemBuilder: (context, index) => _ChatBubble(message: _history[index]),
+      itemBuilder: (context, index) => _ChatBubble(
+        message: _history[index],
+        pending: _sending &&
+            index == _history.length - 1 &&
+            _history[index].content.isEmpty,
+      ),
     );
   }
 }
@@ -881,15 +908,18 @@ class _Composer extends StatelessWidget {
     required this.focusNode,
     required this.sending,
     required this.onSubmit,
+    required this.onStop,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool sending;
   final void Function(String text) onSubmit;
+  final VoidCallback onStop;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -899,21 +929,15 @@ class _Composer extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 focusNode: focusNode,
-                decoration: InputDecoration(
-                    hintText: AppLocalizations.of(context).askAboutSnippets),
+                decoration: InputDecoration(hintText: l10n.askAboutSnippets),
                 onSubmitted: onSubmit,
               ),
             ),
             const SizedBox(width: 8),
             IconButton.filled(
-              onPressed: sending ? null : () => onSubmit(controller.text),
-              icon: sending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.arrow_upward),
+              onPressed: sending ? onStop : () => onSubmit(controller.text),
+              tooltip: sending ? l10n.stopGenerating : null,
+              icon: Icon(sending ? Icons.stop : Icons.arrow_upward),
             ),
           ],
         ),
@@ -923,9 +947,10 @@ class _Composer extends StatelessWidget {
 }
 
 class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({required this.message});
+  const _ChatBubble({required this.message, this.pending = false});
 
   final LlmMessage message;
+  final bool pending;
 
   @override
   Widget build(BuildContext context) {
@@ -943,8 +968,50 @@ class _ChatBubble extends StatelessWidget {
               isUser ? colors.primaryContainer : colors.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(message.content.isEmpty ? '…' : message.content),
+        child: isUser
+            ? SelectableText(message.content)
+            : _AssistantContent(content: message.content, pending: pending),
       ),
+    );
+  }
+}
+
+class _AssistantContent extends StatelessWidget {
+  const _AssistantContent({required this.content, required this.pending});
+
+  final String content;
+  final bool pending;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (content.isEmpty) {
+      return pending
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Text(l10n.thinking,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            )
+          : const Text('…');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        MarkdownMessage(data: content),
+        Align(
+          alignment: Alignment.centerRight,
+          child: CopyIconButton(text: content),
+        ),
+      ],
     );
   }
 }

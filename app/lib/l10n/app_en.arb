@@ -63,6 +63,19 @@
   "dayRecapGenerated": "Day recap generated.",
   "dayRecapNoActivity": "No activity captured today yet.",
   "dayRecapLlmFailed": "Day recap failed: could not reach the LLM.",
+  "dayRecapCancelled": "Day recap stopped.",
+  "llmTimedOut": "the model did not respond in {seconds} seconds",
+  "@llmTimedOut": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "stopGenerating": "Stop generating",
+  "thinking": "Thinking…",
+  "copyToClipboard": "Copy to clipboard",
+  "copiedToClipboard": "Copied to clipboard.",
   "semanticSearchFailed": "Semantic search failed: {error}",
   "@semanticSearchFailed": {
     "placeholders": {

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import '../copy_button.dart';
 import 'relative_time.dart';
 
 enum SidebarTab { snippets, activity, timeline }
@@ -21,35 +24,85 @@ class Sidebar extends StatefulWidget {
   final SemanticSearch semanticSearch;
   final void Function(Snippet snippet) onSelectSnippet;
   final VoidCallback onCreateSnippet;
-  final Future<SummaryResult> Function() onGenerateDayRecap;
+  final Future<SummaryResult> Function(CancelToken cancelToken)
+      onGenerateDayRecap;
 
   @override
   State<Sidebar> createState() => _SidebarState();
 }
 
 class _SidebarState extends State<Sidebar> {
+  static const _searchDebounce = Duration(milliseconds: 280);
+
   var _tab = SidebarTab.snippets;
   var _query = '';
   var _semantic = false;
   var _generatingRecap = false;
+  Timer? _searchDebounceTimer;
+  Future<List<Snippet>>? _search;
+  CancelToken? _recapCancelToken;
+
+  @override
+  void dispose() {
+    _searchDebounceTimer?.cancel();
+    _recapCancelToken?.cancel();
+    super.dispose();
+  }
+
+  void _onQueryChanged(String value) {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer =
+        Timer(_searchDebounce, () => _applyQuery(value.trim()));
+  }
+
+  void _applyQuery(String query) {
+    if (query == _query || !mounted) return;
+    setState(() {
+      _query = query;
+      _search = query.isEmpty ? null : _runSearch(query);
+    });
+  }
+
+  void _toggleSemantic() {
+    setState(() {
+      _semantic = !_semantic;
+      _search = _query.isEmpty ? null : _runSearch(_query);
+    });
+  }
+
+  Future<List<Snippet>> _runSearch(String query) async {
+    if (!_semantic) return widget.database.searchByKeyword(query);
+    final matches = await widget.semanticSearch.search(query);
+    return matches.map((match) => match.snippet).toList();
+  }
 
   Future<void> _generateDayRecap() async {
     if (_generatingRecap) return;
-    setState(() => _generatingRecap = true);
+    final cancelToken = CancelToken();
+    setState(() {
+      _generatingRecap = true;
+      _recapCancelToken = cancelToken;
+    });
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
     try {
-      final result = await widget.onGenerateDayRecap();
+      final result = await widget.onGenerateDayRecap(cancelToken);
       final message = switch (result) {
         SummarySuccess() => l10n.dayRecapGenerated,
         SummaryFailure(error: SummaryError.noActivity) =>
           l10n.dayRecapNoActivity,
         SummaryFailure(error: SummaryError.llmFailed) =>
           l10n.dayRecapLlmFailed,
+        SummaryFailure(error: SummaryError.cancelled) => l10n.dayRecapCancelled,
       };
       messenger.showSnackBar(SnackBar(content: Text(message)));
     } finally {
-      if (mounted) setState(() => _generatingRecap = false);
+      if (mounted) {
+        setState(() {
+          _generatingRecap = false;
+          _recapCancelToken = null;
+        });
+      }
     }
   }
 
@@ -96,15 +149,14 @@ class _SidebarState extends State<Sidebar> {
                 if (_tab == SidebarTab.timeline) ...[
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
-                    onPressed: _generatingRecap ? null : _generateDayRecap,
-                    icon: _generatingRecap
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.auto_awesome),
-                    tooltip: l10n.generateDayRecap,
+                    onPressed: _generatingRecap
+                        ? () => _recapCancelToken?.cancel()
+                        : _generateDayRecap,
+                    icon: Icon(
+                        _generatingRecap ? Icons.stop : Icons.auto_awesome),
+                    tooltip: _generatingRecap
+                        ? l10n.stopGenerating
+                        : l10n.generateDayRecap,
                   ),
                 ],
               ],
@@ -125,10 +177,10 @@ class _SidebarState extends State<Sidebar> {
                     tooltip: _semantic
                         ? l10n.switchToKeywordSearch
                         : l10n.switchToSemanticSearch,
-                    onPressed: () => setState(() => _semantic = !_semantic),
+                    onPressed: _toggleSemantic,
                   ),
                 ),
-                onChanged: (value) => setState(() => _query = value.trim()),
+                onChanged: _onQueryChanged,
               ),
             ),
           Expanded(
@@ -145,7 +197,8 @@ class _SidebarState extends State<Sidebar> {
 
   Widget _buildSnippets(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    if (_query.isEmpty) {
+    final search = _search;
+    if (search == null) {
       return StreamBuilder<List<Snippet>>(
         stream: widget.database.watchAllSnippets(),
         builder: (context, snapshot) => _SnippetList(
@@ -154,27 +207,21 @@ class _SidebarState extends State<Sidebar> {
         ),
       );
     }
-    if (_semantic) {
-      return FutureBuilder<List<SemanticMatch>>(
-        future: widget.semanticSearch.search(_query),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return _SidebarMessage(
-                text: l10n.semanticSearchFailed('${snapshot.error}'));
-          }
-          return _SnippetList(
-            snippets: snapshot.data?.map((match) => match.snippet).toList(),
-            onTap: widget.onSelectSnippet,
-          );
-        },
-      );
-    }
     return FutureBuilder<List<Snippet>>(
-      future: widget.database.searchByKeyword(_query),
-      builder: (context, snapshot) => _SnippetList(
-        snippets: snapshot.data,
-        onTap: widget.onSelectSnippet,
-      ),
+      future: search,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _SidebarMessage(
+            text: _semantic
+                ? l10n.semanticSearchFailed('${snapshot.error}')
+                : '${snapshot.error}',
+          );
+        }
+        return _SnippetList(
+          snippets: snapshot.data,
+          onTap: widget.onSelectSnippet,
+        );
+      },
     );
   }
 
@@ -386,12 +433,19 @@ class _SnippetList extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  snippet.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        snippet.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodyLarge
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    CopyIconButton(text: snippet.content),
+                  ],
                 ),
                 if (snippet.language != null && snippet.language!.isNotEmpty)
                   Padding(

@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
+import 'code_highlight.dart';
 import 'confirm_dialog.dart';
+import 'copy_button.dart';
+import 'llm_error.dart';
 import 'settings_repository.dart';
-import 'theme/kangoos_theme.dart';
 
 class SnippetEditorScreen extends StatefulWidget {
   const SnippetEditorScreen({
@@ -45,11 +47,14 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
       TextEditingController(text: widget.snippet?.language);
   late final _tagsController = TextEditingController(
       text: (widget.snippet?.tags ?? const []).join(', '));
-  late final _contentController =
-      TextEditingController(text: widget.snippet?.content);
+  late final _contentController = HighlightedCodeController(
+    text: widget.snippet?.content,
+    language: widget.snippet?.language,
+  );
 
   var _suggestingTags = false;
   var _dirty = false;
+  CancelToken? _tagCancelToken;
   String? _titleError;
   String? _contentError;
 
@@ -66,7 +71,11 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
     ]) {
       controller.addListener(_markDirty);
     }
+    _languageController.addListener(_syncEditorLanguage);
   }
+
+  void _syncEditorLanguage() =>
+      _contentController.language = _languageController.text.trim();
 
   void _markDirty() {
     if (_dirty) return;
@@ -81,6 +90,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
 
   @override
   void dispose() {
+    _tagCancelToken?.cancel();
     widget.onDirtyChanged?.call(false);
     _titleController.dispose();
     _languageController.dispose();
@@ -151,7 +161,11 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
     final content = _contentController.text.trim();
     if (content.isEmpty || _suggestingTags) return;
 
-    setState(() => _suggestingTags = true);
+    final cancelToken = CancelToken();
+    setState(() {
+      _suggestingTags = true;
+      _tagCancelToken = cancelToken;
+    });
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
     try {
@@ -174,8 +188,10 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
         title: _titleController.text.trim(),
         content: content,
         language: _languageController.text.trim(),
+        cancelToken: cancelToken,
       );
 
+      if (cancelToken.isCancelled) return;
       if (tags.isEmpty) {
         messenger
             .showSnackBar(SnackBar(content: Text(l10n.noTagsSuggested)));
@@ -183,10 +199,15 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
       }
       setState(() => _tagsController.text = tags.join(', '));
     } catch (e) {
-      messenger
-          .showSnackBar(SnackBar(content: Text(l10n.tagSuggestionFailed('$e'))));
+      messenger.showSnackBar(SnackBar(
+          content: Text(l10n.tagSuggestionFailed(describeLlmError(l10n, e)))));
     } finally {
-      if (mounted) setState(() => _suggestingTags = false);
+      if (mounted) {
+        setState(() {
+          _suggestingTags = false;
+          _tagCancelToken = null;
+        });
+      }
     }
   }
 
@@ -216,6 +237,12 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
         ),
         title: Text(_isEditing ? l10n.editSnippet : l10n.newSnippet),
         actions: [
+          IconButton(
+            onPressed: () =>
+                copyTextToClipboard(context, _contentController.text),
+            icon: const Icon(Icons.copy_all_outlined),
+            tooltip: l10n.copyToClipboard,
+          ),
           if (_isEditing)
             IconButton(
               onPressed: _delete,
@@ -254,16 +281,17 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
                     decoration: InputDecoration(
                       labelText: l10n.snippetTags,
                       suffixIcon: IconButton(
-                        icon: _suggestingTags
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.auto_awesome, size: 20),
-                        tooltip: l10n.suggestTagsViaLlm,
-                        onPressed: _suggestingTags ? null : _suggestTags,
+                        icon: Icon(
+                            _suggestingTags
+                                ? Icons.stop
+                                : Icons.auto_awesome,
+                            size: 20),
+                        tooltip: _suggestingTags
+                            ? l10n.stopGenerating
+                            : l10n.suggestTagsViaLlm,
+                        onPressed: _suggestingTags
+                            ? () => _tagCancelToken?.cancel()
+                            : _suggestTags,
                       ),
                     ),
                   ),
@@ -279,8 +307,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
                 errorText: _contentError,
               ),
               maxLines: 14,
-              style: const TextStyle(
-                  fontFamilyFallback: KangoosTheme.monoFallback),
+              style: codeTextStyle(context),
             ),
           ],
         ),
