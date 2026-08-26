@@ -46,6 +46,7 @@ Future<void> main() async {
     snippets: snippets,
     memory: memory,
     agent: MemoryAgent(memory: memory),
+    connectorSurface: ConnectorSurface.server,
   );
 
   final server = KangoosServer(
@@ -57,6 +58,9 @@ Future<void> main() async {
   );
 
   final httpServer = await shelf_io.serve(
-      server.build(), InternetAddress.anyIPv4, config.port);
+    server.build(),
+    InternetAddress.anyIPv4,
+    config.port,
+  );
   stdout.writeln('KangoOS server listening on port ${httpServer.port}');
 }

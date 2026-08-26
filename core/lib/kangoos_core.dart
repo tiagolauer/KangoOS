@@ -4,15 +4,25 @@ export 'src/activity/activity_span.dart';
 export 'src/capture/quick_capture.dart';
 export 'src/chat/rag_chat.dart';
 export 'src/chat/temporal_query.dart';
+export 'src/connectors/agent_connector.dart';
+export 'src/connectors/browser_connector.dart';
+export 'src/connectors/caldav_connector.dart';
+export 'src/connectors/connector_repository.dart';
+export 'src/connectors/local_file_connector.dart';
+export 'src/connectors/searxng_connector.dart';
 export 'src/database/database.dart'
     show
         Activity,
         ActivitySummary,
+        ConnectorSource,
+        ConnectorToolPermission,
         Conversation,
         ConversationMessage,
         DeletedSnippet,
+        LocalPersona,
         MemoryEpisode,
         Snippet;
+export 'src/database/tables/agent_context_tables.dart' show ConnectorSourceKind;
 export 'src/database/snippet_json.dart';
 export 'src/database/tables/activity_summaries_table.dart'
     show ActivitySummaryVector, SummaryKind, automaticDurableMemoryPrefix;
@@ -37,6 +47,8 @@ export 'src/memory/memory_deletion.dart';
 export 'src/memory/memory_query_engine.dart';
 export 'src/memory/privacy_filter.dart';
 export 'src/memory/observation.dart';
+export 'src/memory/persona_repository.dart';
+export 'src/memory/persona_service.dart';
 export 'src/memory/summary_repository.dart';
 export 'src/mcp/kango_mcp_server.dart';
 export 'src/snippets/snippet_repository.dart';

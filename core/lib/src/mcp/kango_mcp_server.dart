@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../chat/temporal_query.dart';
+import '../connectors/agent_connector.dart';
 import '../database/database.dart';
 import '../database/snippet_json.dart';
 import '../llm/llm_provider.dart';
@@ -652,7 +653,11 @@ class KangoMcpServer {
     final provider = llmProvider;
     if (provider != null) {
       return _toolJson(
-        (await memoryAgent.run(provider: provider, query: query)).toJson(),
+        (await memoryAgent.run(
+          provider: provider,
+          query: query,
+          surface: ConnectorSurface.mcp,
+        )).toJson(),
       );
     }
     return _toolJson((await memoryAgent.investigate(query)).toJson());
@@ -671,6 +676,7 @@ class KangoMcpServer {
         provider: provider,
         query: query,
         depth: MemoryInvestigationDepth.deep,
+        surface: ConnectorSurface.mcp,
       );
       return _toolJson({
         'report': run.answer,
@@ -777,6 +783,7 @@ class KangoMcpServer {
             args['deepStudy'] == true
                 ? MemoryInvestigationDepth.deep
                 : MemoryInvestigationDepth.standard,
+        surface: ConnectorSurface.mcp,
       );
       return _toolJson(run.toJson());
     }

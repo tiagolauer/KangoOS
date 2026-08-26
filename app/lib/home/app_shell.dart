@@ -6,6 +6,7 @@ import '../capture/capture_settings_repository.dart';
 import '../capture/capture_status.dart';
 import '../capture/capture_status_indicator.dart';
 import '../confirm_dialog.dart';
+import '../connectors/connector_runtime.dart';
 import '../settings_repository.dart';
 import '../snippet_editor_screen.dart';
 import 'chat_home_panel.dart';
@@ -22,6 +23,8 @@ class AppShell extends StatefulWidget {
     this.captureStatus,
     this.needsCaptureConsent = false,
     this.onRestoreStaged,
+    this.connectorRuntime,
+    this.persona,
   });
 
   final SnippetRepository snippetRepository;
@@ -32,6 +35,8 @@ class AppShell extends StatefulWidget {
   final CaptureStatusController? captureStatus;
   final bool needsCaptureConsent;
   final Future<void> Function()? onRestoreStaged;
+  final ConnectorRuntime? connectorRuntime;
+  final PersonaService? persona;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -203,6 +208,8 @@ class _AppShellState extends State<AppShell> {
         captureSettingsRepository: widget.captureSettingsRepository,
         onRestoreStaged: widget.onRestoreStaged,
         onOpenNavigation: onOpenNavigation,
+        connectorRuntime: widget.connectorRuntime,
+        persona: widget.persona,
       );
     }
 

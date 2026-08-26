@@ -36,7 +36,9 @@ void main() {
     final snippetRepository = SqliteSnippetRepository(database);
     final embeddingProvider = _FakeEmbeddingProvider();
     final semanticSearch = SemanticSearch(
-        repository: snippetRepository, embeddingProvider: embeddingProvider);
+      repository: snippetRepository,
+      embeddingProvider: embeddingProvider,
+    );
     final snippets = SnippetService(
       repository: snippetRepository,
       semanticSearch: semanticSearch,
@@ -64,9 +66,9 @@ void main() {
   });
 
   Map<String, String> authHeaders() => {
-        'authorization': 'Bearer $apiToken',
-        'content-type': 'application/json',
-      };
+    'authorization': 'Bearer $apiToken',
+    'content-type': 'application/json',
+  };
 
   test('GET /health does not require auth', () async {
     final response = await http.get(baseUrl.resolve('/health'));
@@ -102,12 +104,16 @@ void main() {
     final id = created['id'] as int;
     expect(created['title'], 'Reverse a string');
 
-    final listResponse =
-        await http.get(baseUrl.resolve('/snippets'), headers: authHeaders());
+    final listResponse = await http.get(
+      baseUrl.resolve('/snippets'),
+      headers: authHeaders(),
+    );
     expect(jsonDecode(listResponse.body) as List, hasLength(1));
 
-    final getResponse = await http.get(baseUrl.resolve('/snippets/$id'),
-        headers: authHeaders());
+    final getResponse = await http.get(
+      baseUrl.resolve('/snippets/$id'),
+      headers: authHeaders(),
+    );
     expect(getResponse.statusCode, 200);
 
     final updateResponse = await http.put(
@@ -116,31 +122,43 @@ void main() {
       body: jsonEncode({'title': 'Reverse a String (Dart)'}),
     );
     expect(updateResponse.statusCode, 200);
-    expect((jsonDecode(updateResponse.body) as Map)['title'],
-        'Reverse a String (Dart)');
+    expect(
+      (jsonDecode(updateResponse.body) as Map)['title'],
+      'Reverse a String (Dart)',
+    );
 
-    final deleteResponse = await http.delete(baseUrl.resolve('/snippets/$id'),
-        headers: authHeaders());
+    final deleteResponse = await http.delete(
+      baseUrl.resolve('/snippets/$id'),
+      headers: authHeaders(),
+    );
     expect(deleteResponse.statusCode, 204);
 
-    final getAfterDelete = await http.get(baseUrl.resolve('/snippets/$id'),
-        headers: authHeaders());
+    final getAfterDelete = await http.get(
+      baseUrl.resolve('/snippets/$id'),
+      headers: authHeaders(),
+    );
     expect(getAfterDelete.statusCode, 404);
   });
 
   test('POST /snippets/<id>/index and /index/missing embed snippets', () async {
-    final id = await database
-        .createSnippet(SnippetsCompanion.insert(title: 'A', content: 'a'));
+    final id = await database.createSnippet(
+      SnippetsCompanion.insert(title: 'A', content: 'a'),
+    );
 
-    final indexOne = await http.post(baseUrl.resolve('/snippets/$id/index'),
-        headers: authHeaders());
+    final indexOne = await http.post(
+      baseUrl.resolve('/snippets/$id/index'),
+      headers: authHeaders(),
+    );
     expect(indexOne.statusCode, 200);
     expect((await database.getSnippetById(id))!.embedding, isNotNull);
 
-    await database
-        .createSnippet(SnippetsCompanion.insert(title: 'B', content: 'b'));
-    final indexMissing = await http.post(baseUrl.resolve('/index/missing'),
-        headers: authHeaders());
+    await database.createSnippet(
+      SnippetsCompanion.insert(title: 'B', content: 'b'),
+    );
+    final indexMissing = await http.post(
+      baseUrl.resolve('/index/missing'),
+      headers: authHeaders(),
+    );
     expect(indexMissing.statusCode, 200);
     expect(jsonDecode(indexMissing.body), {
       'indexed': 1,
@@ -149,12 +167,16 @@ void main() {
   });
 
   test('semantic search finds an indexed snippet', () async {
-    final id = await database.createSnippet(SnippetsCompanion.insert(
-      title: 'Reverse a string',
-      content: 'input.split("").reversed.join()',
-    ));
-    await http.post(baseUrl.resolve('/snippets/$id/index'),
-        headers: authHeaders());
+    final id = await database.createSnippet(
+      SnippetsCompanion.insert(
+        title: 'Reverse a string',
+        content: 'input.split("").reversed.join()',
+      ),
+    );
+    await http.post(
+      baseUrl.resolve('/snippets/$id/index'),
+      headers: authHeaders(),
+    );
 
     final response = await http.get(
       baseUrl.resolve('/snippets?q=string&mode=semantic'),
@@ -166,12 +188,17 @@ void main() {
   });
 
   test('malformed client input is a 400, not a 500', () async {
-    final badId = await http.get(baseUrl.resolve('/snippets/abc'),
-        headers: authHeaders());
+    final badId = await http.get(
+      baseUrl.resolve('/snippets/abc'),
+      headers: authHeaders(),
+    );
     expect(badId.statusCode, 400);
 
-    final badJson = await http.post(baseUrl.resolve('/snippets'),
-        headers: authHeaders(), body: 'not json');
+    final badJson = await http.post(
+      baseUrl.resolve('/snippets'),
+      headers: authHeaders(),
+      body: 'not json',
+    );
     expect(badJson.statusCode, 400);
 
     final badTags = await http.post(
@@ -180,7 +207,7 @@ void main() {
       body: jsonEncode({
         'title': 'A',
         'content': 'a',
-        'tags': [1, 2]
+        'tags': [1, 2],
       }),
     );
     expect(badTags.statusCode, 400);
@@ -192,44 +219,62 @@ void main() {
     );
     expect(badTimestamp.statusCode, 400);
 
-    final badRole = await http.post(
-      baseUrl.resolve('/chat'),
-      headers: authHeaders(),
-      body: jsonEncode({
-        'message': 'hi',
-        'history': [
-          {'role': 'tool', 'content': 'x'}
-        ],
-      }),
-    );
-    expect(badRole.statusCode, 400);
+    for (final role in ['tool', 'system']) {
+      final badRole = await http.post(
+        baseUrl.resolve('/chat'),
+        headers: authHeaders(),
+        body: jsonEncode({
+          'message': 'hi',
+          'history': [
+            {'role': role, 'content': 'x'},
+          ],
+        }),
+      );
+      expect(badRole.statusCode, 400, reason: role);
+    }
   });
 
-  test('snippet payloads carry an indexed flag instead of the vector',
-      () async {
-    final id = await database
-        .createSnippet(SnippetsCompanion.insert(title: 'A', content: 'a'));
+  test(
+    'snippet payloads carry an indexed flag instead of the vector',
+    () async {
+      final id = await database.createSnippet(
+        SnippetsCompanion.insert(title: 'A', content: 'a'),
+      );
 
-    final before = jsonDecode((await http.get(baseUrl.resolve('/snippets/$id'),
-            headers: authHeaders()))
-        .body) as Map<String, dynamic>;
-    expect(before.containsKey('embedding'), isFalse);
-    expect(before['indexed'], isFalse);
+      final before =
+          jsonDecode(
+                (await http.get(
+                  baseUrl.resolve('/snippets/$id'),
+                  headers: authHeaders(),
+                )).body,
+              )
+              as Map<String, dynamic>;
+      expect(before.containsKey('embedding'), isFalse);
+      expect(before['indexed'], isFalse);
 
-    await http.post(baseUrl.resolve('/snippets/$id/index'),
-        headers: authHeaders());
+      await http.post(
+        baseUrl.resolve('/snippets/$id/index'),
+        headers: authHeaders(),
+      );
 
-    final after = jsonDecode((await http.get(baseUrl.resolve('/snippets/$id'),
-            headers: authHeaders()))
-        .body) as Map<String, dynamic>;
-    expect(after.containsKey('embedding'), isFalse);
-    expect(after['indexed'], isTrue);
-  });
+      final after =
+          jsonDecode(
+                (await http.get(
+                  baseUrl.resolve('/snippets/$id'),
+                  headers: authHeaders(),
+                )).body,
+              )
+              as Map<String, dynamic>;
+      expect(after.containsKey('embedding'), isFalse);
+      expect(after['indexed'], isTrue);
+    },
+  );
 
   test('POST /chat streams the reply over SSE', () async {
-    final request = http.Request('POST', baseUrl.resolve('/chat'))
-      ..headers.addAll(authHeaders())
-      ..body = jsonEncode({'message': 'hi'});
+    final request =
+        http.Request('POST', baseUrl.resolve('/chat'))
+          ..headers.addAll(authHeaders())
+          ..body = jsonEncode({'message': 'hi'});
     final streamed = await request.send();
     final body = await streamed.stream.bytesToString();
 

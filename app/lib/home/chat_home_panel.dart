@@ -10,6 +10,8 @@ import 'package:kangoos_core/kangoos_core.dart';
 import '../capture/capture_settings_repository.dart';
 import '../capture/capture_settings_screen.dart';
 import '../confirm_dialog.dart';
+import '../connectors/connector_runtime.dart';
+import '../connectors/connector_settings_screen.dart';
 import '../copy_button.dart';
 import '../llm_error.dart';
 import '../settings_repository.dart';
@@ -23,7 +25,10 @@ import 'markdown_message.dart';
 enum _AccentRole { primary, done, next, later }
 
 Color _accentColor(
-    _AccentRole role, ColorScheme colors, KangoosStatusColors status) {
+  _AccentRole role,
+  ColorScheme colors,
+  KangoosStatusColors status,
+) {
   switch (role) {
     case _AccentRole.primary:
       return colors.primary;
@@ -53,57 +58,57 @@ class _SummaryAction {
 }
 
 List<_SummaryAction> _summaryActionsFor(AppLocalizations l10n) => [
-      _SummaryAction(
-        icon: Icons.wb_sunny_outlined,
-        title: l10n.actionDayRecapTitle,
-        description: l10n.actionDayRecapDescription,
-        prompt: l10n.actionDayRecapPrompt,
-        accent: _AccentRole.primary,
-      ),
-      _SummaryAction(
-        icon: Icons.forum_outlined,
-        title: l10n.actionStandupTitle,
-        description: l10n.actionStandupDescription,
-        prompt: l10n.actionStandupPrompt,
-        accent: _AccentRole.later,
-      ),
-      _SummaryAction(
-        icon: Icons.code_outlined,
-        title: l10n.actionRecentSnippetsTitle,
-        description: l10n.actionRecentSnippetsDescription,
-        prompt: l10n.actionRecentSnippetsPrompt,
-        accent: _AccentRole.done,
-      ),
-      _SummaryAction(
-        icon: Icons.sell_outlined,
-        title: l10n.actionMissingTagsTitle,
-        description: l10n.actionMissingTagsDescription,
-        prompt: l10n.actionMissingTagsPrompt,
-        accent: _AccentRole.next,
-      ),
-      _SummaryAction(
-        icon: Icons.insights_outlined,
-        title: l10n.actionTopOfMindTitle,
-        description: l10n.actionTopOfMindDescription,
-        prompt: l10n.actionTopOfMindPrompt,
-        accent: _AccentRole.done,
-      ),
-      _SummaryAction(
-        icon: Icons.schedule_outlined,
-        title: l10n.actionTimeBreakdownTitle,
-        description: l10n.actionTimeBreakdownDescription,
-        prompt: l10n.actionTimeBreakdownPrompt,
-        accent: _AccentRole.primary,
-      ),
-    ];
+  _SummaryAction(
+    icon: Icons.wb_sunny_outlined,
+    title: l10n.actionDayRecapTitle,
+    description: l10n.actionDayRecapDescription,
+    prompt: l10n.actionDayRecapPrompt,
+    accent: _AccentRole.primary,
+  ),
+  _SummaryAction(
+    icon: Icons.forum_outlined,
+    title: l10n.actionStandupTitle,
+    description: l10n.actionStandupDescription,
+    prompt: l10n.actionStandupPrompt,
+    accent: _AccentRole.later,
+  ),
+  _SummaryAction(
+    icon: Icons.code_outlined,
+    title: l10n.actionRecentSnippetsTitle,
+    description: l10n.actionRecentSnippetsDescription,
+    prompt: l10n.actionRecentSnippetsPrompt,
+    accent: _AccentRole.done,
+  ),
+  _SummaryAction(
+    icon: Icons.sell_outlined,
+    title: l10n.actionMissingTagsTitle,
+    description: l10n.actionMissingTagsDescription,
+    prompt: l10n.actionMissingTagsPrompt,
+    accent: _AccentRole.next,
+  ),
+  _SummaryAction(
+    icon: Icons.insights_outlined,
+    title: l10n.actionTopOfMindTitle,
+    description: l10n.actionTopOfMindDescription,
+    prompt: l10n.actionTopOfMindPrompt,
+    accent: _AccentRole.done,
+  ),
+  _SummaryAction(
+    icon: Icons.schedule_outlined,
+    title: l10n.actionTimeBreakdownTitle,
+    description: l10n.actionTimeBreakdownDescription,
+    prompt: l10n.actionTimeBreakdownPrompt,
+    accent: _AccentRole.primary,
+  ),
+];
 
 List<String> _freeformPoolFor(AppLocalizations l10n) => [
-      l10n.freeform1,
-      l10n.freeform2,
-      l10n.freeform3,
-      l10n.freeform4,
-      l10n.freeform5,
-    ];
+  l10n.freeform1,
+  l10n.freeform2,
+  l10n.freeform3,
+  l10n.freeform4,
+  l10n.freeform5,
+];
 
 String? _osUserName() {
   final env = Platform.environment;
@@ -123,6 +128,8 @@ class ChatHomePanel extends StatefulWidget {
     this.providerBuilder,
     this.onOpenNavigation,
     this.onRestoreStaged,
+    this.connectorRuntime,
+    this.persona,
   });
 
   final SnippetRepository snippetRepository;
@@ -133,6 +140,8 @@ class ChatHomePanel extends StatefulWidget {
   final CaptureSettingsRepository captureSettingsRepository;
   final VoidCallback? onOpenNavigation;
   final Future<void> Function()? onRestoreStaged;
+  final ConnectorRuntime? connectorRuntime;
+  final PersonaService? persona;
 
   /// Overridable for tests; defaults to [LlmSettings.buildProvider].
   final LlmProvider Function(LlmSettings settings)? providerBuilder;
@@ -142,14 +151,6 @@ class ChatHomePanel extends StatefulWidget {
 }
 
 class _ChatHomePanelState extends State<ChatHomePanel> {
-  late final _ragChat = RagChat(
-    snippets: widget.snippets,
-    memory: widget.memory,
-    agent: MemoryAgent(memory: widget.memory),
-    onSemanticSearchError: (_) {
-      if (mounted) setState(() => _semanticDegraded = true);
-    },
-  );
   final _syncSettingsRepository = SyncSettingsRepository();
 
   final _history = <LlmMessage>[];
@@ -199,11 +200,13 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       _history
         ..clear()
         ..addAll(
-            messages.map((m) => LlmMessage(role: m.role, content: m.content)));
+          messages.map((m) => LlmMessage(role: m.role, content: m.content)),
+        );
     });
   }
 
   void _startNewChat() {
+    _replyCancelToken?.cancel();
     setState(() {
       _conversationId = null;
       _history.clear();
@@ -212,6 +215,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   }
 
   Future<void> _loadConversationById(int id) async {
+    _replyCancelToken?.cancel();
     final messages = await widget.conversations.messages(id);
     if (!mounted) return;
     setState(() {
@@ -220,7 +224,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       _history
         ..clear()
         ..addAll(
-            messages.map((m) => LlmMessage(role: m.role, content: m.content)));
+          messages.map((m) => LlmMessage(role: m.role, content: m.content)),
+        );
     });
     _scrollToEnd();
   }
@@ -229,10 +234,11 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     final selectedId = await showModalBottomSheet<int>(
       context: context,
       showDragHandle: true,
-      builder: (context) => ConversationHistorySheet(
-        conversations: widget.conversations,
-        currentConversationId: _conversationId,
-      ),
+      builder:
+          (context) => ConversationHistorySheet(
+            conversations: widget.conversations,
+            currentConversationId: _conversationId,
+          ),
     );
     if (selectedId != null) await _loadConversationById(selectedId);
     if (_conversationId != null &&
@@ -254,17 +260,24 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     try {
       final report = await widget.snippets.indexPending();
       if (report.failures.isNotEmpty) {
-        messenger.showSnackBar(SnackBar(
-          content: Text(l10n
-              .indexingFailed(l10n.failedSnippetCount(report.failures.length))),
-        ));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              l10n.indexingFailed(
+                l10n.failedSnippetCount(report.failures.length),
+              ),
+            ),
+          ),
+        );
         return;
       }
       messenger.showSnackBar(
-          SnackBar(content: Text(l10n.indexedSnippets(report.indexed))));
+        SnackBar(content: Text(l10n.indexedSnippets(report.indexed))),
+      );
     } catch (e) {
-      messenger
-          .showSnackBar(SnackBar(content: Text(l10n.indexingFailed('$e'))));
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.indexingFailed('$e'))),
+      );
     }
   }
 
@@ -279,7 +292,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       final location = await getSaveLocation(
         suggestedName: 'kangoos-snippets.json',
         acceptedTypeGroups: const [
-          XTypeGroup(label: 'JSON', extensions: ['json'])
+          XTypeGroup(label: 'JSON', extensions: ['json']),
         ],
       );
       if (location == null) return;
@@ -304,20 +317,27 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     try {
       final file = await openFile(
         acceptedTypeGroups: const [
-          XTypeGroup(label: 'JSON', extensions: ['json'])
+          XTypeGroup(label: 'JSON', extensions: ['json']),
         ],
       );
       if (file == null) return;
       final result = await exchange.importJson(await file.readAsString());
       if (result.indexingFailures.isNotEmpty) {
-        messenger.showSnackBar(SnackBar(
-          content: Text(l10n.indexingFailed(
-              l10n.failedSnippetCount(result.indexingFailures.length))),
-        ));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              l10n.indexingFailed(
+                l10n.failedSnippetCount(result.indexingFailures.length),
+              ),
+            ),
+          ),
+        );
       }
-      messenger.showSnackBar(SnackBar(
-          content:
-              Text(l10n.importSucceeded(result.imported, result.skipped))));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.importSucceeded(result.imported, result.skipped)),
+        ),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.importFailed('$e'))));
     }
@@ -340,9 +360,13 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     }
 
     final priorHistory = List<LlmMessage>.of(_history);
-    _conversationId ??= await widget.conversations.create();
-    final userMessageId = await widget.conversations
-        .appendMessage(_conversationId!, LlmRole.user, trimmed);
+    final conversationId =
+        _conversationId ??= await widget.conversations.create();
+    final userMessageId = await widget.conversations.appendMessage(
+      conversationId,
+      LlmRole.user,
+      trimmed,
+    );
 
     final cancelToken = CancelToken();
     setState(() {
@@ -359,33 +383,56 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     final provider = buildProvider(settings);
 
     var reply = '';
+    ConnectorSession? connectorSession;
     try {
+      connectorSession = await widget.connectorRuntime?.open();
+      final personaProvider = widget.persona?.promptContent;
+      final ragChat = RagChat(
+        snippets: widget.snippets,
+        memory: widget.memory,
+        agent: MemoryAgent(
+          memory: widget.memory,
+          connectors: connectorSession?.registry,
+          personaProvider: personaProvider,
+        ),
+        personaProvider: personaProvider,
+        onSemanticSearchError: (_) {
+          if (mounted) setState(() => _semanticDegraded = true);
+        },
+      );
       reply = await collectLlmReply(
-        _ragChat.reply(
+        ragChat.reply(
           provider: provider,
           history: priorHistory,
           userMessage: trimmed,
           deepStudy: _deepStudy,
           cancelToken: cancelToken,
+          conversationId: conversationId,
+          connectorPermissionChecker: connectorSession?.permissionChecker,
+          connectorApprovalRequester: _requestConnectorApproval,
         ),
         cancelToken: cancelToken,
         onPartial: (partial) {
           reply = partial;
-          if (!mounted) return;
+          if (!mounted || _conversationId != conversationId) return;
           setState(() {
-            _history[_history.length - 1] =
-                LlmMessage(role: LlmRole.assistant, content: partial);
+            _history[_history.length - 1] = LlmMessage(
+              role: LlmRole.assistant,
+              content: partial,
+            );
           });
           _scrollToEnd();
         },
       );
     } catch (e) {
-      if (mounted) {
+      if (mounted && _conversationId == conversationId) {
         setState(
-            () => _error = l10n.chatRequestFailed(describeLlmError(l10n, e)));
+          () => _error = l10n.chatRequestFailed(describeLlmError(l10n, e)),
+        );
       }
     } finally {
-      await _persistReply(userMessageId, reply, trimmed);
+      connectorSession?.close();
+      await _persistReply(conversationId, userMessageId, reply, trimmed);
       if (mounted) {
         setState(() {
           _sending = false;
@@ -395,18 +442,73 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     }
   }
 
+  Future<bool> _requestConnectorApproval(ConnectorApproval approval) async {
+    if (!mounted) return false;
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                icon: Icon(
+                  approval.access == ConnectorAccess.external
+                      ? Icons.public_outlined
+                      : Icons.edit_calendar_outlined,
+                ),
+                title: Text(approval.title),
+                content: Text(approval.description),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Negar'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Confirmar uma vez'),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
+  }
+
+  Future<void> _openConnectorSettings() async {
+    final runtime = widget.connectorRuntime;
+    final persona = widget.persona;
+    if (runtime == null || persona == null) return;
+    _conversationId ??= await widget.conversations.create();
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => ConnectorSettingsScreen(
+              repository: runtime.repository,
+              credentials: runtime.credentials,
+              persona: persona,
+              conversationId: _conversationId!,
+            ),
+      ),
+    );
+  }
+
   void _stopReply() => _replyCancelToken?.cancel();
 
   Future<void> _persistReply(
-      int userMessageId, String reply, String userMessage) async {
+    int conversationId,
+    int userMessageId,
+    String reply,
+    String userMessage,
+  ) async {
     if (reply.isNotEmpty) {
-      await widget.conversations
-          .appendMessage(_conversationId!, LlmRole.assistant, reply);
+      await widget.conversations.appendMessage(
+        conversationId,
+        LlmRole.assistant,
+        reply,
+      );
       return;
     }
 
     await widget.conversations.deleteMessage(userMessageId);
-    if (!mounted) return;
+    if (!mounted || _conversationId != conversationId) return;
     setState(() {
       _history.removeLast();
       _history.removeLast();
@@ -438,27 +540,39 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           onOpenHistory: _openHistory,
           onIndexMissing: _indexMissing,
           onOpenCaptureSettings: () async {
-            await Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => CaptureSettingsScreen(
-                repository: widget.captureSettingsRepository,
-                memory: widget.memory,
-                onRestoreStaged: widget.onRestoreStaged,
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder:
+                    (_) => CaptureSettingsScreen(
+                      repository: widget.captureSettingsRepository,
+                      memory: widget.memory,
+                      onRestoreStaged: widget.onRestoreStaged,
+                    ),
               ),
-            ));
+            );
             _loadCaptureState();
           },
-          onOpenLlmSettings: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) =>
-                SettingsScreen(repository: widget.settingsRepository),
-          )),
-          onOpenSyncSettings: () =>
-              Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => SyncSettingsScreen(
-              repository: _syncSettingsRepository,
-              snippetRepository: widget.snippetRepository,
-              snippets: widget.snippets,
-            ),
-          )),
+          onOpenLlmSettings:
+              () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder:
+                      (_) =>
+                          SettingsScreen(repository: widget.settingsRepository),
+                ),
+              ),
+          onOpenSyncSettings:
+              () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder:
+                      (_) => SyncSettingsScreen(
+                        repository: _syncSettingsRepository,
+                        snippetRepository: widget.snippetRepository,
+                        snippets: widget.snippets,
+                      ),
+                ),
+              ),
+          onOpenConnectorSettings:
+              widget.connectorRuntime == null ? null : _openConnectorSettings,
           onExportSnippets: _exportSnippets,
           onImportSnippets: _importSnippets,
         ),
@@ -470,7 +584,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             child: Text(
               _error!,
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer),
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
             ),
           ),
         if (_semanticDegraded)
@@ -480,25 +595,27 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               children: [
-                Icon(Icons.info_outline,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.onTertiaryContainer),
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.onTertiaryContainer,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     l10n.semanticSearchUnavailable,
                     style: TextStyle(
-                        color:
-                            Theme.of(context).colorScheme.onTertiaryContainer),
+                      color: Theme.of(context).colorScheme.onTertiaryContainer,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         Expanded(
-            child: _started
-                ? _buildConversation(context)
-                : _buildGreeting(context)),
+          child:
+              _started ? _buildConversation(context) : _buildGreeting(context),
+        ),
         _Composer(
           controller: _inputController,
           focusNode: _inputFocusNode,
@@ -523,8 +640,10 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     final intro = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.memoryReady,
-            style: textTheme.labelSmall?.copyWith(color: colors.primary)),
+        Text(
+          l10n.memoryReady,
+          style: textTheme.labelSmall?.copyWith(color: colors.primary),
+        ),
         const SizedBox(height: 18),
         Text(
           userName == null ? l10n.greeting : l10n.greetingNamed(userName),
@@ -533,9 +652,12 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
         const SizedBox(height: 14),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
-          child: Text(l10n.homeSubtitle,
-              style: textTheme.bodyLarge
-                  ?.copyWith(color: colors.onSurfaceVariant)),
+          child: Text(
+            l10n.homeSubtitle,
+            style: textTheme.bodyLarge?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
         ),
         const SizedBox(height: 24),
         Row(
@@ -560,8 +682,10 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.nowLabel,
-              style: textTheme.labelSmall?.copyWith(color: colors.onPrimary)),
+          Text(
+            l10n.nowLabel,
+            style: textTheme.labelSmall?.copyWith(color: colors.onPrimary),
+          ),
           const SizedBox(height: 22),
           Row(
             children: [
@@ -580,31 +704,41 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             ],
           ),
           const SizedBox(height: 30),
-          Text(l10n.todayActivity,
-              style: textTheme.labelSmall
-                  ?.copyWith(color: colors.onPrimary.withValues(alpha: 0.72))),
+          Text(
+            l10n.todayActivity,
+            style: textTheme.labelSmall?.copyWith(
+              color: colors.onPrimary.withValues(alpha: 0.72),
+            ),
+          ),
           const SizedBox(height: 12),
-          Builder(builder: (context) {
-            final now = DateTime.now();
-            final startOfDay = DateTime(now.year, now.month, now.day);
-            return StreamBuilder<List<Activity>>(
-              stream: widget.memory.watchBetween(
-                  startOfDay, startOfDay.add(const Duration(days: 1))),
-              builder: (context, snapshot) {
-                final hourly =
-                    bucketActivityMinutesByHour(snapshot.data ?? const []);
-                return ActivitySparkline(
-                  hourlyMinutes: hourly,
-                  isCapturing: _capturing,
-                  foregroundColor: colors.onPrimary,
-                  backgroundColor: colors.primary,
-                );
-              },
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final now = DateTime.now();
+              final startOfDay = DateTime(now.year, now.month, now.day);
+              return StreamBuilder<List<Activity>>(
+                stream: widget.memory.watchBetween(
+                  startOfDay,
+                  startOfDay.add(const Duration(days: 1)),
+                ),
+                builder: (context, snapshot) {
+                  final hourly = bucketActivityMinutesByHour(
+                    snapshot.data ?? const [],
+                  );
+                  return ActivitySparkline(
+                    hourlyMinutes: hourly,
+                    isCapturing: _capturing,
+                    foregroundColor: colors.onPrimary,
+                    backgroundColor: colors.primary,
+                  );
+                },
+              );
+            },
+          ),
           const SizedBox(height: 18),
-          Text(l10n.ptBrStatus,
-              style: textTheme.labelSmall?.copyWith(color: colors.onPrimary)),
+          Text(
+            l10n.ptBrStatus,
+            style: textTheme.labelSmall?.copyWith(color: colors.onPrimary),
+          ),
         ],
       ),
     );
@@ -628,9 +762,10 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           stream: widget.snippets.watchAll(),
           builder: (context, snapshot) {
             final snippets = snapshot.data;
-            final mostRecent = (snippets != null && snippets.isNotEmpty)
-                ? snippets.first
-                : null;
+            final mostRecent =
+                (snippets != null && snippets.isNotEmpty)
+                    ? snippets.first
+                    : null;
             final prompts = [
               if (mostRecent != null) l10n.explainSnippet(mostRecent.title),
               ...suggestions,
@@ -656,67 +791,70 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1180),
-              child: compact
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        intro,
-                        const SizedBox(height: 38),
-                        activityPanel,
-                        const SizedBox(height: 36),
-                        Text(l10n.quickActions, style: textTheme.labelSmall),
-                        const SizedBox(height: 8),
-                        for (final action in summaryActions)
-                          _SummaryActionCard(action: action, onTap: _send),
-                        const SizedBox(height: 34),
-                        quickQuestions,
-                      ],
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              intro,
-                              const SizedBox(height: 48),
-                              Text(l10n.quickActions,
-                                  style: textTheme.labelSmall),
-                              const SizedBox(height: 8),
-                              GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  mainAxisSpacing: 0,
-                                  crossAxisSpacing: 24,
-                                  mainAxisExtent: 98,
+              child:
+                  compact
+                      ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          intro,
+                          const SizedBox(height: 38),
+                          activityPanel,
+                          const SizedBox(height: 36),
+                          Text(l10n.quickActions, style: textTheme.labelSmall),
+                          const SizedBox(height: 8),
+                          for (final action in summaryActions)
+                            _SummaryActionCard(action: action, onTap: _send),
+                          const SizedBox(height: 34),
+                          quickQuestions,
+                        ],
+                      )
+                      : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                intro,
+                                const SizedBox(height: 48),
+                                Text(
+                                  l10n.quickActions,
+                                  style: textTheme.labelSmall,
                                 ),
-                                itemCount: summaryActions.length,
-                                itemBuilder: (context, index) =>
-                                    _SummaryActionCard(
-                                  action: summaryActions[index],
-                                  onTap: _send,
+                                const SizedBox(height: 8),
+                                GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        mainAxisSpacing: 0,
+                                        crossAxisSpacing: 24,
+                                        mainAxisExtent: 98,
+                                      ),
+                                  itemCount: summaryActions.length,
+                                  itemBuilder:
+                                      (context, index) => _SummaryActionCard(
+                                        action: summaryActions[index],
+                                        onTap: _send,
+                                      ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 44),
-                        SizedBox(
-                          width: 300,
-                          child: Column(
-                            children: [
-                              activityPanel,
-                              const SizedBox(height: 28),
-                              quickQuestions,
-                            ],
+                          const SizedBox(width: 44),
+                          SizedBox(
+                            width: 300,
+                            child: Column(
+                              children: [
+                                activityPanel,
+                                const SizedBox(height: 28),
+                                quickQuestions,
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
             ),
           ),
         );
@@ -729,22 +867,32 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
       itemCount: _history.length,
-      itemBuilder: (context, index) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 920),
-          child: _ChatBubble(
-            message: _history[index],
-            pending: _sending &&
-                index == _history.length - 1 &&
-                _history[index].content.isEmpty,
+      itemBuilder:
+          (context, index) => Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 920),
+              child: _ChatBubble(
+                message: _history[index],
+                pending:
+                    _sending &&
+                    index == _history.length - 1 &&
+                    _history[index].content.isEmpty,
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 }
 
-enum _HeaderAction { indexSnippets, capture, sync, llm, export, import }
+enum _HeaderAction {
+  indexSnippets,
+  capture,
+  connectors,
+  sync,
+  llm,
+  export,
+  import,
+}
 
 class _Header extends StatelessWidget {
   const _Header({
@@ -756,6 +904,7 @@ class _Header extends StatelessWidget {
     required this.onOpenCaptureSettings,
     required this.onOpenLlmSettings,
     required this.onOpenSyncSettings,
+    this.onOpenConnectorSettings,
     required this.onExportSnippets,
     required this.onImportSnippets,
     this.onOpenNavigation,
@@ -770,6 +919,7 @@ class _Header extends StatelessWidget {
   final VoidCallback onOpenCaptureSettings;
   final VoidCallback onOpenLlmSettings;
   final VoidCallback onOpenSyncSettings;
+  final VoidCallback? onOpenConnectorSettings;
   final VoidCallback onExportSnippets;
   final VoidCallback onImportSnippets;
 
@@ -802,10 +952,14 @@ class _Header extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.appTitle,
-                      style: Theme.of(context).textTheme.titleMedium),
-                  Text(l10n.workspaceSubtitle,
-                      style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    l10n.appTitle,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    l10n.workspaceSubtitle,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ],
               ),
               const Spacer(),
@@ -833,33 +987,59 @@ class _Header extends StatelessWidget {
                 const SizedBox(width: 4),
                 wide
                     ? FilledButton.icon(
-                        onPressed: onNewChat,
-                        icon: const Icon(Icons.add_comment_outlined, size: 18),
-                        label: Text(l10n.newChat),
-                      )
+                      onPressed: onNewChat,
+                      icon: const Icon(Icons.add_comment_outlined, size: 18),
+                      label: Text(l10n.newChat),
+                    )
                     : IconButton(
-                        onPressed: onNewChat,
-                        icon: const Icon(Icons.add_comment_outlined),
-                        tooltip: l10n.newChat,
-                      ),
+                      onPressed: onNewChat,
+                      icon: const Icon(Icons.add_comment_outlined),
+                      tooltip: l10n.newChat,
+                    ),
               ],
               const SizedBox(width: 4),
               PopupMenuButton<_HeaderAction>(
                 tooltip: l10n.more,
                 onSelected: _runAction,
-                itemBuilder: (context) => [
-                  _menuItem(_HeaderAction.indexSnippets,
-                      Icons.auto_awesome_outlined, l10n.indexSnippets),
-                  _menuItem(_HeaderAction.capture, Icons.privacy_tip_outlined,
-                      l10n.captureSettings),
-                  _menuItem(
-                      _HeaderAction.sync, Icons.sync_outlined, l10n.serverSync),
-                  _menuItem(_HeaderAction.llm, Icons.tune, l10n.llmSettings),
-                  _menuItem(_HeaderAction.export, Icons.upload_file_outlined,
-                      l10n.exportSnippets),
-                  _menuItem(_HeaderAction.import, Icons.download_outlined,
-                      l10n.importSnippets),
-                ],
+                itemBuilder:
+                    (context) => [
+                      _menuItem(
+                        _HeaderAction.indexSnippets,
+                        Icons.auto_awesome_outlined,
+                        l10n.indexSnippets,
+                      ),
+                      _menuItem(
+                        _HeaderAction.capture,
+                        Icons.privacy_tip_outlined,
+                        l10n.captureSettings,
+                      ),
+                      if (onOpenConnectorSettings != null)
+                        _menuItem(
+                          _HeaderAction.connectors,
+                          Icons.hub_outlined,
+                          'Conectores e permissões',
+                        ),
+                      _menuItem(
+                        _HeaderAction.sync,
+                        Icons.sync_outlined,
+                        l10n.serverSync,
+                      ),
+                      _menuItem(
+                        _HeaderAction.llm,
+                        Icons.tune,
+                        l10n.llmSettings,
+                      ),
+                      _menuItem(
+                        _HeaderAction.export,
+                        Icons.upload_file_outlined,
+                        l10n.exportSnippets,
+                      ),
+                      _menuItem(
+                        _HeaderAction.import,
+                        Icons.download_outlined,
+                        l10n.importSnippets,
+                      ),
+                    ],
               ),
             ],
           );
@@ -869,7 +1049,10 @@ class _Header extends StatelessWidget {
   }
 
   PopupMenuItem<_HeaderAction> _menuItem(
-      _HeaderAction value, IconData icon, String label) {
+    _HeaderAction value,
+    IconData icon,
+    String label,
+  ) {
     return PopupMenuItem<_HeaderAction>(
       value: value,
       child: ListTile(
@@ -887,6 +1070,9 @@ class _Header extends StatelessWidget {
         break;
       case _HeaderAction.capture:
         onOpenCaptureSettings();
+        break;
+      case _HeaderAction.connectors:
+        onOpenConnectorSettings?.call();
         break;
       case _HeaderAction.sync:
         onOpenSyncSettings();
@@ -920,8 +1106,9 @@ class ConversationHistorySheet extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: ConstrainedBox(
-        constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
         child: StreamBuilder<List<ConversationSummary>>(
           stream: conversations.watchSummaries(),
           builder: (context, snapshot) {
@@ -935,8 +1122,10 @@ class ConversationHistorySheet extends StatelessWidget {
             if (conversations.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.all(32),
-                child: Text(l10n.noSavedConversations,
-                    style: textTheme.bodyMedium),
+                child: Text(
+                  l10n.noSavedConversations,
+                  style: textTheme.bodyMedium,
+                ),
               );
             }
             return ListView.builder(
@@ -964,9 +1153,10 @@ class ConversationHistorySheet extends StatelessWidget {
                         context: context,
                         title: l10n.deleteConversationTitle,
                         body: l10n.deleteConversationBody(
-                            conversation.preview.isEmpty
-                                ? l10n.newChat
-                                : conversation.preview),
+                          conversation.preview.isEmpty
+                              ? l10n.newChat
+                              : conversation.preview,
+                        ),
                       );
                       if (confirmed) {
                         await this.conversations.delete(conversation.id);
@@ -1004,9 +1194,7 @@ class _SummaryActionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 13),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: colors.outlineVariant),
-            ),
+            border: Border(bottom: BorderSide(color: colors.outlineVariant)),
           ),
           child: Row(
             children: [
@@ -1024,8 +1212,9 @@ class _SummaryActionCard extends StatelessWidget {
                   children: [
                     Text(
                       action.title,
-                      style: textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1040,8 +1229,11 @@ class _SummaryActionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Icon(Icons.arrow_forward,
-                  color: colors.onSurfaceVariant, size: 17),
+              Icon(
+                Icons.arrow_forward,
+                color: colors.onSurfaceVariant,
+                size: 17,
+              ),
             ],
           ),
         ),
@@ -1067,9 +1259,7 @@ class _FreeformChip extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: colors.outlineVariant),
-            ),
+            border: Border(bottom: BorderSide(color: colors.outlineVariant)),
           ),
           child: Row(
             children: [
@@ -1081,7 +1271,9 @@ class _FreeformChip extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurface, fontWeight: FontWeight.w500),
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -1113,7 +1305,9 @@ class _StartNewChatChip extends StatelessWidget {
               Text(
                 AppLocalizations.of(context).newChat,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colors.secondary, fontWeight: FontWeight.w600),
+                  color: colors.secondary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -1160,9 +1354,10 @@ class _Composer extends StatelessWidget {
             child: Row(
               children: [
                 Tooltip(
-                  message: deepStudy
-                      ? l10n.deepStudyEnabled
-                      : l10n.deepStudyDisabled,
+                  message:
+                      deepStudy
+                          ? l10n.deepStudyEnabled
+                          : l10n.deepStudyDisabled,
                   child: IconButton.filledTonal(
                     isSelected: deepStudy,
                     selectedIcon: const Icon(Icons.manage_search),
@@ -1231,10 +1426,9 @@ class _ChatBubble extends StatelessWidget {
           children: [
             Text(
               AppLocalizations.of(context).appTitle.toUpperCase(),
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: colors.primary),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: colors.primary),
             ),
             const SizedBox(height: 8),
             _AssistantContent(content: message.content, pending: pending),
@@ -1271,18 +1465,17 @@ class _AssistantContent extends StatelessWidget {
     if (content.isEmpty) {
       return pending
           ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                const SizedBox(width: 8),
-                Text(l10n.thinking,
-                    style: Theme.of(context).textTheme.bodySmall),
-              ],
-            )
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 8),
+              Text(l10n.thinking, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          )
           : const Text('…');
     }
     return Column(

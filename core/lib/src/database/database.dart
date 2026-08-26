@@ -5,9 +5,11 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' show Database, sqlite3;
 
+import '../connectors/agent_connector.dart';
 import '../llm/llm_provider.dart';
 import '../memory/memory_deletion.dart';
 import 'tables/activities_table.dart';
+import 'tables/agent_context_tables.dart';
 import 'tables/activity_summaries_table.dart';
 import 'tables/conversations_table.dart';
 import 'tables/deleted_snippets_table.dart';
@@ -25,6 +27,9 @@ part 'database.g.dart';
     ConversationMessages,
     DeletedSnippets,
     MemoryEpisodes,
+    ConnectorSources,
+    ConnectorToolPermissions,
+    LocalPersonas,
   ],
 )
 class KangoosDatabase extends _$KangoosDatabase {
@@ -47,7 +52,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   final File? databaseFile;
   final String? encryptionKey;
 
-  static const currentSchemaVersion = 21;
+  static const currentSchemaVersion = 22;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -186,6 +191,17 @@ class KangoosDatabase extends _$KangoosDatabase {
             );
           }
           await _rebuildConversationMessagesFts();
+        }
+      }
+      if (from < 22) {
+        if (!await _hasTable('connector_sources')) {
+          await m.createTable(connectorSources);
+        }
+        if (!await _hasTable('connector_tool_permissions')) {
+          await m.createTable(connectorToolPermissions);
+        }
+        if (!await _hasTable('local_personas')) {
+          await m.createTable(localPersonas);
         }
       }
     },
@@ -1083,6 +1099,8 @@ END;
   }
 
   Future<void> deleteConversation(int conversationId) => transaction(() async {
+    await (delete(connectorToolPermissions)
+      ..where((row) => row.conversationId.equals(conversationId))).go();
     await (delete(conversationMessages)
       ..where((row) => row.conversationId.equals(conversationId))).go();
     await (delete(conversations)

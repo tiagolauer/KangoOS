@@ -14,6 +14,8 @@ import 'capture/capture_source_registry.dart';
 import 'capture/capture_status.dart';
 import 'capture/whisper_model_repository.dart';
 import 'capture/window_capture_service.dart';
+import 'connectors/connector_credentials.dart';
+import 'connectors/connector_runtime.dart';
 import 'database_encryption.dart';
 import 'embedding/settings_embedding_provider.dart';
 import 'home/app_shell.dart';
@@ -83,6 +85,15 @@ Future<void> _startKangoos() async {
   final summaryRepository = SqliteSummaryRepository(database);
   final conversationRepository = SqliteConversationRepository(database);
   final episodeRepository = SqliteEpisodeRepository(database);
+  final connectorRepository = SqliteConnectorRepository(database);
+  final persona = PersonaService(
+    repository: SqlitePersonaRepository(database),
+    summaries: summaryRepository,
+  );
+  final connectorRuntime = ConnectorRuntime(
+    repository: connectorRepository,
+    credentials: ConnectorCredentials(),
+  );
   final captureSettingsRepository = CaptureSettingsRepository();
   final captureSourceRegistry = CaptureSourceRegistry();
   final captureStatus = CaptureStatusController();
@@ -184,6 +195,8 @@ Future<void> _startKangoos() async {
       captureStatus: captureStatus,
       needsCaptureConsent: needsCaptureConsent,
       trayService: tray,
+      connectorRuntime: connectorRuntime,
+      persona: persona,
       onRestoreStaged: restartAfterRestore,
     ),
   );
@@ -309,6 +322,8 @@ class KangoosApp extends StatelessWidget {
     this.captureStatus,
     this.needsCaptureConsent = false,
     this.trayService,
+    this.connectorRuntime,
+    this.persona,
     this.onRestoreStaged,
   });
 
@@ -320,6 +335,8 @@ class KangoosApp extends StatelessWidget {
   final CaptureStatusController? captureStatus;
   final bool needsCaptureConsent;
   final TrayService? trayService;
+  final ConnectorRuntime? connectorRuntime;
+  final PersonaService? persona;
   final Future<void> Function()? onRestoreStaged;
 
   @override
@@ -346,6 +363,8 @@ class KangoosApp extends StatelessWidget {
       captureStatus: captureStatus,
       needsCaptureConsent: needsCaptureConsent,
       onRestoreStaged: onRestoreStaged,
+      connectorRuntime: connectorRuntime,
+      persona: persona,
     );
     final tray = trayService;
     if (tray == null) return appShell;

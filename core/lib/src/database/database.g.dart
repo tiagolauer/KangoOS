@@ -4011,6 +4011,1316 @@ class MemoryEpisodesCompanion extends UpdateCompanion<MemoryEpisode> {
   }
 }
 
+class $ConnectorSourcesTable extends ConnectorSources
+    with TableInfo<$ConnectorSourcesTable, ConnectorSource> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ConnectorSourcesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 128,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ConnectorSourceKind, String>
+  kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<ConnectorSourceKind>($ConnectorSourcesTable.$converterkind);
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 256,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _locationMeta = const VerificationMeta(
+    'location',
+  );
+  @override
+  late final GeneratedColumn<String> location = GeneratedColumn<String>(
+    'location',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 4096,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    kind,
+    label,
+    location,
+    enabled,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'connector_sources';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ConnectorSource> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('location')) {
+      context.handle(
+        _locationMeta,
+        location.isAcceptableOrUnknown(data['location']!, _locationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_locationMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ConnectorSource map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ConnectorSource(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      kind: $ConnectorSourcesTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      label:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}label'],
+          )!,
+      location:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}location'],
+          )!,
+      enabled:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}enabled'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $ConnectorSourcesTable createAlias(String alias) {
+    return $ConnectorSourcesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<ConnectorSourceKind, String> $converterkind =
+      const ConnectorSourceKindConverter();
+}
+
+class ConnectorSource extends DataClass implements Insertable<ConnectorSource> {
+  final String id;
+  final ConnectorSourceKind kind;
+  final String label;
+  final String location;
+  final bool enabled;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const ConnectorSource({
+    required this.id,
+    required this.kind,
+    required this.label,
+    required this.location,
+    required this.enabled,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    {
+      map['kind'] = Variable<String>(
+        $ConnectorSourcesTable.$converterkind.toSql(kind),
+      );
+    }
+    map['label'] = Variable<String>(label);
+    map['location'] = Variable<String>(location);
+    map['enabled'] = Variable<bool>(enabled);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ConnectorSourcesCompanion toCompanion(bool nullToAbsent) {
+    return ConnectorSourcesCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      label: Value(label),
+      location: Value(location),
+      enabled: Value(enabled),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ConnectorSource.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ConnectorSource(
+      id: serializer.fromJson<String>(json['id']),
+      kind: serializer.fromJson<ConnectorSourceKind>(json['kind']),
+      label: serializer.fromJson<String>(json['label']),
+      location: serializer.fromJson<String>(json['location']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'kind': serializer.toJson<ConnectorSourceKind>(kind),
+      'label': serializer.toJson<String>(label),
+      'location': serializer.toJson<String>(location),
+      'enabled': serializer.toJson<bool>(enabled),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ConnectorSource copyWith({
+    String? id,
+    ConnectorSourceKind? kind,
+    String? label,
+    String? location,
+    bool? enabled,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ConnectorSource(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    label: label ?? this.label,
+    location: location ?? this.location,
+    enabled: enabled ?? this.enabled,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ConnectorSource copyWithCompanion(ConnectorSourcesCompanion data) {
+    return ConnectorSource(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      label: data.label.present ? data.label.value : this.label,
+      location: data.location.present ? data.location.value : this.location,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectorSource(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('label: $label, ')
+          ..write('location: $location, ')
+          ..write('enabled: $enabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, kind, label, location, enabled, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ConnectorSource &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.label == this.label &&
+          other.location == this.location &&
+          other.enabled == this.enabled &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ConnectorSourcesCompanion extends UpdateCompanion<ConnectorSource> {
+  final Value<String> id;
+  final Value<ConnectorSourceKind> kind;
+  final Value<String> label;
+  final Value<String> location;
+  final Value<bool> enabled;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ConnectorSourcesCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.label = const Value.absent(),
+    this.location = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ConnectorSourcesCompanion.insert({
+    required String id,
+    required ConnectorSourceKind kind,
+    required String label,
+    required String location,
+    this.enabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       kind = Value(kind),
+       label = Value(label),
+       location = Value(location);
+  static Insertable<ConnectorSource> custom({
+    Expression<String>? id,
+    Expression<String>? kind,
+    Expression<String>? label,
+    Expression<String>? location,
+    Expression<bool>? enabled,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (label != null) 'label': label,
+      if (location != null) 'location': location,
+      if (enabled != null) 'enabled': enabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ConnectorSourcesCompanion copyWith({
+    Value<String>? id,
+    Value<ConnectorSourceKind>? kind,
+    Value<String>? label,
+    Value<String>? location,
+    Value<bool>? enabled,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ConnectorSourcesCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      label: label ?? this.label,
+      location: location ?? this.location,
+      enabled: enabled ?? this.enabled,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+        $ConnectorSourcesTable.$converterkind.toSql(kind.value),
+      );
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (location.present) {
+      map['location'] = Variable<String>(location.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectorSourcesCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('label: $label, ')
+          ..write('location: $location, ')
+          ..write('enabled: $enabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ConnectorToolPermissionsTable extends ConnectorToolPermissions
+    with TableInfo<$ConnectorToolPermissionsTable, ConnectorToolPermission> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ConnectorToolPermissionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ConnectorSurface, String>
+  surface = GeneratedColumn<String>(
+    'surface',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<ConnectorSurface>(
+    $ConnectorToolPermissionsTable.$convertersurface,
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<int> conversationId = GeneratedColumn<int>(
+    'conversation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _toolNameMeta = const VerificationMeta(
+    'toolName',
+  );
+  @override
+  late final GeneratedColumn<String> toolName = GeneratedColumn<String>(
+    'tool_name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 128,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ConnectorAccess, String> access =
+      GeneratedColumn<String>(
+        'access',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<ConnectorAccess>(
+        $ConnectorToolPermissionsTable.$converteraccess,
+      );
+  static const VerificationMeta _grantedAtMeta = const VerificationMeta(
+    'grantedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> grantedAt = GeneratedColumn<DateTime>(
+    'granted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    surface,
+    conversationId,
+    toolName,
+    access,
+    grantedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'connector_tool_permissions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ConnectorToolPermission> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conversationIdMeta);
+    }
+    if (data.containsKey('tool_name')) {
+      context.handle(
+        _toolNameMeta,
+        toolName.isAcceptableOrUnknown(data['tool_name']!, _toolNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_toolNameMeta);
+    }
+    if (data.containsKey('granted_at')) {
+      context.handle(
+        _grantedAtMeta,
+        grantedAt.isAcceptableOrUnknown(data['granted_at']!, _grantedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {surface, conversationId, toolName, access},
+  ];
+  @override
+  ConnectorToolPermission map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ConnectorToolPermission(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      surface: $ConnectorToolPermissionsTable.$convertersurface.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}surface'],
+        )!,
+      ),
+      conversationId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}conversation_id'],
+          )!,
+      toolName:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}tool_name'],
+          )!,
+      access: $ConnectorToolPermissionsTable.$converteraccess.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}access'],
+        )!,
+      ),
+      grantedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}granted_at'],
+          )!,
+    );
+  }
+
+  @override
+  $ConnectorToolPermissionsTable createAlias(String alias) {
+    return $ConnectorToolPermissionsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<ConnectorSurface, String> $convertersurface =
+      const ConnectorSurfaceConverter();
+  static TypeConverter<ConnectorAccess, String> $converteraccess =
+      const ConnectorAccessConverter();
+}
+
+class ConnectorToolPermission extends DataClass
+    implements Insertable<ConnectorToolPermission> {
+  final int id;
+  final ConnectorSurface surface;
+  final int conversationId;
+  final String toolName;
+  final ConnectorAccess access;
+  final DateTime grantedAt;
+  const ConnectorToolPermission({
+    required this.id,
+    required this.surface,
+    required this.conversationId,
+    required this.toolName,
+    required this.access,
+    required this.grantedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    {
+      map['surface'] = Variable<String>(
+        $ConnectorToolPermissionsTable.$convertersurface.toSql(surface),
+      );
+    }
+    map['conversation_id'] = Variable<int>(conversationId);
+    map['tool_name'] = Variable<String>(toolName);
+    {
+      map['access'] = Variable<String>(
+        $ConnectorToolPermissionsTable.$converteraccess.toSql(access),
+      );
+    }
+    map['granted_at'] = Variable<DateTime>(grantedAt);
+    return map;
+  }
+
+  ConnectorToolPermissionsCompanion toCompanion(bool nullToAbsent) {
+    return ConnectorToolPermissionsCompanion(
+      id: Value(id),
+      surface: Value(surface),
+      conversationId: Value(conversationId),
+      toolName: Value(toolName),
+      access: Value(access),
+      grantedAt: Value(grantedAt),
+    );
+  }
+
+  factory ConnectorToolPermission.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ConnectorToolPermission(
+      id: serializer.fromJson<int>(json['id']),
+      surface: serializer.fromJson<ConnectorSurface>(json['surface']),
+      conversationId: serializer.fromJson<int>(json['conversationId']),
+      toolName: serializer.fromJson<String>(json['toolName']),
+      access: serializer.fromJson<ConnectorAccess>(json['access']),
+      grantedAt: serializer.fromJson<DateTime>(json['grantedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'surface': serializer.toJson<ConnectorSurface>(surface),
+      'conversationId': serializer.toJson<int>(conversationId),
+      'toolName': serializer.toJson<String>(toolName),
+      'access': serializer.toJson<ConnectorAccess>(access),
+      'grantedAt': serializer.toJson<DateTime>(grantedAt),
+    };
+  }
+
+  ConnectorToolPermission copyWith({
+    int? id,
+    ConnectorSurface? surface,
+    int? conversationId,
+    String? toolName,
+    ConnectorAccess? access,
+    DateTime? grantedAt,
+  }) => ConnectorToolPermission(
+    id: id ?? this.id,
+    surface: surface ?? this.surface,
+    conversationId: conversationId ?? this.conversationId,
+    toolName: toolName ?? this.toolName,
+    access: access ?? this.access,
+    grantedAt: grantedAt ?? this.grantedAt,
+  );
+  ConnectorToolPermission copyWithCompanion(
+    ConnectorToolPermissionsCompanion data,
+  ) {
+    return ConnectorToolPermission(
+      id: data.id.present ? data.id.value : this.id,
+      surface: data.surface.present ? data.surface.value : this.surface,
+      conversationId:
+          data.conversationId.present
+              ? data.conversationId.value
+              : this.conversationId,
+      toolName: data.toolName.present ? data.toolName.value : this.toolName,
+      access: data.access.present ? data.access.value : this.access,
+      grantedAt: data.grantedAt.present ? data.grantedAt.value : this.grantedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectorToolPermission(')
+          ..write('id: $id, ')
+          ..write('surface: $surface, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('toolName: $toolName, ')
+          ..write('access: $access, ')
+          ..write('grantedAt: $grantedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, surface, conversationId, toolName, access, grantedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ConnectorToolPermission &&
+          other.id == this.id &&
+          other.surface == this.surface &&
+          other.conversationId == this.conversationId &&
+          other.toolName == this.toolName &&
+          other.access == this.access &&
+          other.grantedAt == this.grantedAt);
+}
+
+class ConnectorToolPermissionsCompanion
+    extends UpdateCompanion<ConnectorToolPermission> {
+  final Value<int> id;
+  final Value<ConnectorSurface> surface;
+  final Value<int> conversationId;
+  final Value<String> toolName;
+  final Value<ConnectorAccess> access;
+  final Value<DateTime> grantedAt;
+  const ConnectorToolPermissionsCompanion({
+    this.id = const Value.absent(),
+    this.surface = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    this.toolName = const Value.absent(),
+    this.access = const Value.absent(),
+    this.grantedAt = const Value.absent(),
+  });
+  ConnectorToolPermissionsCompanion.insert({
+    this.id = const Value.absent(),
+    required ConnectorSurface surface,
+    required int conversationId,
+    required String toolName,
+    required ConnectorAccess access,
+    this.grantedAt = const Value.absent(),
+  }) : surface = Value(surface),
+       conversationId = Value(conversationId),
+       toolName = Value(toolName),
+       access = Value(access);
+  static Insertable<ConnectorToolPermission> custom({
+    Expression<int>? id,
+    Expression<String>? surface,
+    Expression<int>? conversationId,
+    Expression<String>? toolName,
+    Expression<String>? access,
+    Expression<DateTime>? grantedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (surface != null) 'surface': surface,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (toolName != null) 'tool_name': toolName,
+      if (access != null) 'access': access,
+      if (grantedAt != null) 'granted_at': grantedAt,
+    });
+  }
+
+  ConnectorToolPermissionsCompanion copyWith({
+    Value<int>? id,
+    Value<ConnectorSurface>? surface,
+    Value<int>? conversationId,
+    Value<String>? toolName,
+    Value<ConnectorAccess>? access,
+    Value<DateTime>? grantedAt,
+  }) {
+    return ConnectorToolPermissionsCompanion(
+      id: id ?? this.id,
+      surface: surface ?? this.surface,
+      conversationId: conversationId ?? this.conversationId,
+      toolName: toolName ?? this.toolName,
+      access: access ?? this.access,
+      grantedAt: grantedAt ?? this.grantedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (surface.present) {
+      map['surface'] = Variable<String>(
+        $ConnectorToolPermissionsTable.$convertersurface.toSql(surface.value),
+      );
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<int>(conversationId.value);
+    }
+    if (toolName.present) {
+      map['tool_name'] = Variable<String>(toolName.value);
+    }
+    if (access.present) {
+      map['access'] = Variable<String>(
+        $ConnectorToolPermissionsTable.$converteraccess.toSql(access.value),
+      );
+    }
+    if (grantedAt.present) {
+      map['granted_at'] = Variable<DateTime>(grantedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectorToolPermissionsCompanion(')
+          ..write('id: $id, ')
+          ..write('surface: $surface, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('toolName: $toolName, ')
+          ..write('access: $access, ')
+          ..write('grantedAt: $grantedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalPersonasTable extends LocalPersonas
+    with TableInfo<$LocalPersonasTable, LocalPersona> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalPersonasTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 4000,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<int>, String>
+  sourceSummaryIds = GeneratedColumn<String>(
+    'source_summary_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  ).withConverter<List<int>>($LocalPersonasTable.$convertersourceSummaryIds);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    enabled,
+    content,
+    sourceSummaryIds,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_personas';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalPersona> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalPersona map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalPersona(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      enabled:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}enabled'],
+          )!,
+      content:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}content'],
+          )!,
+      sourceSummaryIds: $LocalPersonasTable.$convertersourceSummaryIds.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}source_summary_ids'],
+        )!,
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $LocalPersonasTable createAlias(String alias) {
+    return $LocalPersonasTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<List<int>, String> $convertersourceSummaryIds =
+      const IntListConverter();
+}
+
+class LocalPersona extends DataClass implements Insertable<LocalPersona> {
+  final int id;
+  final bool enabled;
+  final String content;
+  final List<int> sourceSummaryIds;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const LocalPersona({
+    required this.id,
+    required this.enabled,
+    required this.content,
+    required this.sourceSummaryIds,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['enabled'] = Variable<bool>(enabled);
+    map['content'] = Variable<String>(content);
+    {
+      map['source_summary_ids'] = Variable<String>(
+        $LocalPersonasTable.$convertersourceSummaryIds.toSql(sourceSummaryIds),
+      );
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LocalPersonasCompanion toCompanion(bool nullToAbsent) {
+    return LocalPersonasCompanion(
+      id: Value(id),
+      enabled: Value(enabled),
+      content: Value(content),
+      sourceSummaryIds: Value(sourceSummaryIds),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalPersona.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalPersona(
+      id: serializer.fromJson<int>(json['id']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      content: serializer.fromJson<String>(json['content']),
+      sourceSummaryIds: serializer.fromJson<List<int>>(
+        json['sourceSummaryIds'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'enabled': serializer.toJson<bool>(enabled),
+      'content': serializer.toJson<String>(content),
+      'sourceSummaryIds': serializer.toJson<List<int>>(sourceSummaryIds),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalPersona copyWith({
+    int? id,
+    bool? enabled,
+    String? content,
+    List<int>? sourceSummaryIds,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => LocalPersona(
+    id: id ?? this.id,
+    enabled: enabled ?? this.enabled,
+    content: content ?? this.content,
+    sourceSummaryIds: sourceSummaryIds ?? this.sourceSummaryIds,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalPersona copyWithCompanion(LocalPersonasCompanion data) {
+    return LocalPersona(
+      id: data.id.present ? data.id.value : this.id,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      content: data.content.present ? data.content.value : this.content,
+      sourceSummaryIds:
+          data.sourceSummaryIds.present
+              ? data.sourceSummaryIds.value
+              : this.sourceSummaryIds,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalPersona(')
+          ..write('id: $id, ')
+          ..write('enabled: $enabled, ')
+          ..write('content: $content, ')
+          ..write('sourceSummaryIds: $sourceSummaryIds, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, enabled, content, sourceSummaryIds, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalPersona &&
+          other.id == this.id &&
+          other.enabled == this.enabled &&
+          other.content == this.content &&
+          other.sourceSummaryIds == this.sourceSummaryIds &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalPersonasCompanion extends UpdateCompanion<LocalPersona> {
+  final Value<int> id;
+  final Value<bool> enabled;
+  final Value<String> content;
+  final Value<List<int>> sourceSummaryIds;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const LocalPersonasCompanion({
+    this.id = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.content = const Value.absent(),
+    this.sourceSummaryIds = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  LocalPersonasCompanion.insert({
+    this.id = const Value.absent(),
+    this.enabled = const Value.absent(),
+    required String content,
+    this.sourceSummaryIds = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : content = Value(content);
+  static Insertable<LocalPersona> custom({
+    Expression<int>? id,
+    Expression<bool>? enabled,
+    Expression<String>? content,
+    Expression<String>? sourceSummaryIds,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (enabled != null) 'enabled': enabled,
+      if (content != null) 'content': content,
+      if (sourceSummaryIds != null) 'source_summary_ids': sourceSummaryIds,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  LocalPersonasCompanion copyWith({
+    Value<int>? id,
+    Value<bool>? enabled,
+    Value<String>? content,
+    Value<List<int>>? sourceSummaryIds,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return LocalPersonasCompanion(
+      id: id ?? this.id,
+      enabled: enabled ?? this.enabled,
+      content: content ?? this.content,
+      sourceSummaryIds: sourceSummaryIds ?? this.sourceSummaryIds,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (sourceSummaryIds.present) {
+      map['source_summary_ids'] = Variable<String>(
+        $LocalPersonasTable.$convertersourceSummaryIds.toSql(
+          sourceSummaryIds.value,
+        ),
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalPersonasCompanion(')
+          ..write('id: $id, ')
+          ..write('enabled: $enabled, ')
+          ..write('content: $content, ')
+          ..write('sourceSummaryIds: $sourceSummaryIds, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KangoosDatabase extends GeneratedDatabase {
   _$KangoosDatabase(QueryExecutor e) : super(e);
   $KangoosDatabaseManager get managers => $KangoosDatabaseManager(this);
@@ -4025,6 +5335,12 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
     this,
   );
   late final $MemoryEpisodesTable memoryEpisodes = $MemoryEpisodesTable(this);
+  late final $ConnectorSourcesTable connectorSources = $ConnectorSourcesTable(
+    this,
+  );
+  late final $ConnectorToolPermissionsTable connectorToolPermissions =
+      $ConnectorToolPermissionsTable(this);
+  late final $LocalPersonasTable localPersonas = $LocalPersonasTable(this);
   late final Index snippetsUpdatedAtIdx = Index(
     'snippets_updated_at_idx',
     'CREATE INDEX snippets_updated_at_idx ON snippets (updated_at)',
@@ -4053,6 +5369,10 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
     'memory_episodes_ended_at_idx',
     'CREATE INDEX memory_episodes_ended_at_idx ON memory_episodes (ended_at)',
   );
+  late final Index connectorToolPermissionsConversationIdIdx = Index(
+    'connector_tool_permissions_conversation_id_idx',
+    'CREATE INDEX connector_tool_permissions_conversation_id_idx ON connector_tool_permissions (conversation_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4065,6 +5385,9 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
     conversationMessages,
     deletedSnippets,
     memoryEpisodes,
+    connectorSources,
+    connectorToolPermissions,
+    localPersonas,
     snippetsUpdatedAtIdx,
     activitiesCapturedAtIdx,
     activitySummariesPeriodEndIdx,
@@ -4072,6 +5395,7 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
     deletedSnippetsDeletedAtIdx,
     memoryEpisodesStartedAtIdx,
     memoryEpisodesEndedAtIdx,
+    connectorToolPermissionsConversationIdIdx,
   ];
 }
 
@@ -6138,6 +7462,750 @@ typedef $$MemoryEpisodesTableProcessedTableManager =
       MemoryEpisode,
       PrefetchHooks Function()
     >;
+typedef $$ConnectorSourcesTableCreateCompanionBuilder =
+    ConnectorSourcesCompanion Function({
+      required String id,
+      required ConnectorSourceKind kind,
+      required String label,
+      required String location,
+      Value<bool> enabled,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ConnectorSourcesTableUpdateCompanionBuilder =
+    ConnectorSourcesCompanion Function({
+      Value<String> id,
+      Value<ConnectorSourceKind> kind,
+      Value<String> label,
+      Value<String> location,
+      Value<bool> enabled,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ConnectorSourcesTableFilterComposer
+    extends Composer<_$KangoosDatabase, $ConnectorSourcesTable> {
+  $$ConnectorSourcesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    ConnectorSourceKind,
+    ConnectorSourceKind,
+    String
+  >
+  get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ConnectorSourcesTableOrderingComposer
+    extends Composer<_$KangoosDatabase, $ConnectorSourcesTable> {
+  $$ConnectorSourcesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ConnectorSourcesTableAnnotationComposer
+    extends Composer<_$KangoosDatabase, $ConnectorSourcesTable> {
+  $$ConnectorSourcesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ConnectorSourceKind, String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get location =>
+      $composableBuilder(column: $table.location, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ConnectorSourcesTableTableManager
+    extends
+        RootTableManager<
+          _$KangoosDatabase,
+          $ConnectorSourcesTable,
+          ConnectorSource,
+          $$ConnectorSourcesTableFilterComposer,
+          $$ConnectorSourcesTableOrderingComposer,
+          $$ConnectorSourcesTableAnnotationComposer,
+          $$ConnectorSourcesTableCreateCompanionBuilder,
+          $$ConnectorSourcesTableUpdateCompanionBuilder,
+          (
+            ConnectorSource,
+            BaseReferences<
+              _$KangoosDatabase,
+              $ConnectorSourcesTable,
+              ConnectorSource
+            >,
+          ),
+          ConnectorSource,
+          PrefetchHooks Function()
+        > {
+  $$ConnectorSourcesTableTableManager(
+    _$KangoosDatabase db,
+    $ConnectorSourcesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () =>
+                  $$ConnectorSourcesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$ConnectorSourcesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$ConnectorSourcesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<ConnectorSourceKind> kind = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> location = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ConnectorSourcesCompanion(
+                id: id,
+                kind: kind,
+                label: label,
+                location: location,
+                enabled: enabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required ConnectorSourceKind kind,
+                required String label,
+                required String location,
+                Value<bool> enabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ConnectorSourcesCompanion.insert(
+                id: id,
+                kind: kind,
+                label: label,
+                location: location,
+                enabled: enabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ConnectorSourcesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KangoosDatabase,
+      $ConnectorSourcesTable,
+      ConnectorSource,
+      $$ConnectorSourcesTableFilterComposer,
+      $$ConnectorSourcesTableOrderingComposer,
+      $$ConnectorSourcesTableAnnotationComposer,
+      $$ConnectorSourcesTableCreateCompanionBuilder,
+      $$ConnectorSourcesTableUpdateCompanionBuilder,
+      (
+        ConnectorSource,
+        BaseReferences<
+          _$KangoosDatabase,
+          $ConnectorSourcesTable,
+          ConnectorSource
+        >,
+      ),
+      ConnectorSource,
+      PrefetchHooks Function()
+    >;
+typedef $$ConnectorToolPermissionsTableCreateCompanionBuilder =
+    ConnectorToolPermissionsCompanion Function({
+      Value<int> id,
+      required ConnectorSurface surface,
+      required int conversationId,
+      required String toolName,
+      required ConnectorAccess access,
+      Value<DateTime> grantedAt,
+    });
+typedef $$ConnectorToolPermissionsTableUpdateCompanionBuilder =
+    ConnectorToolPermissionsCompanion Function({
+      Value<int> id,
+      Value<ConnectorSurface> surface,
+      Value<int> conversationId,
+      Value<String> toolName,
+      Value<ConnectorAccess> access,
+      Value<DateTime> grantedAt,
+    });
+
+class $$ConnectorToolPermissionsTableFilterComposer
+    extends Composer<_$KangoosDatabase, $ConnectorToolPermissionsTable> {
+  $$ConnectorToolPermissionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ConnectorSurface, ConnectorSurface, String>
+  get surface => $composableBuilder(
+    column: $table.surface,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get toolName => $composableBuilder(
+    column: $table.toolName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ConnectorAccess, ConnectorAccess, String>
+  get access => $composableBuilder(
+    column: $table.access,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<DateTime> get grantedAt => $composableBuilder(
+    column: $table.grantedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ConnectorToolPermissionsTableOrderingComposer
+    extends Composer<_$KangoosDatabase, $ConnectorToolPermissionsTable> {
+  $$ConnectorToolPermissionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get surface => $composableBuilder(
+    column: $table.surface,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get toolName => $composableBuilder(
+    column: $table.toolName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get access => $composableBuilder(
+    column: $table.access,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get grantedAt => $composableBuilder(
+    column: $table.grantedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ConnectorToolPermissionsTableAnnotationComposer
+    extends Composer<_$KangoosDatabase, $ConnectorToolPermissionsTable> {
+  $$ConnectorToolPermissionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ConnectorSurface, String> get surface =>
+      $composableBuilder(column: $table.surface, builder: (column) => column);
+
+  GeneratedColumn<int> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get toolName =>
+      $composableBuilder(column: $table.toolName, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ConnectorAccess, String> get access =>
+      $composableBuilder(column: $table.access, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get grantedAt =>
+      $composableBuilder(column: $table.grantedAt, builder: (column) => column);
+}
+
+class $$ConnectorToolPermissionsTableTableManager
+    extends
+        RootTableManager<
+          _$KangoosDatabase,
+          $ConnectorToolPermissionsTable,
+          ConnectorToolPermission,
+          $$ConnectorToolPermissionsTableFilterComposer,
+          $$ConnectorToolPermissionsTableOrderingComposer,
+          $$ConnectorToolPermissionsTableAnnotationComposer,
+          $$ConnectorToolPermissionsTableCreateCompanionBuilder,
+          $$ConnectorToolPermissionsTableUpdateCompanionBuilder,
+          (
+            ConnectorToolPermission,
+            BaseReferences<
+              _$KangoosDatabase,
+              $ConnectorToolPermissionsTable,
+              ConnectorToolPermission
+            >,
+          ),
+          ConnectorToolPermission,
+          PrefetchHooks Function()
+        > {
+  $$ConnectorToolPermissionsTableTableManager(
+    _$KangoosDatabase db,
+    $ConnectorToolPermissionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$ConnectorToolPermissionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer:
+              () => $$ConnectorToolPermissionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$ConnectorToolPermissionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<ConnectorSurface> surface = const Value.absent(),
+                Value<int> conversationId = const Value.absent(),
+                Value<String> toolName = const Value.absent(),
+                Value<ConnectorAccess> access = const Value.absent(),
+                Value<DateTime> grantedAt = const Value.absent(),
+              }) => ConnectorToolPermissionsCompanion(
+                id: id,
+                surface: surface,
+                conversationId: conversationId,
+                toolName: toolName,
+                access: access,
+                grantedAt: grantedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required ConnectorSurface surface,
+                required int conversationId,
+                required String toolName,
+                required ConnectorAccess access,
+                Value<DateTime> grantedAt = const Value.absent(),
+              }) => ConnectorToolPermissionsCompanion.insert(
+                id: id,
+                surface: surface,
+                conversationId: conversationId,
+                toolName: toolName,
+                access: access,
+                grantedAt: grantedAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ConnectorToolPermissionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KangoosDatabase,
+      $ConnectorToolPermissionsTable,
+      ConnectorToolPermission,
+      $$ConnectorToolPermissionsTableFilterComposer,
+      $$ConnectorToolPermissionsTableOrderingComposer,
+      $$ConnectorToolPermissionsTableAnnotationComposer,
+      $$ConnectorToolPermissionsTableCreateCompanionBuilder,
+      $$ConnectorToolPermissionsTableUpdateCompanionBuilder,
+      (
+        ConnectorToolPermission,
+        BaseReferences<
+          _$KangoosDatabase,
+          $ConnectorToolPermissionsTable,
+          ConnectorToolPermission
+        >,
+      ),
+      ConnectorToolPermission,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalPersonasTableCreateCompanionBuilder =
+    LocalPersonasCompanion Function({
+      Value<int> id,
+      Value<bool> enabled,
+      required String content,
+      Value<List<int>> sourceSummaryIds,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$LocalPersonasTableUpdateCompanionBuilder =
+    LocalPersonasCompanion Function({
+      Value<int> id,
+      Value<bool> enabled,
+      Value<String> content,
+      Value<List<int>> sourceSummaryIds,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$LocalPersonasTableFilterComposer
+    extends Composer<_$KangoosDatabase, $LocalPersonasTable> {
+  $$LocalPersonasTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<int>, List<int>, String>
+  get sourceSummaryIds => $composableBuilder(
+    column: $table.sourceSummaryIds,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalPersonasTableOrderingComposer
+    extends Composer<_$KangoosDatabase, $LocalPersonasTable> {
+  $$LocalPersonasTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceSummaryIds => $composableBuilder(
+    column: $table.sourceSummaryIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalPersonasTableAnnotationComposer
+    extends Composer<_$KangoosDatabase, $LocalPersonasTable> {
+  $$LocalPersonasTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<int>, String> get sourceSummaryIds =>
+      $composableBuilder(
+        column: $table.sourceSummaryIds,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LocalPersonasTableTableManager
+    extends
+        RootTableManager<
+          _$KangoosDatabase,
+          $LocalPersonasTable,
+          LocalPersona,
+          $$LocalPersonasTableFilterComposer,
+          $$LocalPersonasTableOrderingComposer,
+          $$LocalPersonasTableAnnotationComposer,
+          $$LocalPersonasTableCreateCompanionBuilder,
+          $$LocalPersonasTableUpdateCompanionBuilder,
+          (
+            LocalPersona,
+            BaseReferences<
+              _$KangoosDatabase,
+              $LocalPersonasTable,
+              LocalPersona
+            >,
+          ),
+          LocalPersona,
+          PrefetchHooks Function()
+        > {
+  $$LocalPersonasTableTableManager(
+    _$KangoosDatabase db,
+    $LocalPersonasTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$LocalPersonasTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () =>
+                  $$LocalPersonasTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$LocalPersonasTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<List<int>> sourceSummaryIds = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => LocalPersonasCompanion(
+                id: id,
+                enabled: enabled,
+                content: content,
+                sourceSummaryIds: sourceSummaryIds,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                required String content,
+                Value<List<int>> sourceSummaryIds = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => LocalPersonasCompanion.insert(
+                id: id,
+                enabled: enabled,
+                content: content,
+                sourceSummaryIds: sourceSummaryIds,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalPersonasTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KangoosDatabase,
+      $LocalPersonasTable,
+      LocalPersona,
+      $$LocalPersonasTableFilterComposer,
+      $$LocalPersonasTableOrderingComposer,
+      $$LocalPersonasTableAnnotationComposer,
+      $$LocalPersonasTableCreateCompanionBuilder,
+      $$LocalPersonasTableUpdateCompanionBuilder,
+      (
+        LocalPersona,
+        BaseReferences<_$KangoosDatabase, $LocalPersonasTable, LocalPersona>,
+      ),
+      LocalPersona,
+      PrefetchHooks Function()
+    >;
 
 class $KangoosDatabaseManager {
   final _$KangoosDatabase _db;
@@ -6156,4 +8224,13 @@ class $KangoosDatabaseManager {
       $$DeletedSnippetsTableTableManager(_db, _db.deletedSnippets);
   $$MemoryEpisodesTableTableManager get memoryEpisodes =>
       $$MemoryEpisodesTableTableManager(_db, _db.memoryEpisodes);
+  $$ConnectorSourcesTableTableManager get connectorSources =>
+      $$ConnectorSourcesTableTableManager(_db, _db.connectorSources);
+  $$ConnectorToolPermissionsTableTableManager get connectorToolPermissions =>
+      $$ConnectorToolPermissionsTableTableManager(
+        _db,
+        _db.connectorToolPermissions,
+      );
+  $$LocalPersonasTableTableManager get localPersonas =>
+      $$LocalPersonasTableTableManager(_db, _db.localPersonas);
 }
