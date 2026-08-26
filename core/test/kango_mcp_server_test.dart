@@ -42,6 +42,7 @@ void main() {
       ),
     );
     final memory = MemoryService(
+      database: database,
       activities: SqliteActivityRepository(database),
       summaries: SqliteSummaryRepository(database),
       episodes: episodes,
@@ -351,6 +352,7 @@ void main() {
         repository: SqliteSnippetRepository(database),
       ),
       memory: MemoryService(
+        database: database,
         activities: SqliteActivityRepository(database),
         summaries: SqliteSummaryRepository(database),
       ),

@@ -8,6 +8,7 @@ void main() {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
     final memory = MemoryService(
+      database: database,
       activities: SqliteActivityRepository(database),
       summaries: SqliteSummaryRepository(database),
     );

@@ -139,6 +139,7 @@ if ($BuildInstaller) {
     Invoke-Native 'dart' @(
       'test',
       'test/encrypted_database_upgrade_test.dart',
+      'test/encrypted_backup_test.dart',
       '--reporter',
       'expanded'
     )

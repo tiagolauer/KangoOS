@@ -1,6 +1,8 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kangoos_core/kangoos_core.dart';
 import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -279,4 +281,64 @@ void main() {
       expect(find.textContaining('Cleared'), findsOneWidget);
     },
   );
+
+  testWidgets('previews and applies granular memory deletion', (tester) async {
+    final repository = CaptureSettingsRepository();
+    bumpViewport(tester);
+    final capturedAt = DateTime.now().subtract(const Duration(days: 1));
+    final activityId = await database.logActivity(
+      ActivitiesCompanion.insert(
+        appName: 'Slack',
+        windowTitle: 'Team',
+        capturedClipboard: const Value('ui-private-fragment'),
+        capturedAt: Value(capturedAt),
+      ),
+    );
+    await SqliteEpisodeRepository(database).create(
+      NewMemoryEpisode(
+        sourceKey: 'ui-private-source',
+        startedAt: capturedAt,
+        endedAt: capturedAt.add(const Duration(minutes: 1)),
+        title: 'Private clipboard',
+        summary: 'ui-private-fragment',
+        applications: const ['Slack'],
+        urls: const [],
+        topics: const [],
+        entities: const [],
+        sourceActivityIds: [activityId],
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: CaptureSettingsScreen(
+          repository: repository,
+          memory: services.memory,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Delete data by filter'));
+    await tester.tap(find.text('Delete data by filter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Slack'));
+    await tester.tap(find.text('clipboard'));
+    await tester.tap(find.text('Calculate impact'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('1 activities • 1 episodes • 0 summaries • 0 embeddings'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Delete permanently'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete permanently').last);
+    await tester.pumpAndSettle();
+
+    expect((await database.allActivities()).single.capturedClipboard, isNull);
+    expect(await database.select(database.memoryEpisodes).get(), isEmpty);
+  });
 }

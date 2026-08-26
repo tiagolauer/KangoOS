@@ -7,6 +7,7 @@ void main() {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
     final memory = MemoryService(
+      database: database,
       activities: SqliteActivityRepository(database),
       summaries: SqliteSummaryRepository(database),
     );
@@ -46,6 +47,7 @@ void main() {
     addTearDown(database.close);
     var redactPii = false;
     final memory = MemoryService(
+      database: database,
       activities: SqliteActivityRepository(database),
       summaries: SqliteSummaryRepository(database),
       privacyFilterProvider: () async => PrivacyFilter(redactPii: redactPii),

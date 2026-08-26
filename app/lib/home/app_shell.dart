@@ -21,6 +21,7 @@ class AppShell extends StatefulWidget {
     required this.captureSettingsRepository,
     this.captureStatus,
     this.needsCaptureConsent = false,
+    this.onRestoreStaged,
   });
 
   final SnippetRepository snippetRepository;
@@ -30,6 +31,7 @@ class AppShell extends StatefulWidget {
   final CaptureSettingsRepository captureSettingsRepository;
   final CaptureStatusController? captureStatus;
   final bool needsCaptureConsent;
+  final Future<void> Function()? onRestoreStaged;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -199,6 +201,7 @@ class _AppShellState extends State<AppShell> {
         conversations: widget.conversations,
         settingsRepository: _settingsRepository,
         captureSettingsRepository: widget.captureSettingsRepository,
+        onRestoreStaged: widget.onRestoreStaged,
         onOpenNavigation: onOpenNavigation,
       );
     }

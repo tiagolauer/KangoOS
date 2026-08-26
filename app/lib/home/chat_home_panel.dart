@@ -122,6 +122,7 @@ class ChatHomePanel extends StatefulWidget {
     required this.captureSettingsRepository,
     this.providerBuilder,
     this.onOpenNavigation,
+    this.onRestoreStaged,
   });
 
   final SnippetRepository snippetRepository;
@@ -131,6 +132,7 @@ class ChatHomePanel extends StatefulWidget {
   final SettingsRepository settingsRepository;
   final CaptureSettingsRepository captureSettingsRepository;
   final VoidCallback? onOpenNavigation;
+  final Future<void> Function()? onRestoreStaged;
 
   /// Overridable for tests; defaults to [LlmSettings.buildProvider].
   final LlmProvider Function(LlmSettings settings)? providerBuilder;
@@ -443,6 +445,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
               builder: (_) => CaptureSettingsScreen(
                 repository: widget.captureSettingsRepository,
                 memory: widget.memory,
+                onRestoreStaged: widget.onRestoreStaged,
               ),
             ));
             _loadCaptureState();

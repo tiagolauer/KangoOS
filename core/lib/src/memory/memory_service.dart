@@ -1,27 +1,21 @@
+import 'dart:io';
+
 import '../database/database.dart';
 import '../database/tables/activity_summaries_table.dart';
 import 'activity_repository.dart';
 import 'episode_repository.dart';
+import 'memory_deletion.dart';
 import 'memory_query_engine.dart';
 import 'privacy_filter.dart';
 import 'summary_repository.dart';
 
-class MemoryClearResult {
-  const MemoryClearResult({
-    required this.activities,
-    required this.summaries,
-    this.episodes = 0,
-  });
-
-  final int activities;
-  final int summaries;
-  final int episodes;
-}
+typedef MemoryClearResult = MemoryDeletionResult;
 
 typedef PrivacyFilterProvider = Future<PrivacyFilter> Function();
 
 class MemoryService {
   MemoryService({
+    required this.database,
     required this.activities,
     required this.summaries,
     this.episodes,
@@ -30,6 +24,7 @@ class MemoryService {
     this.privacyFilterProvider,
   });
 
+  final KangoosDatabase database;
   final ActivityRepository activities;
   final SummaryRepository summaries;
   final EpisodeRepository? episodes;
@@ -99,7 +94,20 @@ class MemoryService {
     return created;
   }
 
-  Future<int> deleteActivity(int id) => activities.delete(id);
+  Future<int> deleteActivity(int id) async => (await delete(
+        MemoryDeletionFilter(activityIds: {id}),
+      ))
+          .activities;
+
+  Future<List<String>> knownApplications() async {
+    final names = (await activities.all())
+        .map((activity) => activity.appName.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return names;
+  }
 
   Future<List<MemoryEpisode>> recentEpisodes({int limit = 50}) =>
       episodes?.recent(limit: limit) ?? Future.value(const []);
@@ -122,18 +130,21 @@ class MemoryService {
       ) ??
       Future.value(const MemorySearchResult(matches: []));
 
-  Future<MemoryClearResult> clear() async => MemoryClearResult(
-        activities: await activities.clear(),
-        summaries: await summaries.clear(),
-        episodes: await episodes?.clear() ?? 0,
-      );
+  Future<MemoryDeletionPreview> previewDeletion(MemoryDeletionFilter filter) =>
+      database.previewMemoryDeletion(filter);
+
+  Future<MemoryDeletionResult> delete(MemoryDeletionFilter filter) =>
+      database.deleteMemory(filter);
+
+  Future<MemoryClearResult> clear() => delete(const MemoryDeletionFilter());
 
   Future<MemoryClearResult> purgeOlderThan(DateTime cutoff) async =>
-      MemoryClearResult(
-        activities: await activities.purgeOlderThan(cutoff),
-        summaries: await summaries.purgeOlderThan(cutoff),
-        episodes: await episodes?.purgeOlderThan(cutoff) ?? 0,
-      );
+      delete(MemoryDeletionFilter(end: cutoff));
+
+  Future<File> createBackup(File destination) =>
+      database.createBackup(destination);
+
+  Future<File> stageRestore(File backup) => database.stageRestore(backup);
 
   Future<PrivacyFilter> _privacyFilter() async =>
       await privacyFilterProvider?.call() ?? privacyFilter;

@@ -13,6 +13,7 @@ void main() {
     final conversations = SqliteConversationRepository(database);
     final episodes = SqliteEpisodeRepository(database);
     final memory = MemoryService(
+      database: database,
       activities: SqliteActivityRepository(database),
       summaries: SqliteSummaryRepository(database),
       episodes: episodes,

@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
@@ -6,6 +9,7 @@ import '../autostart/autostart_service.dart';
 import 'audio_capture_service.dart';
 import 'capture_settings_repository.dart';
 import 'capture_source_registry.dart';
+import 'memory_deletion_dialog.dart';
 import 'whisper_model_repository.dart';
 import 'window_capture_service.dart';
 
@@ -15,11 +19,13 @@ class CaptureSettingsScreen extends StatefulWidget {
     required this.repository,
     required this.memory,
     this.sourceRegistry,
+    this.onRestoreStaged,
   });
 
   final CaptureSettingsRepository repository;
   final MemoryService memory;
   final CaptureSourceRegistry? sourceRegistry;
+  final Future<void> Function()? onRestoreStaged;
 
   @override
   State<CaptureSettingsScreen> createState() => _CaptureSettingsScreenState();
@@ -176,6 +182,89 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _manageMemoryDeletion() async {
+    final result = await showMemoryDeletionDialog(
+      context: context,
+      memory: widget.memory,
+    );
+    if (result == null || !mounted) return;
+    final l10n = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.memoryDeletionCompleted(result.total))),
+    );
+  }
+
+  Future<void> _createBackup() async {
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+    final date = '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    final location = await getSaveLocation(
+      suggestedName: 'KangoOS-LTM-$date.db',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'KangoOS LTM', extensions: ['db']),
+      ],
+    );
+    if (location == null || !mounted) return;
+    try {
+      final backup = await widget.memory.createBackup(File(location.path));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.ltmBackupCreated(backup.path))),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.ltmBackupFailed('$error'))),
+      );
+    }
+  }
+
+  Future<void> _restoreBackup() async {
+    final l10n = AppLocalizations.of(context);
+    final selected = await openFile(
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'KangoOS LTM', extensions: ['db']),
+      ],
+    );
+    if (selected == null || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.ltmRestoreTitle),
+        content: Text(l10n.ltmRestoreBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.ltmRestoreConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.memory.stageRestore(File(selected.path));
+      final restart = widget.onRestoreStaged;
+      if (restart != null) {
+        await restart();
+        return;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.ltmRestoreStaged)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.ltmRestoreFailed('$error'))),
+      );
+    }
   }
 
   String _sourceSubtitle(BuildContext context, CaptureSource source) {
@@ -485,6 +574,53 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                   ),
                 ),
               const SizedBox(height: 24),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.shield_outlined),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              l10n.privacyLifecycleTitle,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(l10n.privacyLifecycleDescription),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: _manageMemoryDeletion,
+                            icon: const Icon(Icons.tune),
+                            label: Text(l10n.manageMemoryDeletion),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _createBackup,
+                            icon: const Icon(Icons.archive_outlined),
+                            label: Text(l10n.createLtmBackup),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _restoreBackup,
+                            icon: const Icon(Icons.restore_outlined),
+                            label: Text(l10n.restoreLtmBackup),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _clearAllActivity,
                 icon: const Icon(Icons.delete_forever_outlined),

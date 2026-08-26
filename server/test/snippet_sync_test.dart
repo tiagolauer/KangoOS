@@ -46,6 +46,7 @@ void main() {
       semanticSearch: semanticSearch,
     );
     final serverMemory = MemoryService(
+      database: serverDatabase,
       activities: SqliteActivityRepository(serverDatabase),
       summaries: SqliteSummaryRepository(serverDatabase),
     );

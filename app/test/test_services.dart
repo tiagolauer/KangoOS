@@ -26,6 +26,7 @@ class TestServices {
       semanticSearch: semanticSearch,
     );
     memory = MemoryService(
+      database: database,
       activities: SqliteActivityRepository(database),
       summaries: SqliteSummaryRepository(database),
     );

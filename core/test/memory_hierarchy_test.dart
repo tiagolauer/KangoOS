@@ -44,6 +44,7 @@ void main() {
         stored.where((item) => item.kind == SummaryKind.weekly), hasLength(1));
 
     final durable = await MemoryService(
+      database: database,
       activities: SqliteActivityRepository(database),
       summaries: summaries,
     ).remember('Prefer local-first storage');

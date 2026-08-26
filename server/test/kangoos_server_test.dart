@@ -42,6 +42,7 @@ void main() {
       semanticSearch: semanticSearch,
     );
     final memory = MemoryService(
+      database: database,
       activities: SqliteActivityRepository(database),
       summaries: SqliteSummaryRepository(database),
     );

@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' show Database, sqlite3;
 
 import '../llm/llm_provider.dart';
+import '../memory/memory_deletion.dart';
 import 'tables/activities_table.dart';
 import 'tables/activity_summaries_table.dart';
 import 'tables/conversations_table.dart';
@@ -25,18 +26,29 @@ part 'database.g.dart';
   MemoryEpisodes,
 ])
 class KangoosDatabase extends _$KangoosDatabase {
-  KangoosDatabase(super.executor);
+  KangoosDatabase(super.executor)
+      : databaseFile = null,
+        encryptionKey = null;
 
-  KangoosDatabase.native(File file, {String? encryptionKey})
-      : super(NativeDatabase(
+  KangoosDatabase.native(File file, {this.encryptionKey})
+      : databaseFile = file,
+        super(NativeDatabase(
           file,
           setup: encryptionKey == null ? null : _setupCipher(encryptionKey),
         ));
 
-  KangoosDatabase.memory() : super(NativeDatabase.memory());
+  KangoosDatabase.memory()
+      : databaseFile = null,
+        encryptionKey = null,
+        super(NativeDatabase.memory());
+
+  final File? databaseFile;
+  final String? encryptionKey;
+
+  static const currentSchemaVersion = 19;
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => currentSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -635,6 +647,228 @@ END;
 
   Future<int> clearAllSummaries() => delete(activitySummaries).go();
 
+  Future<MemoryDeletionPreview> previewMemoryDeletion(
+    MemoryDeletionFilter filter,
+  ) async {
+    filter.validate();
+    return (await _memoryDeletionTargets(filter)).preview;
+  }
+
+  Future<MemoryDeletionResult> deleteMemory(
+    MemoryDeletionFilter filter,
+  ) =>
+      transaction(() async {
+        filter.validate();
+        final targets = await _memoryDeletionTargets(filter);
+        final activityIds = targets.activities.map((row) => row.id).toList();
+        if (activityIds.isNotEmpty) {
+          if (filter.modalities.isEmpty ||
+              filter.modalities.contains(MemoryModality.metadata)) {
+            for (final ids in _idChunks(activityIds)) {
+              await (delete(activities)..where((row) => row.id.isIn(ids))).go();
+            }
+          } else {
+            final values = ActivitiesCompanion(
+              capturedText: filter.modalities.contains(MemoryModality.vision)
+                  ? const Value(null)
+                  : const Value.absent(),
+              capturedScreenText:
+                  filter.modalities.contains(MemoryModality.vision)
+                      ? const Value(null)
+                      : const Value.absent(),
+              capturedClipboard:
+                  filter.modalities.contains(MemoryModality.clipboard)
+                      ? const Value(null)
+                      : const Value.absent(),
+              capturedUrl: filter.modalities.contains(MemoryModality.browser)
+                  ? const Value(null)
+                  : const Value.absent(),
+              capturedAudioText:
+                  filter.modalities.contains(MemoryModality.audio)
+                      ? const Value(null)
+                      : const Value.absent(),
+            );
+            for (final ids in _idChunks(activityIds)) {
+              await (update(activities)..where((row) => row.id.isIn(ids)))
+                  .write(values);
+            }
+          }
+        }
+
+        for (final ids
+            in _idChunks(targets.episodes.map((row) => row.id).toList())) {
+          await (delete(memoryEpisodes)..where((row) => row.id.isIn(ids))).go();
+        }
+        for (final ids
+            in _idChunks(targets.summaries.map((row) => row.id).toList())) {
+          await (delete(activitySummaries)..where((row) => row.id.isIn(ids)))
+              .go();
+        }
+        return MemoryDeletionResult(
+          activities: targets.preview.activities,
+          episodes: targets.preview.episodes,
+          summaries: targets.preview.summaries,
+          embeddings: targets.preview.embeddings,
+        );
+      });
+
+  Future<_MemoryDeletionTargets> _memoryDeletionTargets(
+    MemoryDeletionFilter filter,
+  ) async {
+    final candidates = await _matchingActivities(filter);
+    final candidateIds = candidates.map((row) => row.id).toSet();
+    final deletesActivities = filter.memoryTypes.contains(MemoryType.activity);
+    final deletesEpisodes = deletesActivities ||
+        filter.memoryTypes.contains(MemoryType.episode);
+    final deletesAutomaticSummaries = deletesEpisodes ||
+        filter.memoryTypes.contains(MemoryType.automaticSummary);
+
+    final episodeQuery = select(memoryEpisodes);
+    episodeQuery.where((row) {
+      Expression<bool> predicate = const Constant(true);
+      if (filter.start != null) {
+        predicate &= row.endedAt.isBiggerThanValue(filter.start!);
+      }
+      if (filter.end != null) {
+        predicate &= row.startedAt.isSmallerThanValue(filter.end!);
+      }
+      return predicate;
+    });
+    final matchingEpisodes = deletesEpisodes
+        ? (await episodeQuery.get()).where((episode) {
+            if (episode.sourceActivityIds.any(candidateIds.contains)) {
+              return true;
+            }
+            if (episode.sourceActivityIds.isNotEmpty) return false;
+            if (filter.activityIds.isNotEmpty) {
+              return candidates.any(
+                (activity) =>
+                    !activity.capturedAt.isBefore(episode.startedAt) &&
+                    activity.capturedAt.isBefore(episode.endedAt),
+              );
+            }
+            return _matchesApplications(episode.applications, filter);
+          }).toList()
+        : const <MemoryEpisode>[];
+
+    final summaryQuery = select(activitySummaries);
+    summaryQuery.where((row) {
+      Expression<bool> predicate = const Constant(true);
+      if (filter.start != null) {
+        predicate &= row.periodEnd.isBiggerThanValue(filter.start!);
+      }
+      if (filter.end != null) {
+        predicate &= row.periodStart.isSmallerThanValue(filter.end!);
+      }
+      return predicate;
+    });
+    final matchingSummaries = (await summaryQuery.get()).where((summary) {
+      final selected = switch (summary.kind) {
+        SummaryKind.manual =>
+          filter.memoryTypes.contains(MemoryType.manualSummary),
+        SummaryKind.durable =>
+          filter.memoryTypes.contains(MemoryType.durableMemory),
+        _ => deletesAutomaticSummaries,
+      };
+      if (!selected) return false;
+      if (summary.kind == SummaryKind.manual ||
+          summary.kind == SummaryKind.durable ||
+          (filter.activityIds.isEmpty &&
+              filter.applications.isEmpty &&
+              filter.modalities.isEmpty)) {
+        return true;
+      }
+      return candidates.any((activity) =>
+          !activity.capturedAt.isBefore(summary.periodStart) &&
+          activity.capturedAt.isBefore(summary.periodEnd));
+    }).toList();
+
+    final affectedActivities =
+        deletesActivities ? candidates : const <Activity>[];
+    return _MemoryDeletionTargets(
+      activities: affectedActivities,
+      episodes: matchingEpisodes,
+      summaries: matchingSummaries,
+    );
+  }
+
+  Future<List<Activity>> _matchingActivities(
+    MemoryDeletionFilter filter,
+  ) async {
+    final sql = StringBuffer('SELECT * FROM activities WHERE 1 = 1');
+    final variables = <Variable>[];
+    if (filter.start != null) {
+      sql.write(' AND captured_at >= ?');
+      variables.add(Variable.withDateTime(filter.start!));
+    }
+    if (filter.end != null) {
+      sql.write(' AND captured_at < ?');
+      variables.add(Variable.withDateTime(filter.end!));
+    }
+    if (filter.activityIds.isNotEmpty) {
+      sql.write(
+        ' AND id IN (${List.filled(filter.activityIds.length, '?').join(', ')})',
+      );
+      variables.addAll(filter.activityIds.map(Variable.withInt));
+    }
+    final applications = filter.applications
+        .map((application) => application.trim().toLowerCase())
+        .where((application) => application.isNotEmpty)
+        .toSet();
+    if (applications.isNotEmpty) {
+      sql.write(
+        ' AND LOWER(app_name) IN (${List.filled(applications.length, '?').join(', ')})',
+      );
+      variables.addAll(applications.map(Variable.withString));
+    }
+    if (filter.modalities.isNotEmpty &&
+        !filter.modalities.contains(MemoryModality.metadata)) {
+      final fields = <String>[];
+      if (filter.modalities.contains(MemoryModality.vision)) {
+        fields.add("NULLIF(captured_text, '') IS NOT NULL");
+        fields.add("NULLIF(captured_screen_text, '') IS NOT NULL");
+      }
+      if (filter.modalities.contains(MemoryModality.clipboard)) {
+        fields.add("NULLIF(captured_clipboard, '') IS NOT NULL");
+      }
+      if (filter.modalities.contains(MemoryModality.browser)) {
+        fields.add("NULLIF(captured_url, '') IS NOT NULL");
+      }
+      if (filter.modalities.contains(MemoryModality.audio)) {
+        fields.add("NULLIF(captured_audio_text, '') IS NOT NULL");
+      }
+      sql.write(' AND (${fields.join(' OR ')})');
+    }
+    final rows = await customSelect(
+      sql.toString(),
+      variables: variables,
+      readsFrom: {activities},
+    ).get();
+    return rows.map((row) => activities.map(row.data)).toList();
+  }
+
+  static bool _matchesApplications(
+    List<String> episodeApplications,
+    MemoryDeletionFilter filter,
+  ) {
+    if (filter.applications.isEmpty) return true;
+    final selected = filter.applications
+        .map((application) => application.trim().toLowerCase())
+        .toSet();
+    return episodeApplications
+        .map((application) => application.toLowerCase())
+        .any(selected.contains);
+  }
+
+  static Iterable<List<int>> _idChunks(List<int> ids) sync* {
+    const chunkSize = 500;
+    for (var start = 0; start < ids.length; start += chunkSize) {
+      final end =
+          start + chunkSize < ids.length ? start + chunkSize : ids.length;
+      yield ids.sublist(start, end);
+    }
+  }
+
   static final _sqliteMagic = 'SQLite format 3\x00'.codeUnits;
 
   static bool isPlaintextDatabase(File file) {
@@ -693,6 +927,142 @@ END;
     }
   }
 
+  Future<File> createBackup(File destination) {
+    final source = databaseFile;
+    final key = encryptionKey;
+    if (source == null || key == null) {
+      throw StateError('Encrypted backups require a file-backed database.');
+    }
+    return createEncryptedBackup(source, destination, key);
+  }
+
+  Future<File> stageRestore(File backup) {
+    final target = databaseFile;
+    final key = encryptionKey;
+    if (target == null || key == null) {
+      throw StateError('Encrypted restore requires a file-backed database.');
+    }
+    return createEncryptedBackup(
+      backup,
+      File('${target.path}.restore-pending'),
+      key,
+    );
+  }
+
+  static Future<File> createEncryptedBackup(
+    File source,
+    File destination,
+    String encryptionKey,
+  ) async {
+    if (!source.existsSync()) {
+      throw ArgumentError.value(source.path, 'source', 'does not exist');
+    }
+    final sourcePath = p.canonicalize(source.absolute.path).toLowerCase();
+    final destinationPath =
+        p.canonicalize(destination.absolute.path).toLowerCase();
+    if (sourcePath == destinationPath) {
+      throw ArgumentError.value(
+        destination.path,
+        'destination',
+        'must differ from the source database',
+      );
+    }
+    destination.parent.createSync(recursive: true);
+    final writing = File('${destination.path}.writing');
+    if (writing.existsSync()) writing.deleteSync();
+
+    final sourceDatabase = _openCipherDatabase(source, encryptionKey);
+    final destinationDatabase = _openCipherDatabase(writing, encryptionKey);
+    try {
+      await sourceDatabase.backup(destinationDatabase).drain<void>();
+      _verifyIntegrity(destinationDatabase);
+    } finally {
+      destinationDatabase.dispose();
+      sourceDatabase.dispose();
+    }
+
+    if (destination.existsSync()) destination.deleteSync();
+    writing.renameSync(destination.path);
+    return destination;
+  }
+
+  static Future<File?> backupBeforeMigration(
+    File databaseFile,
+    String encryptionKey, {
+    Directory? backupDirectory,
+  }) async {
+    if (!databaseFile.existsSync() || databaseFile.lengthSync() == 0) {
+      return null;
+    }
+    final database = _openCipherDatabase(databaseFile, encryptionKey);
+    late final int version;
+    try {
+      version =
+          database.select('PRAGMA user_version;').first.values.first as int;
+    } finally {
+      database.dispose();
+    }
+    if (version >= currentSchemaVersion) return null;
+
+    final directory =
+        backupDirectory ?? Directory(p.join(databaseFile.parent.path, 'backups'));
+    final destination = File(
+      p.join(
+        directory.path,
+        'kangoos-pre-migration-v$version-to-v$currentSchemaVersion.db',
+      ),
+    );
+    return createEncryptedBackup(databaseFile, destination, encryptionKey);
+  }
+
+  static void applyPendingRestore(
+    File databaseFile,
+    String encryptionKey,
+  ) {
+    final pending = File('${databaseFile.path}.restore-pending');
+    if (!pending.existsSync()) return;
+    final pendingDatabase = _openCipherDatabase(pending, encryptionKey);
+    try {
+      _verifyIntegrity(pendingDatabase);
+    } finally {
+      pendingDatabase.dispose();
+    }
+
+    final rollback = File('${databaseFile.path}.restore-rollback');
+    if (rollback.existsSync()) rollback.deleteSync();
+    if (databaseFile.existsSync()) databaseFile.renameSync(rollback.path);
+    try {
+      pending.renameSync(databaseFile.path);
+      for (final suffix in const ['-wal', '-shm']) {
+        final sidecar = File('${databaseFile.path}$suffix');
+        if (sidecar.existsSync()) sidecar.deleteSync();
+      }
+      if (rollback.existsSync()) rollback.deleteSync();
+    } catch (_) {
+      if (databaseFile.existsSync()) databaseFile.deleteSync();
+      if (rollback.existsSync()) rollback.renameSync(databaseFile.path);
+      rethrow;
+    }
+  }
+
+  static Database _openCipherDatabase(File file, String encryptionKey) {
+    final database = sqlite3.open(file.path);
+    try {
+      _setupCipher(encryptionKey)(database);
+      return database;
+    } catch (_) {
+      database.dispose();
+      rethrow;
+    }
+  }
+
+  static void _verifyIntegrity(Database database) {
+    final result = database.select('PRAGMA integrity_check;');
+    if (result.length != 1 || result.first.values.first != 'ok') {
+      throw StateError('Database integrity check failed: $result');
+    }
+  }
+
   static void Function(Database) _setupCipher(String encryptionKey) {
     return (db) {
       final escaped = encryptionKey.replaceAll("'", "''");
@@ -712,6 +1082,26 @@ END;
       }
     };
   }
+}
+
+class _MemoryDeletionTargets {
+  const _MemoryDeletionTargets({
+    required this.activities,
+    required this.episodes,
+    required this.summaries,
+  });
+
+  final List<Activity> activities;
+  final List<MemoryEpisode> episodes;
+  final List<ActivitySummary> summaries;
+
+  MemoryDeletionPreview get preview => MemoryDeletionPreview(
+        activities: activities.length,
+        episodes: episodes.length,
+        summaries: summaries.length,
+        embeddings:
+            episodes.where((episode) => episode.embedding != null).length,
+      );
 }
 
 /// Builds an FTS5 MATCH expression from free-form user input: each word

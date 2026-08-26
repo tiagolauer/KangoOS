@@ -48,10 +48,12 @@ Future<void> _startKangoos() async {
 
   final KangoosDatabase database;
   try {
+    KangoosDatabase.applyPendingRestore(databaseFile, encryptionKey);
     KangoosDatabase.removePlaintextBackups(databaseFile);
     if (KangoosDatabase.isPlaintextDatabase(databaseFile)) {
       KangoosDatabase.encryptPlaintextDatabase(databaseFile, encryptionKey);
     }
+    await KangoosDatabase.backupBeforeMigration(databaseFile, encryptionKey);
     database =
         KangoosDatabase.native(databaseFile, encryptionKey: encryptionKey);
     await database.allSnippets();
@@ -84,6 +86,7 @@ Future<void> _startKangoos() async {
     embeddingProvider: embeddingProvider,
   );
   final memory = MemoryService(
+    database: database,
     activities: activityRepository,
     summaries: summaryRepository,
     episodes: episodeRepository,
@@ -147,6 +150,16 @@ Future<void> _startKangoos() async {
   );
   await runtime.start();
 
+  Future<void> restartAfterRestore() async {
+    await runtime.stop();
+    await Process.start(
+      Platform.resolvedExecutable,
+      const [],
+      mode: ProcessStartMode.detached,
+    );
+    exit(0);
+  }
+
   runApp(KangoosApp(
     snippetRepository: snippetRepository,
     snippets: snippetService,
@@ -156,6 +169,7 @@ Future<void> _startKangoos() async {
     captureStatus: captureStatus,
     needsCaptureConsent: needsCaptureConsent,
     trayService: tray,
+    onRestoreStaged: restartAfterRestore,
   ));
 }
 
@@ -267,6 +281,7 @@ class KangoosApp extends StatelessWidget {
     this.captureStatus,
     this.needsCaptureConsent = false,
     this.trayService,
+    this.onRestoreStaged,
   });
 
   final SnippetRepository snippetRepository;
@@ -277,6 +292,7 @@ class KangoosApp extends StatelessWidget {
   final CaptureStatusController? captureStatus;
   final bool needsCaptureConsent;
   final TrayService? trayService;
+  final Future<void> Function()? onRestoreStaged;
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +317,7 @@ class KangoosApp extends StatelessWidget {
       captureSettingsRepository: captureSettingsRepository,
       captureStatus: captureStatus,
       needsCaptureConsent: needsCaptureConsent,
+      onRestoreStaged: onRestoreStaged,
     );
     final tray = trayService;
     if (tray == null) return appShell;

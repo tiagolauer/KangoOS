@@ -28,6 +28,7 @@ Future<void> main() async {
   final summaries = SqliteSummaryRepository(database);
   final episodes = SqliteEpisodeRepository(database);
   final memory = MemoryService(
+    database: database,
     activities: activities,
     summaries: summaries,
     episodes: episodes,
