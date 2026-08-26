@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:kangoos_server/kangoos_server.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:test/test.dart';
@@ -32,12 +33,22 @@ void main() {
 
   setUp(() async {
     database = KangoosDatabase.memory();
+    final snippetRepository = SqliteSnippetRepository(database);
+    final embeddingProvider = _FakeEmbeddingProvider();
     final semanticSearch = SemanticSearch(
-        database: database, embeddingProvider: _FakeEmbeddingProvider());
-    final ragChat = RagChat(database: database, semanticSearch: semanticSearch);
-    final server = KangoosServer(
-      database: database,
+        repository: snippetRepository, embeddingProvider: embeddingProvider);
+    final snippets = SnippetService(
+      repository: snippetRepository,
       semanticSearch: semanticSearch,
+    );
+    final memory = MemoryService(
+      activities: SqliteActivityRepository(database),
+      summaries: SqliteSummaryRepository(database),
+    );
+    final ragChat = RagChat(snippets: snippets, memory: memory);
+    final server = KangoosServer(
+      snippetRepository: snippetRepository,
+      snippets: snippets,
       ragChat: ragChat,
       llmProvider: _FakeLlmProvider(),
       apiToken: apiToken,
@@ -130,7 +141,10 @@ void main() {
     final indexMissing = await http.post(baseUrl.resolve('/index/missing'),
         headers: authHeaders());
     expect(indexMissing.statusCode, 200);
-    expect(jsonDecode(indexMissing.body), {'indexed': 1});
+    expect(jsonDecode(indexMissing.body), {
+      'indexed': 1,
+      'failures': <String, String>{},
+    });
   });
 
   test('semantic search finds an indexed snippet', () async {

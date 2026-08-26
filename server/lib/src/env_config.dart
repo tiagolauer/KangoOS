@@ -1,4 +1,5 @@
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 
 class EnvConfig {
   const EnvConfig({
@@ -8,6 +9,7 @@ class EnvConfig {
     required this.embeddingModel,
     required this.ollamaBaseUrl,
     required this.port,
+    this.databaseEncryptionKey,
   });
 
   final String apiToken;
@@ -16,6 +18,7 @@ class EnvConfig {
   final String embeddingModel;
   final String ollamaBaseUrl;
   final int port;
+  final String? databaseEncryptionKey;
 
   static const minApiTokenLength = 32;
 
@@ -55,6 +58,7 @@ class EnvConfig {
       embeddingModel: env['KANGOOS_EMBEDDING_MODEL'] ?? 'nomic-embed-text',
       ollamaBaseUrl: env['KANGOOS_OLLAMA_BASE_URL'] ?? 'http://localhost:11434',
       port: int.tryParse(env['PORT'] ?? '') ?? 8080,
+      databaseEncryptionKey: databaseEncryptionKeyFromEnvironment(env),
     );
   }
 }

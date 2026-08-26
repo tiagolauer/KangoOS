@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -9,8 +7,8 @@ import 'package:shelf_router/shelf_router.dart';
 const jsonHeaders = {'content-type': 'application/json'};
 
 Router snippetsRouter({
-  required KangoosDatabase database,
-  required SemanticSearch semanticSearch,
+  required SnippetRepository repository,
+  required SnippetService snippets,
 }) {
   final router = Router();
 
@@ -18,21 +16,23 @@ Router snippetsRouter({
     final query = request.url.queryParameters['q'];
     final mode = request.url.queryParameters['mode'] ?? 'keyword';
 
-    List<Snippet> snippets;
+    List<Snippet> results;
     if (query == null || query.isEmpty) {
-      snippets = await database.allSnippets();
-    } else if (mode == 'semantic') {
-      try {
-        final matches = await semanticSearch.search(query);
-        snippets = matches.map((match) => match.snippet).toList();
-      } catch (e) {
-        return _error(502, 'semantic search failed: $e');
-      }
+      results = await snippets.list();
     } else {
-      snippets = await database.searchByKeyword(query);
+      try {
+        results = await snippets.search(
+          query,
+          mode: mode == 'semantic'
+              ? SnippetSearchMode.semantic
+              : SnippetSearchMode.keyword,
+        );
+      } catch (error) {
+        return _error(502, 'snippet search failed: $error');
+      }
     }
     return Response.ok(
-      jsonEncode(snippets.map(snippetToJson).toList()),
+      jsonEncode(results.map(snippetToJson).toList()),
       headers: jsonHeaders,
     );
   });
@@ -59,29 +59,29 @@ Router snippetsRouter({
     }
 
     if (syncId != null && syncId.isNotEmpty) {
-      await database.clearSnippetTombstone(syncId);
+      await repository.clearTombstone(syncId);
     }
 
-    final id = await semanticSearch.createAndIndex(SnippetsCompanion.insert(
+    final result = await snippets.create(NewSnippet(
       title: title,
       content: content,
-      language: Value(language == null || language.isEmpty ? null : language),
-      tags: Value(tags),
-      syncId: Value(syncId == null || syncId.isEmpty ? null : syncId),
-      createdAt: createdAt.value == null
-          ? const Value.absent()
-          : Value(createdAt.value!),
-      updatedAt: updatedAt.value == null
-          ? const Value.absent()
-          : Value(updatedAt.value!),
+      language: language == null || language.isEmpty ? null : language,
+      tags: tags,
+      syncId: syncId == null || syncId.isEmpty ? null : syncId,
+      createdAt: createdAt.value,
+      updatedAt: updatedAt.value,
     ));
-    final created = await database.getSnippetById(id);
-    return Response.ok(jsonEncode(snippetToJson(created!)),
+    return Response.ok(
+        jsonEncode({
+          ...snippetToJson(result.snippet),
+          if (result.indexingError != null)
+            'indexingWarning': '${result.indexingError}',
+        }),
         headers: jsonHeaders);
   });
 
   router.get('/deleted', (Request request) async {
-    final tombstones = await database.snippetTombstones();
+    final tombstones = await repository.tombstones();
     return Response.ok(
       jsonEncode(tombstones
           .map((t) => {
@@ -94,11 +94,11 @@ Router snippetsRouter({
   });
 
   router.delete('/by-sync-id/<syncId>', (Request request, String syncId) async {
-    final existing = await database.getSnippetBySyncId(syncId);
+    final existing = await repository.getBySyncId(syncId);
     if (existing != null) {
-      await database.deleteSnippet(existing.id);
+      await snippets.delete(existing.id);
     } else {
-      await database.recordSnippetTombstone(syncId);
+      await repository.recordTombstone(syncId);
     }
     return Response(204);
   });
@@ -107,7 +107,7 @@ Router snippetsRouter({
     final snippetId = int.tryParse(id);
     if (snippetId == null) return _error(400, 'id must be an integer');
 
-    final snippet = await database.getSnippetById(snippetId);
+    final snippet = await snippets.get(snippetId);
     if (snippet == null) return _error(404, 'not found');
     return Response.ok(jsonEncode(snippetToJson(snippet)),
         headers: jsonHeaders);
@@ -117,7 +117,7 @@ Router snippetsRouter({
     final snippetId = int.tryParse(id);
     if (snippetId == null) return _error(400, 'id must be an integer');
 
-    final existing = await database.getSnippetById(snippetId);
+    final existing = await snippets.get(snippetId);
     if (existing == null) return _error(404, 'not found');
 
     final body = _decodeObject(await request.readAsString());
@@ -134,19 +134,24 @@ Router snippetsRouter({
       return _error(400, 'updatedAt must be epoch milliseconds');
     }
 
-    final updated = existing.copyWith(
-      title: title ?? existing.title,
-      content: content ?? existing.content,
-      language: body.containsKey('language')
-          ? Value(_normalize(_optionalString(body['language'])))
-          : Value(existing.language),
-      tags: tags ?? existing.tags,
-      updatedAt: updatedAt.value ?? DateTime.now(),
-    );
-    await database.updateSnippet(updated);
-    unawaited(semanticSearch.indexSnippet(updated).catchError((Object _) {}));
-
-    return Response.ok(jsonEncode(snippetToJson(updated)),
+    final result = await snippets.update(
+        snippetId,
+        SnippetUpdate(
+          title: title ?? existing.title,
+          content: content ?? existing.content,
+          language: body.containsKey('language')
+              ? _normalize(_optionalString(body['language']))
+              : existing.language,
+          languageProvided: body.containsKey('language'),
+          tags: tags ?? existing.tags,
+          updatedAt: updatedAt.value ?? DateTime.now(),
+        ));
+    return Response.ok(
+        jsonEncode({
+          ...snippetToJson(result!.snippet),
+          if (result.indexingError != null)
+            'indexingWarning': '${result.indexingError}',
+        }),
         headers: jsonHeaders);
   });
 
@@ -154,7 +159,7 @@ Router snippetsRouter({
     final snippetId = int.tryParse(id);
     if (snippetId == null) return _error(400, 'id must be an integer');
 
-    await database.deleteSnippet(snippetId);
+    await snippets.delete(snippetId);
     return Response(204);
   });
 
@@ -162,12 +167,10 @@ Router snippetsRouter({
     final snippetId = int.tryParse(id);
     if (snippetId == null) return _error(400, 'id must be an integer');
 
-    final snippet = await database.getSnippetById(snippetId);
-    if (snippet == null) return _error(404, 'not found');
-    try {
-      await semanticSearch.indexSnippet(snippet);
-    } catch (e) {
-      return _error(502, 'indexing failed: $e');
+    final result = await snippets.index(snippetId);
+    if (result == null) return _error(404, 'not found');
+    if (result.indexingError != null) {
+      return _error(502, 'indexing failed: ${result.indexingError}');
     }
     return Response.ok(jsonEncode({'status': 'indexed'}), headers: jsonHeaders);
   });

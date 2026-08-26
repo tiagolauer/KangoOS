@@ -1,30 +1,52 @@
 import 'dart:io';
 
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:kangoos_server/kangoos_server.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 Future<void> main() async {
   final config = EnvConfig.fromEnvironment(Platform.environment);
 
-  final database = KangoosDatabase.native(File(config.dbPath));
+  final database = KangoosDatabase.native(
+    File(config.dbPath),
+    encryptionKey: config.databaseEncryptionKey,
+  );
+  final snippetRepository = SqliteSnippetRepository(database);
   final semanticSearch = SemanticSearch(
-    database: database,
+    repository: snippetRepository,
     embeddingProvider: OllamaEmbeddingProvider(
       model: config.embeddingModel,
       baseUrl: config.ollamaBaseUrl,
     ),
   );
-  final ragChat = RagChat(database: database, semanticSearch: semanticSearch);
+  final snippets = SnippetService(
+    repository: snippetRepository,
+    semanticSearch: semanticSearch,
+  );
+  final activities = SqliteActivityRepository(database);
+  final summaries = SqliteSummaryRepository(database);
+  final episodes = SqliteEpisodeRepository(database);
+  final memory = MemoryService(
+    activities: activities,
+    summaries: summaries,
+    episodes: episodes,
+    queryEngine: MemoryQueryEngine(
+      episodes: episodes,
+      embeddingProvider: semanticSearch.embeddingProvider,
+    ),
+  );
+  final ragChat = RagChat(snippets: snippets, memory: memory);
 
   final server = KangoosServer(
-    database: database,
-    semanticSearch: semanticSearch,
+    snippetRepository: snippetRepository,
+    snippets: snippets,
     ragChat: ragChat,
     llmProvider: config.llmSettings.buildProvider(),
     apiToken: config.apiToken,
   );
 
-  final httpServer = await shelf_io.serve(server.build(), InternetAddress.anyIPv4, config.port);
+  final httpServer = await shelf_io.serve(
+      server.build(), InternetAddress.anyIPv4, config.port);
   stdout.writeln('KangoOS server listening on port ${httpServer.port}');
 }
