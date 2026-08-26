@@ -11,7 +11,7 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
   Future<List<double>> embed(String text) async => const [1, 0, 0];
 }
 
-class _FakeLlmProvider implements LlmProvider {
+class _FakeLlmProvider extends LlmProvider {
   _FakeLlmProvider();
 
   List<LlmMessage>? lastMessages;
@@ -23,6 +23,28 @@ class _FakeLlmProvider implements LlmProvider {
   Stream<String> chat(List<LlmMessage> messages) {
     lastMessages = messages;
     return Stream.fromIterable(['Hel', 'lo']);
+  }
+}
+
+class _StructuredLlmProvider extends LlmProvider {
+  List<LlmMessage> messages = const [];
+
+  @override
+  String get id => 'structured';
+
+  @override
+  bool get supportsToolCalls => true;
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) => const Stream.empty();
+
+  @override
+  Future<LlmResponse> complete(
+    List<LlmMessage> messages, {
+    List<LlmToolDefinition> tools = const [],
+  }) async {
+    this.messages = messages;
+    return const LlmResponse(content: 'Resposta agentiva em PT-BR.');
   }
 }
 
@@ -84,6 +106,42 @@ void main() {
         contains('Responda sempre em português do Brasil'));
     expect(systemPrompt.content, contains('Reverse a string'));
     expect(provider.lastMessages!.last.content, 'how do I reverse a string?');
+  });
+
+  test('structured providers delegate chat to the shared memory agent',
+      () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+    final repository = SqliteSnippetRepository(database);
+    final memory = MemoryService(
+      database: database,
+      activities: SqliteActivityRepository(database),
+      summaries: SqliteSummaryRepository(database),
+      episodes: SqliteEpisodeRepository(database),
+      queryEngine: MemoryQueryEngine(
+        episodes: SqliteEpisodeRepository(database),
+      ),
+    );
+    final provider = _StructuredLlmProvider();
+    final chat = RagChat(
+      snippets: SnippetService(repository: repository),
+      memory: memory,
+      agent: MemoryAgent(memory: memory),
+    );
+
+    final answer = await chat.reply(
+      provider: provider,
+      history: const [
+        LlmMessage(role: LlmRole.assistant, content: 'Contexto anterior.'),
+      ],
+      userMessage: 'Continue.',
+    ).join();
+
+    expect(answer, 'Resposta agentiva em PT-BR.');
+    expect(provider.messages.first.content,
+        contains('agente de memória do KangoOS'));
+    expect(provider.messages.map((message) => message.content),
+        contains('Contexto anterior.'));
   });
 
   test(

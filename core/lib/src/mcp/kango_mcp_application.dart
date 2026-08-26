@@ -9,6 +9,7 @@ import '../infrastructure/sqlite/sqlite_conversation_repository.dart';
 import '../infrastructure/sqlite/sqlite_episode_repository.dart';
 import '../infrastructure/sqlite/sqlite_snippet_repository.dart';
 import '../infrastructure/sqlite/sqlite_summary_repository.dart';
+import '../llm/llm_settings.dart';
 import '../memory/memory_agent.dart';
 import '../memory/memory_query_engine.dart';
 import '../memory/memory_service.dart';
@@ -55,6 +56,7 @@ class KangoMcpApplication {
       final summaries = SqliteSummaryRepository(database);
       final conversations = SqliteConversationRepository(database);
       final activities = SqliteActivityRepository(database);
+      final llmProvider = _llmSettings(environment).buildProvider();
       final memory = MemoryService(
         database: database,
         activities: activities,
@@ -75,6 +77,7 @@ class KangoMcpApplication {
           snippets: snippets,
           memory: memory,
           agent: MemoryAgent(memory: memory),
+          llmProvider: llmProvider,
         ),
       );
     } catch (error) {
@@ -84,4 +87,22 @@ class KangoMcpApplication {
   }
 
   Future<void> close() => database.close();
+
+  static LlmSettings _llmSettings(Map<String, String> environment) {
+    final providerName =
+        environment['KANGOOS_LLM_PROVIDER'] ?? LlmProviderKind.ollama.name;
+    final provider = LlmProviderKind.values.firstWhere(
+      (item) => item.name == providerName,
+      orElse:
+          () => throw StateError('Unknown KANGOOS_LLM_PROVIDER: $providerName'),
+    );
+    return LlmSettings(
+      provider: provider,
+      model: environment['KANGOOS_LLM_MODEL'] ?? LlmSettings.defaults.model,
+      apiKey: environment['KANGOOS_LLM_API_KEY'] ?? '',
+      baseUrl: environment['KANGOOS_LLM_BASE_URL'] ?? '',
+      embeddingModel:
+          environment['KANGOOS_EMBEDDING_MODEL'] ?? defaultMcpEmbeddingModel,
+    );
+  }
 }

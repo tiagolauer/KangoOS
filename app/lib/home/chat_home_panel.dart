@@ -366,6 +366,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           history: priorHistory,
           userMessage: trimmed,
           deepStudy: _deepStudy,
+          cancelToken: cancelToken,
         ),
         cancelToken: cancelToken,
         onPartial: (partial) {

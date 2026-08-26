@@ -1,6 +1,7 @@
 import '../activity/activity_span.dart';
 import '../database/database.dart';
 import '../llm/llm_provider.dart';
+import '../llm/llm_stream.dart';
 import '../memory/memory_service.dart';
 import '../memory/memory_query_engine.dart';
 import '../memory/memory_agent.dart';
@@ -168,10 +169,30 @@ class RagChat {
     required List<LlmMessage> history,
     required String userMessage,
     bool deepStudy = false,
+    CancelToken? cancelToken,
   }) async* {
+    final recentHistory =
+        history.length > maxHistoryMessages
+            ? history.sublist(history.length - maxHistoryMessages)
+            : history;
+    final memoryAgent = agent;
+    if (memoryAgent != null && provider.supportsToolCalls) {
+      final run = await memoryAgent.run(
+        provider: provider,
+        query: userMessage,
+        history: recentHistory,
+        depth:
+            deepStudy
+                ? MemoryInvestigationDepth.deep
+                : MemoryInvestigationDepth.standard,
+        cancelToken: cancelToken,
+      );
+      if (run.answer.isNotEmpty) yield run.answer;
+      return;
+    }
+
     final activityRange = parseTemporalRange(userMessage);
     final activities = await retrieveActivity(activityRange);
-    final memoryAgent = agent;
     final List<Snippet> contextSnippets;
     final List<ActivitySummary> summaries;
     final List<MemoryEpisode> episodes;
@@ -197,9 +218,6 @@ class RagChat {
             (await memoryAgent.investigate(userMessage)).toPrompt();
       }
     }
-    final recentHistory = history.length > maxHistoryMessages
-        ? history.sublist(history.length - maxHistoryMessages)
-        : history;
     final requestMessages = [
       LlmMessage(
         role: LlmRole.system,

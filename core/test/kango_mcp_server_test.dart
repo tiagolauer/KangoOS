@@ -13,6 +13,28 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
   Future<List<double>> embed(String text) async => const [1, 0, 0];
 }
 
+class _McpAgentProvider extends LlmProvider {
+  _McpAgentProvider(this.responses);
+
+  final List<LlmResponse> responses;
+  final requests = <List<LlmMessage>>[];
+
+  @override
+  String get id => 'mcp-agent';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) => const Stream.empty();
+
+  @override
+  Future<LlmResponse> complete(
+    List<LlmMessage> messages, {
+    List<LlmToolDefinition> tools = const [],
+  }) async {
+    requests.add(List.unmodifiable(messages));
+    return responses.removeAt(0);
+  }
+}
+
 Map<String, dynamic> _call(
   String tool, [
   Map<String, dynamic> arguments = const {},
@@ -29,6 +51,8 @@ String _text(Map<String, dynamic> response) =>
 void main() {
   late KangoosDatabase database;
   late KangoMcpServer server;
+  late MemoryService memory;
+  late SnippetService snippets;
 
   setUp(() {
     database = KangoosDatabase.memory();
@@ -38,14 +62,14 @@ void main() {
     final summaries = SqliteSummaryRepository(database);
     final conversations = SqliteConversationRepository(database);
     final activities = SqliteActivityRepository(database);
-    final snippets = SnippetService(
+    snippets = SnippetService(
       repository: snippetRepository,
       semanticSearch: SemanticSearch(
         repository: snippetRepository,
         embeddingProvider: embeddingProvider,
       ),
     );
-    final memory = MemoryService(
+    memory = MemoryService(
       database: database,
       activities: activities,
       summaries: summaries,
@@ -162,6 +186,94 @@ void main() {
     expect(investigationJson['reflection'], isA<Map>());
     expect(studyJson['report'], contains('# DeepStudy: Kango evidence'));
   });
+
+  test(
+    'ask_kango_ltm uses the same multi-turn agent contract as chat',
+    () async {
+      final episodeId = await SqliteEpisodeRepository(database).create(
+        NewMemoryEpisode(
+          sourceKey: 'mcp-agent',
+          startedAt: DateTime.utc(2026, 8, 26, 10),
+          endedAt: DateTime.utc(2026, 8, 26, 11),
+          title: 'Kango MCP decision',
+          summary: 'The MCP and desktop must share one memory agent.',
+          applications: const ['Code'],
+          urls: const [],
+          topics: const ['MCP', 'agent'],
+          entities: const ['project:KangoOS'],
+          sourceActivityIds: const [],
+        ),
+      );
+      final summary = await memory.remember(
+        'Kango MCP agent decision was approved.',
+        at: DateTime.utc(2026, 8, 26, 11),
+      );
+      final provider = _McpAgentProvider([
+        const LlmResponse(
+          content: '',
+          toolCalls: [
+            LlmToolCall(
+              id: 'search',
+              name: 'search_memory',
+              arguments: {'query': 'Kango MCP'},
+            ),
+          ],
+          stopReason: LlmStopReason.toolCalls,
+        ),
+        LlmResponse(
+          content: '',
+          toolCalls: [
+            LlmToolCall(
+              id: 'reflect',
+              name: 'reflect_memory',
+              arguments: {
+                'relevantEvidenceIds': [
+                  'episode:$episodeId',
+                  'summary:${summary.id}',
+                ],
+                'contradictions': const [],
+                'gaps': const [],
+                'sufficient': true,
+              },
+            ),
+          ],
+          stopReason: LlmStopReason.toolCalls,
+        ),
+        LlmResponse(
+          content: 'A decisão foi unificar o agente [episode:$episodeId].',
+        ),
+      ]);
+      final agentServer = KangoMcpServer(
+        snippets: snippets,
+        memory: memory,
+        agent: MemoryAgent(memory: memory),
+        llmProvider: provider,
+      );
+
+      final response = await agentServer.callTool('ask_kango_ltm', {
+        'query': 'E qual foi a decisão?',
+        'history': [
+          {'role': 'user', 'content': 'O que houve no Kango MCP?'},
+          {
+            'role': 'assistant',
+            'content': 'Encontrei uma decisão [episode:$episodeId].',
+          },
+        ],
+      });
+      final result =
+          jsonDecode(
+                ((response['content'] as List).single as Map)['text'] as String,
+              )
+              as Map<String, dynamic>;
+
+      expect(result['stopReason'], 'completed');
+      expect(result['answer'], contains('[episode:$episodeId]'));
+      expect(
+        provider.requests.first.map((message) => message.content),
+        contains('Encontrei uma decisão [episode:$episodeId].'),
+      );
+    },
+  );
 
   test(
     'semantic and temporal memory tools use distinct retrieval modes',

@@ -21,11 +21,12 @@ Handler chatHandler({required RagChat ragChat, required LlmProvider provider}) {
       if (entry is! Map<String, dynamic>) {
         return _error('each history entry must be an object');
       }
-      final roles =
-          LlmRole.values.where((candidate) => candidate.name == entry['role']);
+      final roles = LlmRole.values.where(
+        (candidate) =>
+            candidate != LlmRole.tool && candidate.name == entry['role'],
+      );
       if (roles.isEmpty) {
-        return _error(
-            'history role must be one of ${LlmRole.values.map((r) => r.name).join(', ')}');
+        return _error('history role must be one of system, user, assistant');
       }
       final role = roles.first;
       if (entry['content'] is! String) {

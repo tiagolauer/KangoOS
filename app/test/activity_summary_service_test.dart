@@ -25,7 +25,7 @@ class _FakeSecureCredentialStore implements SecureCredentialStore {
   Future<void> delete(String key) async => _values.remove(key);
 }
 
-class _FakeLlmProvider implements LlmProvider {
+class _FakeLlmProvider extends LlmProvider {
   _FakeLlmProvider(this.chunks);
 
   final List<String> chunks;
@@ -37,7 +37,7 @@ class _FakeLlmProvider implements LlmProvider {
   Stream<String> chat(List<LlmMessage> messages) => Stream.fromIterable(chunks);
 }
 
-class _FailingLlmProvider implements LlmProvider {
+class _FailingLlmProvider extends LlmProvider {
   @override
   String get id => 'failing';
 
@@ -46,7 +46,7 @@ class _FailingLlmProvider implements LlmProvider {
       Stream.error(StateError('llm unreachable'));
 }
 
-class _RecordingLlmProvider implements LlmProvider {
+class _RecordingLlmProvider extends LlmProvider {
   _RecordingLlmProvider(this.prompts);
 
   final List<String> prompts;

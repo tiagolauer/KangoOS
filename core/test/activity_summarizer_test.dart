@@ -3,7 +3,7 @@ import 'package:kangoos_core/kangoos_core.dart';
 import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
-class _FakeLlmProvider implements LlmProvider {
+class _FakeLlmProvider extends LlmProvider {
   _FakeLlmProvider(this.chunks);
 
   final List<String> chunks;
@@ -19,7 +19,7 @@ class _FakeLlmProvider implements LlmProvider {
   }
 }
 
-class _RecordingLlmProvider implements LlmProvider {
+class _RecordingLlmProvider extends LlmProvider {
   String prompt = '';
 
   @override
@@ -32,7 +32,7 @@ class _RecordingLlmProvider implements LlmProvider {
   }
 }
 
-class _FailingLlmProvider implements LlmProvider {
+class _FailingLlmProvider extends LlmProvider {
   @override
   String get id => 'failing';
 

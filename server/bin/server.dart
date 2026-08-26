@@ -27,6 +27,7 @@ Future<void> main() async {
   final activities = SqliteActivityRepository(database);
   final summaries = SqliteSummaryRepository(database);
   final episodes = SqliteEpisodeRepository(database);
+  final conversations = SqliteConversationRepository(database);
   final memory = MemoryService(
     database: database,
     activities: activities,
@@ -34,10 +35,18 @@ Future<void> main() async {
     episodes: episodes,
     queryEngine: MemoryQueryEngine(
       episodes: episodes,
+      summaries: summaries,
+      conversations: conversations,
+      snippets: snippetRepository,
+      activities: activities,
       embeddingProvider: semanticSearch.embeddingProvider,
     ),
   );
-  final ragChat = RagChat(snippets: snippets, memory: memory);
+  final ragChat = RagChat(
+    snippets: snippets,
+    memory: memory,
+    agent: MemoryAgent(memory: memory),
+  );
 
   final server = KangoosServer(
     snippetRepository: snippetRepository,

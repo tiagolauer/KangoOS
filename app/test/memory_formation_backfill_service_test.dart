@@ -22,7 +22,7 @@ class _MemorySecureStore implements SecureCredentialStore {
   Future<void> delete(String key) async => _values.remove(key);
 }
 
-class _BackfillLlmProvider implements LlmProvider {
+class _BackfillLlmProvider extends LlmProvider {
   int calls = 0;
 
   @override

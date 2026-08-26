@@ -13,7 +13,7 @@ class _EmbeddingProvider implements EmbeddingProvider {
   Future<List<double>> embed(String text) async => const [1, 0, 0];
 }
 
-class _LlmProvider implements LlmProvider {
+class _LlmProvider extends LlmProvider {
   List<LlmMessage> messages = const [];
 
   @override

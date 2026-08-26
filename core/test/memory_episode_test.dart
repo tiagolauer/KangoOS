@@ -15,7 +15,7 @@ class _MemoryEmbeddingProvider implements EmbeddingProvider {
       text.toLowerCase().contains('jwt') ? [1, 0] : [0, 1];
 }
 
-class _JsonLlmProvider implements LlmProvider {
+class _JsonLlmProvider extends LlmProvider {
   _JsonLlmProvider(this.payload);
 
   final Map<String, Object?> payload;
@@ -31,7 +31,7 @@ class _JsonLlmProvider implements LlmProvider {
   }
 }
 
-class _FailingMemoryLlmProvider implements LlmProvider {
+class _FailingMemoryLlmProvider extends LlmProvider {
   @override
   String get id => 'failing-memory';
 

@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../chat/temporal_query.dart';
 import '../database/database.dart';
 import '../database/snippet_json.dart';
+import '../llm/llm_provider.dart';
 import '../memory/memory_agent.dart';
 import '../memory/memory_deletion.dart';
 import '../memory/memory_service.dart';
@@ -45,6 +46,7 @@ class KangoMcpServer {
     required this.snippets,
     required this.memory,
     this.agent,
+    this.llmProvider,
     this.maxLtmActivities = 100,
   }) {
     _registerTools();
@@ -53,6 +55,7 @@ class KangoMcpServer {
   final SnippetService snippets;
   final MemoryService memory;
   final MemoryAgent? agent;
+  final LlmProvider? llmProvider;
   final int maxLtmActivities;
   final _tools = <String, _McpTool>{};
 
@@ -337,13 +340,9 @@ class KangoMcpServer {
 
     _tools['ask_kango_ltm'] = _McpTool(
       description:
-          "Query KangoOS's long-term memory: captured window/app activity "
-          'structured episodes and hierarchical summaries. The query can '
-          'reference natural-language time ranges in English or Portuguese; it '
-          'defaults to today when none is mentioned. Pass keywords to '
-          'full-text-search the activity (app name, window title, captured '
-          'text/url/clipboard) within that range instead of listing it '
-          'chronologically.',
+          'Run the same read-only multi-turn memory agent used by KangoOS Chat. '
+          'It searches local evidence, reflects on relevance, contradictions '
+          'and gaps, and returns a PT-BR answer with citations.',
       inputSchema: {
         'type': 'object',
         'properties': {
@@ -356,6 +355,22 @@ class KangoMcpServer {
             'description':
                 'Optional full-text search terms, e.g. "drift migration".',
           },
+          'history': {
+            'type': 'array',
+            'description': 'Previous user and assistant messages.',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'role': {
+                  'type': 'string',
+                  'enum': ['user', 'assistant'],
+                },
+                'content': {'type': 'string'},
+              },
+              'required': ['role', 'content'],
+            },
+          },
+          'deepStudy': {'type': 'boolean'},
         },
         'required': ['query'],
       },
@@ -634,6 +649,12 @@ class KangoMcpServer {
     if (memoryAgent == null) {
       return _toolError('agentic memory is not available');
     }
+    final provider = llmProvider;
+    if (provider != null) {
+      return _toolJson(
+        (await memoryAgent.run(provider: provider, query: query)).toJson(),
+      );
+    }
     return _toolJson((await memoryAgent.investigate(query)).toJson());
   }
 
@@ -643,6 +664,20 @@ class KangoMcpServer {
     final memoryAgent = agent;
     if (memoryAgent == null) {
       return _toolError('agentic memory is not available');
+    }
+    final provider = llmProvider;
+    if (provider != null) {
+      final run = await memoryAgent.run(
+        provider: provider,
+        query: query,
+        depth: MemoryInvestigationDepth.deep,
+      );
+      return _toolJson({
+        'report': run.answer,
+        'stopReason': run.stopReason.name,
+        'stepCount': run.stepCount,
+        'investigation': run.investigation.toJson(),
+      });
     }
     final report = await memoryAgent.deepStudy(query);
     return _toolJson({
@@ -726,10 +761,28 @@ class KangoMcpServer {
   Future<Map<String, dynamic>> _askLtm(Map<String, dynamic> args) async {
     final query = (args['query'] as String?)?.trim() ?? '';
     if (query.isEmpty) return _toolError('query is required');
+    final keywords = (args['keywords'] as String?)?.trim() ?? '';
+
+    final memoryAgent = agent;
+    final provider = llmProvider;
+    if (memoryAgent != null && provider != null) {
+      final run = await memoryAgent.run(
+        provider: provider,
+        query:
+            keywords.isEmpty
+                ? query
+                : '$query\nPalavras-chave para a busca: $keywords',
+        history: _history(args['history']),
+        depth:
+            args['deepStudy'] == true
+                ? MemoryInvestigationDepth.deep
+                : MemoryInvestigationDepth.standard,
+      );
+      return _toolJson(run.toJson());
+    }
 
     final range = parseTemporalRange(query);
     final queryEnd = range.end.add(const Duration(seconds: 1));
-    final keywords = (args['keywords'] as String?)?.trim() ?? '';
     final activities =
         keywords.isEmpty
             ? (await memory.between(
@@ -758,6 +811,25 @@ class KangoMcpServer {
       if (memoryResult.semanticError != null)
         'semanticWarning': '${memoryResult.semanticError}',
     });
+  }
+
+  List<LlmMessage> _history(Object? value) {
+    if (value is! List) return const [];
+    final messages = <LlmMessage>[];
+    for (final raw in value) {
+      if (raw is! Map) continue;
+      final item = raw.cast<String, dynamic>();
+      final content = (item['content'] as String?)?.trim() ?? '';
+      final role = switch (item['role']) {
+        'user' => LlmRole.user,
+        'assistant' => LlmRole.assistant,
+        _ => null,
+      };
+      if (role != null && content.isNotEmpty) {
+        messages.add(LlmMessage(role: role, content: content));
+      }
+    }
+    return messages;
   }
 
   Future<Map<String, dynamic>> _createMemory(Map<String, dynamic> args) async {

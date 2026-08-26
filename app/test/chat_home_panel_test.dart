@@ -37,7 +37,7 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
   Future<List<double>> embed(String text) async => const [1, 0, 0];
 }
 
-class _BreakingLlmProvider implements LlmProvider {
+class _BreakingLlmProvider extends LlmProvider {
   _BreakingLlmProvider(this.chunksBeforeFailure);
 
   final List<String> chunksBeforeFailure;
@@ -54,7 +54,7 @@ class _BreakingLlmProvider implements LlmProvider {
   }
 }
 
-class _StallingLlmProvider implements LlmProvider {
+class _StallingLlmProvider extends LlmProvider {
   final _chunks = StreamController<String>();
 
   @override
@@ -66,7 +66,7 @@ class _StallingLlmProvider implements LlmProvider {
   void emit(String chunk) => _chunks.add(chunk);
 }
 
-class _FixedLlmProvider implements LlmProvider {
+class _FixedLlmProvider extends LlmProvider {
   _FixedLlmProvider(this.reply);
 
   final String reply;
@@ -78,7 +78,7 @@ class _FixedLlmProvider implements LlmProvider {
   Stream<String> chat(List<LlmMessage> messages) => Stream.value(reply);
 }
 
-class _RecordingLlmProvider implements LlmProvider {
+class _RecordingLlmProvider extends LlmProvider {
   List<LlmMessage> messages = const [];
 
   @override
@@ -228,7 +228,7 @@ void main() {
 
     expect(provider.messages.first.content,
         contains('# DeepStudy: Kango architecture'));
-    expect(provider.messages.first.content, contains('Evidence trail'));
+    expect(provider.messages.first.content, contains('Trilha de evidências'));
 
     await drainStreams(tester);
   });

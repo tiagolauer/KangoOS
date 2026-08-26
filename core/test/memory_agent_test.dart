@@ -1,6 +1,49 @@
+import 'dart:async';
+
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
+
+class _ScriptedLlmProvider extends LlmProvider {
+  _ScriptedLlmProvider(this.responses);
+
+  final List<LlmResponse> responses;
+  final requests = <List<LlmMessage>>[];
+  final toolSets = <List<LlmToolDefinition>>[];
+
+  @override
+  String get id => 'scripted';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) => const Stream.empty();
+
+  @override
+  Future<LlmResponse> complete(
+    List<LlmMessage> messages, {
+    List<LlmToolDefinition> tools = const [],
+  }) async {
+    requests.add(List.unmodifiable(messages));
+    toolSets.add(List.unmodifiable(tools));
+    if (responses.isEmpty) throw StateError('No scripted response left.');
+    return responses.removeAt(0);
+  }
+}
+
+class _PendingLlmProvider extends LlmProvider {
+  final pending = Completer<LlmResponse>();
+
+  @override
+  String get id => 'pending';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) => const Stream.empty();
+
+  @override
+  Future<LlmResponse> complete(
+    List<LlmMessage> messages, {
+    List<LlmToolDefinition> tools = const [],
+  }) => pending.future;
+}
 
 void main() {
   test(
@@ -81,9 +124,243 @@ void main() {
       );
       expect(report.markdown, contains('# DeepStudy: Kango retrieval'));
       expect(report.markdown, contains('episode:'));
-      expect(report.markdown, contains('Confidence:'));
+      expect(report.markdown, contains('Confiança:'));
+
+      final provider = _ScriptedLlmProvider([
+        const LlmResponse(
+          content: '',
+          toolCalls: [
+            LlmToolCall(
+              id: 'search-1',
+              name: 'search_memory',
+              arguments: {'query': 'Kango retrieval', 'limit': 10},
+            ),
+            LlmToolCall(
+              id: 'time-1',
+              name: 'search_memory_by_time',
+              arguments: {'query': '2026-08-25', 'limit': 10},
+            ),
+            LlmToolCall(
+              id: 'episode-1',
+              name: 'get_memory_episode',
+              arguments: {'id': 1},
+            ),
+            LlmToolCall(
+              id: 'summaries-1',
+              name: 'list_memory_summaries',
+              arguments: {'limit': 10},
+            ),
+            LlmToolCall(
+              id: 'conversations-1',
+              name: 'search_conversations',
+              arguments: {'query': 'Kango retrieval'},
+            ),
+            LlmToolCall(
+              id: 'snippets-1',
+              name: 'search_snippets',
+              arguments: {'query': 'Kango retrieval'},
+            ),
+            LlmToolCall(
+              id: 'entities-1',
+              name: 'search_entities',
+              arguments: {'query': 'kango'},
+            ),
+            LlmToolCall(
+              id: 'projects-1',
+              name: 'search_projects',
+              arguments: {'query': 'kango'},
+            ),
+          ],
+          stopReason: LlmStopReason.toolCalls,
+        ),
+        const LlmResponse(
+          content: '',
+          toolCalls: [
+            LlmToolCall(
+              id: 'reflect-1',
+              name: 'reflect_memory',
+              arguments: {
+                'relevantEvidenceIds': ['episode:1', 'summary:1'],
+                'contradictions': [
+                  {
+                    'description': 'As fontes divergem sobre a revisão.',
+                    'evidenceIds': ['episode:1', 'summary:1'],
+                  },
+                ],
+                'gaps': ['resultado final'],
+                'sufficient': true,
+              },
+            ),
+          ],
+          stopReason: LlmStopReason.toolCalls,
+        ),
+        const LlmResponse(
+          content: 'A decisão registrada foi revisar a recuperação.',
+        ),
+      ]);
+      final run = await agent.run(
+        provider: provider,
+        query: 'E qual foi a decisão?',
+        history: const [
+          LlmMessage(role: LlmRole.user, content: 'O que fiz no KangoOS?'),
+          LlmMessage(
+            role: LlmRole.assistant,
+            content: 'Você trabalhou na recuperação [episode:1].',
+          ),
+        ],
+      );
+
+      expect(run.stopReason, MemoryAgentStopReason.completed);
+      expect(run.stepCount, 3);
+      expect(run.answer, contains('[episode:1]'));
+      expect(run.answer, contains('[summary:1]'));
+      expect(run.investigation.reflection.contradictions, hasLength(1));
+      expect(
+        run.investigation.steps.map((step) => step.tool),
+        containsAll([
+          'search_memory',
+          'search_memory_by_time',
+          'get_memory_episode',
+          'list_memory_summaries',
+          'search_conversations',
+          'search_snippets',
+          'search_entities',
+          'search_projects',
+          'reflect_memory',
+        ]),
+      );
+      expect(
+        provider.requests.first.map((message) => message.content),
+        contains('Você trabalhou na recuperação [episode:1].'),
+      );
+      expect(
+        provider.toolSets.first.map((tool) => tool.name),
+        containsAll(['search_memory', 'reflect_memory']),
+      );
     },
   );
+
+  test(
+    'agent stops cancellation, timeout and repeated tool calls observably',
+    () async {
+      final database = KangoosDatabase.memory();
+      addTearDown(database.close);
+      final memory = MemoryService(
+        database: database,
+        activities: SqliteActivityRepository(database),
+        summaries: SqliteSummaryRepository(database),
+        episodes: SqliteEpisodeRepository(database),
+        queryEngine: MemoryQueryEngine(
+          episodes: SqliteEpisodeRepository(database),
+        ),
+      );
+
+      final pending = _PendingLlmProvider();
+      final cancelToken = CancelToken();
+      final cancelledFuture = MemoryAgent(memory: memory).run(
+        provider: pending,
+        query: 'Investigue o projeto',
+        cancelToken: cancelToken,
+      );
+      cancelToken.cancel();
+      final cancelled = await cancelledFuture;
+      expect(cancelled.stopReason, MemoryAgentStopReason.cancelled);
+
+      final timedOut = await MemoryAgent(
+        memory: memory,
+        timeout: const Duration(milliseconds: 10),
+      ).run(provider: _PendingLlmProvider(), query: 'Investigue o projeto');
+      expect(timedOut.stopReason, MemoryAgentStopReason.timedOut);
+
+      const repeatedCall = LlmResponse(
+        content: '',
+        toolCalls: [
+          LlmToolCall(
+            id: 'repeat',
+            name: 'search_memory',
+            arguments: {'query': 'KangoOS'},
+          ),
+        ],
+        stopReason: LlmStopReason.toolCalls,
+      );
+      final repeated = await MemoryAgent(memory: memory).run(
+        provider: _ScriptedLlmProvider([repeatedCall, repeatedCall]),
+        query: 'Investigue o projeto',
+      );
+      expect(repeated.stopReason, MemoryAgentStopReason.repeatedToolCall);
+      expect(
+        repeated.investigation.issues,
+        contains(contains('repeated tool')),
+      );
+
+      final limitedProvider = _ScriptedLlmProvider([
+        for (var index = 0; index < defaultMemoryAgentMaxSteps; index++)
+          LlmResponse(
+            content: '',
+            toolCalls: [
+              LlmToolCall(
+                id: 'step-$index',
+                name: 'search_memory',
+                arguments: {'query': 'KangoOS $index'},
+              ),
+            ],
+            stopReason: LlmStopReason.toolCalls,
+          ),
+      ]);
+      final limited = await MemoryAgent(
+        memory: memory,
+      ).run(provider: limitedProvider, query: 'Investigue em profundidade');
+      expect(limited.stopReason, MemoryAgentStopReason.maxSteps);
+      expect(limitedProvider.requests, hasLength(defaultMemoryAgentMaxSteps));
+
+      final budgetProvider = _ScriptedLlmProvider(const [
+        LlmResponse(content: 'não deve ser usado'),
+      ]);
+      final budget = await MemoryAgent(
+        memory: memory,
+        contextBudgetTokens: 1,
+      ).run(provider: budgetProvider, query: 'Contexto acima do orçamento');
+      expect(budget.stopReason, MemoryAgentStopReason.contextBudgetExceeded);
+      expect(budgetProvider.requests, isEmpty);
+    },
+  );
+
+  test('agent refuses a memory answer without sufficient evidence', () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+    final episodes = SqliteEpisodeRepository(database);
+    final memory = MemoryService(
+      database: database,
+      activities: SqliteActivityRepository(database),
+      summaries: SqliteSummaryRepository(database),
+      episodes: episodes,
+      queryEngine: MemoryQueryEngine(episodes: episodes),
+    );
+    final provider = _ScriptedLlmProvider([
+      const LlmResponse(
+        content: '',
+        toolCalls: [
+          LlmToolCall(
+            id: 'search-empty',
+            name: 'search_memory',
+            arguments: {'query': 'projeto inexistente'},
+          ),
+        ],
+        stopReason: LlmStopReason.toolCalls,
+      ),
+      const LlmResponse(content: 'O projeto foi concluído ontem.'),
+    ]);
+
+    final run = await MemoryAgent(
+      memory: memory,
+    ).run(provider: provider, query: 'Quando concluí o projeto inexistente?');
+
+    expect(run.stopReason, MemoryAgentStopReason.insufficientEvidence);
+    expect(
+      run.answer,
+      'Não encontrei evidências suficientes na memória para responder com segurança.',
+    );
+  });
 
   test(
     'episode builder identifies GitHub projects without a graph database',

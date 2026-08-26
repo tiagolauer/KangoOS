@@ -32,7 +32,7 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
   Future<List<double>> embed(String text) async => const [1, 0, 0];
 }
 
-class _FakeLlmProvider implements LlmProvider {
+class _FakeLlmProvider extends LlmProvider {
   _FakeLlmProvider(this.response);
 
   final String response;
