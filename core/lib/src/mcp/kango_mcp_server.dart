@@ -730,6 +730,14 @@ class KangoMcpServer {
         'urls': episode.urls,
         'topics': episode.topics,
         'entities': episode.entities,
+        'formationVersion': episode.formationVersion,
+        'contentHash': episode.contentHash,
+        'status': episode.formationStatus.name,
+        'confidence': episode.confidence,
+        'decisions': episode.decisions,
+        'actionItems': episode.actionItems,
+        'technologies': episode.technologies,
+        'formationModelId': episode.formationModelId,
         'sourceActivityIds': episode.sourceActivityIds,
       };
 

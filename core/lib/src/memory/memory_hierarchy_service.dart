@@ -4,19 +4,23 @@ import 'episode_repository.dart';
 import 'summary_repository.dart';
 
 const defaultSessionGap = Duration(hours: 2);
+const durableRecurrenceMinimumEpisodes = 3;
+const durableRecurrenceMinimumDays = 2;
 
 class HierarchyCompactionReport {
   const HierarchyCompactionReport({
     required this.sessions,
     required this.daily,
     required this.weekly,
+    this.durable = 0,
   });
 
   final int sessions;
   final int daily;
   final int weekly;
+  final int durable;
 
-  int get created => sessions + daily + weekly;
+  int get created => sessions + daily + weekly + durable;
 }
 
 class MemoryHierarchyService {
@@ -97,11 +101,80 @@ class MemoryHierarchyService {
       }
     }
 
+    final durableCount = await _promoteDurable(captured, existing);
+
     return HierarchyCompactionReport(
       sessions: sessionCount,
       daily: dailyCount,
       weekly: weeklyCount,
+      durable: durableCount,
     );
+  }
+
+  Future<int> _promoteDurable(
+    List<MemoryEpisode> episodes,
+    List<ActivitySummary> existing,
+  ) async {
+    final durableMemories = (await summaries.all())
+        .where((summary) => summary.kind == SummaryKind.durable)
+        .toList();
+    final evidence = <String, List<MemoryEpisode>>{};
+    final labels = <String, String>{};
+    for (final episode in episodes) {
+      final candidates = <String, String>{
+        for (final technology in episode.technologies)
+          'technology:${_normalize(technology)}': technology,
+        for (final entity in episode.entities)
+          if (entity.startsWith('project:') || entity.startsWith('person:'))
+            '${entity.substring(0, entity.indexOf(':'))}:'
+                '${_normalize(entity.substring(entity.indexOf(':') + 1))}':
+              entity.substring(entity.indexOf(':') + 1),
+        for (final decision in episode.decisions)
+          'decision:${_normalize(decision)}': decision,
+      };
+      for (final entry in candidates.entries) {
+        labels.putIfAbsent(entry.key, () => entry.value.trim());
+        evidence.putIfAbsent(entry.key, () => []).add(episode);
+      }
+    }
+
+    var created = 0;
+    final keys = evidence.keys.toList()..sort();
+    for (final key in keys) {
+      final matches = evidence[key]!;
+      final days = matches.map((episode) => _day(episode.startedAt)).toSet();
+      if (matches.length < durableRecurrenceMinimumEpisodes ||
+          days.length < durableRecurrenceMinimumDays) {
+        continue;
+      }
+      final marker = '$automaticDurableMemoryPrefix$key]';
+      if (durableMemories
+          .any((summary) => summary.content.startsWith(marker))) {
+        continue;
+      }
+      final content = [
+        marker,
+        'Memória recorrente: ${labels[key]}',
+        'Evidências:',
+        for (final episode in matches)
+          '- episódio #${episode.id} · ${episode.startedAt.toIso8601String()} · '
+              '${episode.title}',
+      ].join('\n');
+      final id = await summaries.create(NewActivitySummary(
+        kind: SummaryKind.durable,
+        periodStart: matches.first.startedAt,
+        periodEnd: matches.last.endedAt,
+        content: content,
+      ));
+      final stored = await summaries.getById(id);
+      if (stored == null) {
+        throw StateError('Created durable memory #$id could not be loaded.');
+      }
+      existing.add(stored);
+      durableMemories.add(stored);
+      created++;
+    }
+    return created;
   }
 
   Future<bool> _createIfMissing(
@@ -194,6 +267,9 @@ class MemoryHierarchyService {
     ].join('\n');
   }
 }
+
+String _normalize(String value) =>
+    value.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
 
 DateTime _day(DateTime value, [bool? useUtc]) {
   final utc = useUtc ?? value.isUtc;

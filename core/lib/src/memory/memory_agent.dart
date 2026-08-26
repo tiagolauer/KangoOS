@@ -254,7 +254,13 @@ class MemoryAgent {
         id: 'episode:${episode.id}',
         kind: MemoryEvidenceKind.episode,
         title: episode.title,
-        content: _content(episode.summary),
+        content: _content([
+          episode.summary,
+          if (episode.decisions.isNotEmpty)
+            'Decisões: ${episode.decisions.join('; ')}',
+          if (episode.actionItems.isNotEmpty)
+            'Pendências: ${episode.actionItems.join('; ')}',
+        ].join('\n')),
         startedAt: episode.startedAt,
         endedAt: episode.endedAt,
         score: match.score,
@@ -262,6 +268,7 @@ class MemoryAgent {
           ...episode.applications,
           ...episode.topics,
           ...episode.entities,
+          ...episode.technologies,
         ],
       );
     }

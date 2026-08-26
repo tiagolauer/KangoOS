@@ -1,4 +1,8 @@
 import '../database/database.dart';
+import '../database/tables/memory_episodes_table.dart';
+
+const currentMemoryFormationVersion = 2;
+const deterministicMemoryConfidence = 0.5;
 
 class NewMemoryEpisode {
   const NewMemoryEpisode({
@@ -12,6 +16,14 @@ class NewMemoryEpisode {
     required this.topics,
     required this.entities,
     required this.sourceActivityIds,
+    this.formationVersion = currentMemoryFormationVersion,
+    this.contentHash = '',
+    this.formationStatus = MemoryFormationStatus.deterministic,
+    this.confidence = deterministicMemoryConfidence,
+    this.decisions = const [],
+    this.actionItems = const [],
+    this.technologies = const [],
+    this.formationModelId,
   });
 
   final String sourceKey;
@@ -24,6 +36,54 @@ class NewMemoryEpisode {
   final List<String> topics;
   final List<String> entities;
   final List<int> sourceActivityIds;
+  final int formationVersion;
+  final String contentHash;
+  final MemoryFormationStatus formationStatus;
+  final double confidence;
+  final List<String> decisions;
+  final List<String> actionItems;
+  final List<String> technologies;
+  final String? formationModelId;
+
+  NewMemoryEpisode copyWith({
+    String? title,
+    String? summary,
+    List<String>? applications,
+    List<String>? urls,
+    List<String>? topics,
+    List<String>? entities,
+    int? formationVersion,
+    String? contentHash,
+    MemoryFormationStatus? formationStatus,
+    double? confidence,
+    List<String>? decisions,
+    List<String>? actionItems,
+    List<String>? technologies,
+    String? formationModelId,
+    bool clearFormationModelId = false,
+  }) => NewMemoryEpisode(
+    sourceKey: sourceKey,
+    startedAt: startedAt,
+    endedAt: endedAt,
+    title: title ?? this.title,
+    summary: summary ?? this.summary,
+    applications: applications ?? this.applications,
+    urls: urls ?? this.urls,
+    topics: topics ?? this.topics,
+    entities: entities ?? this.entities,
+    sourceActivityIds: sourceActivityIds,
+    formationVersion: formationVersion ?? this.formationVersion,
+    contentHash: contentHash ?? this.contentHash,
+    formationStatus: formationStatus ?? this.formationStatus,
+    confidence: confidence ?? this.confidence,
+    decisions: decisions ?? this.decisions,
+    actionItems: actionItems ?? this.actionItems,
+    technologies: technologies ?? this.technologies,
+    formationModelId:
+        clearFormationModelId
+            ? null
+            : formationModelId ?? this.formationModelId,
+  );
 }
 
 class EpisodeVector {
@@ -35,6 +95,8 @@ class EpisodeVector {
 
 abstract interface class EpisodeRepository {
   Future<int> create(NewMemoryEpisode episode);
+
+  Future<void> replace(int id, NewMemoryEpisode episode);
 
   Future<MemoryEpisode?> get(int id);
 
@@ -57,11 +119,7 @@ abstract interface class EpisodeRepository {
 
   Future<List<EpisodeVector>> vectors(String providerId);
 
-  Future<void> setEmbedding(
-    int id,
-    List<double> embedding,
-    String providerId,
-  );
+  Future<void> setEmbedding(int id, List<double> embedding, String providerId);
 
   Future<int> delete(int id);
 

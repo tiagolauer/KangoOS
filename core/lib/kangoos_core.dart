@@ -14,7 +14,10 @@ export 'src/database/database.dart'
         MemoryEpisode,
         Snippet;
 export 'src/database/snippet_json.dart';
-export 'src/database/tables/activity_summaries_table.dart' show SummaryKind;
+export 'src/database/tables/activity_summaries_table.dart'
+    show SummaryKind, automaticDurableMemoryPrefix;
+export 'src/database/tables/memory_episodes_table.dart'
+    show MemoryFormationStatus;
 export 'src/database/tables/conversations_table.dart' show ConversationSummary;
 export 'src/database/tables/snippets_table.dart' show SnippetVector;
 export 'src/embedding/embedding_provider.dart';
@@ -26,6 +29,7 @@ export 'src/memory/episode_builder.dart';
 export 'src/memory/episode_repository.dart';
 export 'src/memory/memory_service.dart';
 export 'src/memory/memory_formation_service.dart';
+export 'src/memory/memory_enricher.dart';
 export 'src/memory/memory_hierarchy_service.dart';
 export 'src/memory/memory_agent.dart';
 export 'src/memory/memory_deletion.dart';

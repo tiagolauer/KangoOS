@@ -90,6 +90,18 @@ class RagChat {
           '[${episode.startedAt.toLocal()} - ${episode.endedAt.toLocal()}] '
           '${episode.title}: ${episode.summary}',
         );
+        if (episode.decisions.isNotEmpty) {
+          buffer.writeln('Decisões: ${episode.decisions.join('; ')}');
+        }
+        if (episode.actionItems.isNotEmpty) {
+          buffer.writeln('Pendências: ${episode.actionItems.join('; ')}');
+        }
+        if (episode.technologies.isNotEmpty) {
+          buffer.writeln('Tecnologias: ${episode.technologies.join(', ')}');
+        }
+        if (episode.entities.isNotEmpty) {
+          buffer.writeln('Entidades relacionadas: ${episode.entities.join(', ')}');
+        }
       }
     }
 

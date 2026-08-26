@@ -10,44 +10,79 @@ class SqliteEpisodeRepository implements EpisodeRepository {
   final KangoosDatabase database;
 
   @override
-  Future<int> create(NewMemoryEpisode episode) =>
-      database.into(database.memoryEpisodes).insert(
-            MemoryEpisodesCompanion.insert(
-              sourceKey: episode.sourceKey,
-              startedAt: episode.startedAt,
-              endedAt: episode.endedAt,
-              title: episode.title,
-              summary: episode.summary,
-              applications: Value(episode.applications),
-              urls: Value(episode.urls),
-              topics: Value(episode.topics),
-              entities: Value(episode.entities),
-              sourceActivityIds: Value(episode.sourceActivityIds),
-            ),
-          );
+  Future<int> create(NewMemoryEpisode episode) => database
+      .into(database.memoryEpisodes)
+      .insert(
+        MemoryEpisodesCompanion.insert(
+          sourceKey: episode.sourceKey,
+          startedAt: episode.startedAt,
+          endedAt: episode.endedAt,
+          title: episode.title,
+          summary: episode.summary,
+          applications: Value(episode.applications),
+          urls: Value(episode.urls),
+          topics: Value(episode.topics),
+          entities: Value(episode.entities),
+          formationVersion: Value(episode.formationVersion),
+          contentHash: Value(episode.contentHash),
+          formationStatus: Value(episode.formationStatus),
+          confidence: Value(episode.confidence),
+          decisions: Value(episode.decisions),
+          actionItems: Value(episode.actionItems),
+          technologies: Value(episode.technologies),
+          formationModelId: Value(episode.formationModelId),
+          sourceActivityIds: Value(episode.sourceActivityIds),
+        ),
+      );
+
+  @override
+  Future<void> replace(int id, NewMemoryEpisode episode) =>
+      (database.update(database.memoryEpisodes)
+        ..where((row) => row.id.equals(id))).write(
+        MemoryEpisodesCompanion(
+          sourceKey: Value(episode.sourceKey),
+          startedAt: Value(episode.startedAt),
+          endedAt: Value(episode.endedAt),
+          title: Value(episode.title),
+          summary: Value(episode.summary),
+          applications: Value(episode.applications),
+          urls: Value(episode.urls),
+          topics: Value(episode.topics),
+          entities: Value(episode.entities),
+          formationVersion: Value(episode.formationVersion),
+          contentHash: Value(episode.contentHash),
+          formationStatus: Value(episode.formationStatus),
+          confidence: Value(episode.confidence),
+          decisions: Value(episode.decisions),
+          actionItems: Value(episode.actionItems),
+          technologies: Value(episode.technologies),
+          formationModelId: Value(episode.formationModelId),
+          sourceActivityIds: Value(episode.sourceActivityIds),
+          embedding: const Value(null),
+          embeddingProviderId: const Value(null),
+        ),
+      );
 
   @override
   Future<MemoryEpisode?> get(int id) =>
       (database.select(database.memoryEpisodes)
-            ..where((row) => row.id.equals(id)))
-          .getSingleOrNull();
+        ..where((row) => row.id.equals(id))).getSingleOrNull();
 
   @override
   Future<MemoryEpisode?> bySourceKey(String sourceKey) =>
       (database.select(database.memoryEpisodes)
-            ..where((row) => row.sourceKey.equals(sourceKey)))
-          .getSingleOrNull();
+        ..where((row) => row.sourceKey.equals(sourceKey))).getSingleOrNull();
 
   @override
   Future<List<MemoryEpisode>> byIds(List<int> ids) async {
     if (ids.isEmpty) return const [];
-    final found = await (database.select(database.memoryEpisodes)
-          ..where((row) => row.id.isIn(ids)))
-        .get();
+    final found =
+        await (database.select(database.memoryEpisodes)
+          ..where((row) => row.id.isIn(ids))).get();
     final byId = {for (final episode in found) episode.id: episode};
     return [
       for (final id in ids)
-        if (byId[id] != null) byId[id]!
+        if (byId[id] != null) byId[id]!,
     ];
   }
 
@@ -61,9 +96,11 @@ class SqliteEpisodeRepository implements EpisodeRepository {
   @override
   Future<List<MemoryEpisode>> between(DateTime start, DateTime end) =>
       (database.select(database.memoryEpisodes)
-            ..where((row) =>
-                row.endedAt.isBiggerThanValue(start) &
-                row.startedAt.isSmallerThanValue(end))
+            ..where(
+              (row) =>
+                  row.endedAt.isBiggerThanValue(start) &
+                  row.startedAt.isSmallerThanValue(end),
+            )
             ..orderBy([(row) => OrderingTerm.asc(row.startedAt)]))
           .get();
 
@@ -92,37 +129,45 @@ class SqliteEpisodeRepository implements EpisodeRepository {
     }
     sql.write(' ORDER BY rank LIMIT ?');
     variables.add(Variable.withInt(limit));
-    final rows = await database.customSelect(
-      sql.toString(),
-      variables: variables,
-      readsFrom: {database.memoryEpisodes},
-    ).get();
+    final rows =
+        await database
+            .customSelect(
+              sql.toString(),
+              variables: variables,
+              readsFrom: {database.memoryEpisodes},
+            )
+            .get();
     return rows.map((row) => database.memoryEpisodes.map(row.data)).toList();
   }
 
   @override
   Future<List<MemoryEpisode>> pendingEmbedding(String providerId) =>
-      (database.select(database.memoryEpisodes)
-            ..where((row) =>
-                row.embedding.isNull() |
-                row.embeddingProviderId.isNull() |
-                row.embeddingProviderId.equals(providerId).not()))
-          .get();
+      (database.select(database.memoryEpisodes)..where(
+        (row) =>
+            row.embedding.isNull() |
+            row.embeddingProviderId.isNull() |
+            row.embeddingProviderId.equals(providerId).not(),
+      )).get();
 
   @override
   Future<List<EpisodeVector>> vectors(String providerId) async {
-    final rows = await database.customSelect(
-      'SELECT id, embedding FROM memory_episodes '
-      'WHERE embedding IS NOT NULL AND embedding_provider_id = ?;',
-      variables: [Variable.withString(providerId)],
-      readsFrom: {database.memoryEpisodes},
-    ).get();
+    final rows =
+        await database
+            .customSelect(
+              'SELECT id, embedding FROM memory_episodes '
+              'WHERE embedding IS NOT NULL AND embedding_provider_id = ?;',
+              variables: [Variable.withString(providerId)],
+              readsFrom: {database.memoryEpisodes},
+            )
+            .get();
     const converter = EmbeddingConverter();
     return rows
-        .map((row) => EpisodeVector(
-              id: row.read<int>('id'),
-              embedding: converter.fromSql(row.read<Uint8List>('embedding')),
-            ))
+        .map(
+          (row) => EpisodeVector(
+            id: row.read<int>('id'),
+            embedding: converter.fromSql(row.read<Uint8List>('embedding')),
+          ),
+        )
         .toList();
   }
 
@@ -133,22 +178,22 @@ class SqliteEpisodeRepository implements EpisodeRepository {
     String providerId,
   ) =>
       (database.update(database.memoryEpisodes)
-            ..where((row) => row.id.equals(id)))
-          .write(MemoryEpisodesCompanion(
-        embedding: Value(embedding),
-        embeddingProviderId: Value(providerId),
-      ));
+        ..where((row) => row.id.equals(id))).write(
+        MemoryEpisodesCompanion(
+          embedding: Value(embedding),
+          embeddingProviderId: Value(providerId),
+        ),
+      );
 
   @override
-  Future<int> delete(int id) => (database.delete(database.memoryEpisodes)
-        ..where((row) => row.id.equals(id)))
-      .go();
+  Future<int> delete(int id) =>
+      (database.delete(database.memoryEpisodes)
+        ..where((row) => row.id.equals(id))).go();
 
   @override
   Future<int> purgeOlderThan(DateTime cutoff) =>
       (database.delete(database.memoryEpisodes)
-            ..where((row) => row.endedAt.isSmallerOrEqualValue(cutoff)))
-          .go();
+        ..where((row) => row.endedAt.isSmallerOrEqualValue(cutoff))).go();
 
   @override
   Future<int> clear() => database.delete(database.memoryEpisodes).go();

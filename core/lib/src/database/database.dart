@@ -45,7 +45,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   final File? databaseFile;
   final String? encryptionKey;
 
-  static const currentSchemaVersion = 19;
+  static const currentSchemaVersion = 20;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -117,6 +117,42 @@ class KangoosDatabase extends _$KangoosDatabase {
           }
           if (from < 19 && !await _hasColumn('activities', 'source_id')) {
             await m.addColumn(activities, activities.sourceId);
+          }
+          if (from < 20) {
+            if (!await _hasColumn('memory_episodes', 'id')) {
+              await m.createTable(memoryEpisodes);
+            } else {
+              if (!await _hasColumn(
+                  'memory_episodes', 'formation_version')) {
+                await m.addColumn(
+                    memoryEpisodes, memoryEpisodes.formationVersion);
+              }
+              if (!await _hasColumn('memory_episodes', 'content_hash')) {
+                await m.addColumn(memoryEpisodes, memoryEpisodes.contentHash);
+              }
+              if (!await _hasColumn('memory_episodes', 'formation_status')) {
+                await m.addColumn(
+                    memoryEpisodes, memoryEpisodes.formationStatus);
+              }
+              if (!await _hasColumn('memory_episodes', 'confidence')) {
+                await m.addColumn(memoryEpisodes, memoryEpisodes.confidence);
+              }
+              if (!await _hasColumn('memory_episodes', 'decisions')) {
+                await m.addColumn(memoryEpisodes, memoryEpisodes.decisions);
+              }
+              if (!await _hasColumn('memory_episodes', 'action_items')) {
+                await m.addColumn(memoryEpisodes, memoryEpisodes.actionItems);
+              }
+              if (!await _hasColumn('memory_episodes', 'technologies')) {
+                await m.addColumn(memoryEpisodes, memoryEpisodes.technologies);
+              }
+              if (!await _hasColumn(
+                  'memory_episodes', 'formation_model_id')) {
+                await m.addColumn(
+                    memoryEpisodes, memoryEpisodes.formationModelId);
+              }
+            }
+            await _rebuildMemoryEpisodesFts();
           }
         },
       );
@@ -192,6 +228,20 @@ class KangoosDatabase extends _$KangoosDatabase {
     await _createActivitiesFts();
     await customStatement(
         "INSERT INTO activities_fts(activities_fts) VALUES ('rebuild');");
+  }
+
+  Future<void> _rebuildMemoryEpisodesFts() async {
+    for (final name in [
+      'memory_episodes_fts_ai',
+      'memory_episodes_fts_ad',
+      'memory_episodes_fts_au'
+    ]) {
+      await customStatement('DROP TRIGGER IF EXISTS $name;');
+    }
+    await customStatement('DROP TABLE IF EXISTS memory_episodes_fts;');
+    await _createMemoryEpisodesFts();
+    await customStatement(
+        "INSERT INTO memory_episodes_fts(memory_episodes_fts) VALUES ('rebuild');");
   }
 
   Future<void> _convertEmbeddingsToBinary() async {
@@ -364,28 +414,29 @@ END;
   Future<void> _createMemoryEpisodesFts() async {
     await customStatement('''
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_episodes_fts USING fts5(
-  title, summary, applications, urls, topics, entities,
+  title, summary, applications, urls, topics, entities, decisions,
+  action_items, technologies,
   content='memory_episodes', content_rowid='id'
 );
 ''');
     await customStatement('''
 CREATE TRIGGER IF NOT EXISTS memory_episodes_fts_ai AFTER INSERT ON memory_episodes BEGIN
-  INSERT INTO memory_episodes_fts(rowid, title, summary, applications, urls, topics, entities)
-  VALUES (new.id, new.title, new.summary, new.applications, new.urls, new.topics, new.entities);
+  INSERT INTO memory_episodes_fts(rowid, title, summary, applications, urls, topics, entities, decisions, action_items, technologies)
+  VALUES (new.id, new.title, new.summary, new.applications, new.urls, new.topics, new.entities, new.decisions, new.action_items, new.technologies);
 END;
 ''');
     await customStatement('''
 CREATE TRIGGER IF NOT EXISTS memory_episodes_fts_ad AFTER DELETE ON memory_episodes BEGIN
-  INSERT INTO memory_episodes_fts(memory_episodes_fts, rowid, title, summary, applications, urls, topics, entities)
-  VALUES ('delete', old.id, old.title, old.summary, old.applications, old.urls, old.topics, old.entities);
+  INSERT INTO memory_episodes_fts(memory_episodes_fts, rowid, title, summary, applications, urls, topics, entities, decisions, action_items, technologies)
+  VALUES ('delete', old.id, old.title, old.summary, old.applications, old.urls, old.topics, old.entities, old.decisions, old.action_items, old.technologies);
 END;
 ''');
     await customStatement('''
 CREATE TRIGGER IF NOT EXISTS memory_episodes_fts_au AFTER UPDATE ON memory_episodes BEGIN
-  INSERT INTO memory_episodes_fts(memory_episodes_fts, rowid, title, summary, applications, urls, topics, entities)
-  VALUES ('delete', old.id, old.title, old.summary, old.applications, old.urls, old.topics, old.entities);
-  INSERT INTO memory_episodes_fts(rowid, title, summary, applications, urls, topics, entities)
-  VALUES (new.id, new.title, new.summary, new.applications, new.urls, new.topics, new.entities);
+  INSERT INTO memory_episodes_fts(memory_episodes_fts, rowid, title, summary, applications, urls, topics, entities, decisions, action_items, technologies)
+  VALUES ('delete', old.id, old.title, old.summary, old.applications, old.urls, old.topics, old.entities, old.decisions, old.action_items, old.technologies);
+  INSERT INTO memory_episodes_fts(rowid, title, summary, applications, urls, topics, entities, decisions, action_items, technologies)
+  VALUES (new.id, new.title, new.summary, new.applications, new.urls, new.topics, new.entities, new.decisions, new.action_items, new.technologies);
 END;
 ''');
   }
@@ -763,20 +814,34 @@ END;
       return predicate;
     });
     final matchingSummaries = (await summaryQuery.get()).where((summary) {
+      final automaticDurable = summary.kind == SummaryKind.durable &&
+          summary.content.startsWith(automaticDurableMemoryPrefix);
       final selected = switch (summary.kind) {
         SummaryKind.manual =>
           filter.memoryTypes.contains(MemoryType.manualSummary),
         SummaryKind.durable =>
-          filter.memoryTypes.contains(MemoryType.durableMemory),
+          automaticDurable
+              ? deletesAutomaticSummaries
+              : filter.memoryTypes.contains(MemoryType.durableMemory),
         _ => deletesAutomaticSummaries,
       };
       if (!selected) return false;
       if (summary.kind == SummaryKind.manual ||
-          summary.kind == SummaryKind.durable ||
+          (summary.kind == SummaryKind.durable && !automaticDurable) ||
           (filter.activityIds.isEmpty &&
               filter.applications.isEmpty &&
               filter.modalities.isEmpty)) {
         return true;
+      }
+      if (automaticDurable) {
+        final evidenceIds = RegExp(r'episódio #(\d+)')
+            .allMatches(summary.content)
+            .map((match) => int.parse(match.group(1)!))
+            .toSet();
+        if (evidenceIds.isNotEmpty &&
+            matchingEpisodes.any((episode) => evidenceIds.contains(episode.id))) {
+          return true;
+        }
       }
       return candidates.any((activity) =>
           !activity.capturedAt.isBefore(summary.periodStart) &&

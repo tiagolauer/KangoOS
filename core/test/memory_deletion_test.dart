@@ -113,6 +113,16 @@ void main() {
           ),
         );
       }
+      await database.insertActivitySummary(
+        ActivitySummariesCompanion.insert(
+          kind: SummaryKind.durable,
+          periodStart: start,
+          periodEnd: end,
+          content: '[auto-durable:technology:dart]\n'
+              'Memória recorrente: Dart\n'
+              'Evidências:\n- episódio #$episodeId',
+        ),
+      );
 
       final filter = MemoryDeletionFilter(
         start: start,
@@ -123,11 +133,11 @@ void main() {
       final preview = await memory.previewDeletion(filter);
       expect(preview.activities, 1);
       expect(preview.episodes, 1);
-      expect(preview.summaries, 1);
+      expect(preview.summaries, 2);
       expect(preview.embeddings, 1);
 
       final deleted = await memory.delete(filter);
-      expect(deleted.total, 3);
+      expect(deleted.total, 4);
       final activities = await database.allActivities();
       expect(activities, hasLength(2));
       expect(
@@ -157,6 +167,13 @@ void main() {
       expect(
         (await database.allSummaries()).map((summary) => summary.kind),
         containsAll([SummaryKind.manual, SummaryKind.durable]),
+      );
+      expect(
+        (await database.allSummaries())
+            .where((summary) => summary.kind == SummaryKind.durable)
+            .single
+            .content,
+        isNot(startsWith(automaticDurableMemoryPrefix)),
       );
 
       final llm = _LlmProvider();

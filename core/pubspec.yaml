@@ -8,6 +8,7 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
+  crypto: ^3.0.6
   drift: ^2.28.2
   http: ^1.6.0
   path: ^1.9.0

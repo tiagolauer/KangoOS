@@ -18,6 +18,7 @@ import 'database_encryption.dart';
 import 'embedding/settings_embedding_provider.dart';
 import 'home/app_shell.dart';
 import 'memory/memory_compaction_service.dart';
+import 'memory/memory_formation_backfill_service.dart';
 import 'quick_capture_service.dart';
 import 'runtime/kango_runtime.dart';
 import 'settings_repository.dart';
@@ -119,7 +120,11 @@ Future<void> _startKangoos() async {
     memory: memory,
     settingsRepository: settingsRepository,
     captureSettingsRepository: captureSettingsRepository,
-    memoryFormation: memoryFormation,
+  );
+  final memoryBackfill = MemoryFormationBackfillService(
+    formation: memoryFormation,
+    settingsRepository: settingsRepository,
+    captureSettingsRepository: captureSettingsRepository,
   );
   final audioCapture = AudioCaptureService(
     memory: memory,
@@ -141,6 +146,7 @@ Future<void> _startKangoos() async {
   runtime = KangoRuntime(
     services: [
       windowCapture,
+      memoryBackfill,
       activitySummary,
       audioCapture,
       memoryCompaction,

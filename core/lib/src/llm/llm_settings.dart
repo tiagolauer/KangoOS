@@ -58,6 +58,15 @@ class LlmSettings {
   bool get requiresApiKey =>
       provider != LlmProviderKind.ollama && !isLocalEndpoint;
 
+  String get inferenceModelId {
+    final endpoint = switch (provider) {
+      LlmProviderKind.ollama => ollamaBaseUrl,
+      LlmProviderKind.openAi => openAiBaseUrl,
+      _ => provider.name,
+    };
+    return '${provider.name}|${endpoint.replaceFirst(RegExp(r'/+$'), '')}|$model';
+  }
+
   LlmSettings copyWith({
     LlmProviderKind? provider,
     String? model,
