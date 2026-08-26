@@ -3,6 +3,8 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 import '../capture/capture_settings_repository.dart';
+import '../capture/capture_status.dart';
+import '../capture/capture_status_indicator.dart';
 import '../confirm_dialog.dart';
 import '../settings_repository.dart';
 import '../snippet_editor_screen.dart';
@@ -17,6 +19,7 @@ class AppShell extends StatefulWidget {
     required this.memory,
     required this.conversations,
     required this.captureSettingsRepository,
+    this.captureStatus,
     this.needsCaptureConsent = false,
   });
 
@@ -25,6 +28,7 @@ class AppShell extends StatefulWidget {
   final MemoryService memory;
   final ConversationRepository conversations;
   final CaptureSettingsRepository captureSettingsRepository;
+  final CaptureStatusController? captureStatus;
   final bool needsCaptureConsent;
 
   @override
@@ -48,8 +52,9 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     if (widget.needsCaptureConsent) {
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _resolveCaptureConsent());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _resolveCaptureConsent(),
+      );
     }
   }
 
@@ -80,8 +85,9 @@ class _AppShellState extends State<AppShell> {
 
     await widget.captureSettingsRepository.markConsentShown();
     final current = await widget.captureSettingsRepository.load();
-    await widget.captureSettingsRepository
-        .save(current.copyWith(paused: enable != true));
+    await widget.captureSettingsRepository.save(
+      current.copyWith(paused: enable != true),
+    );
   }
 
   Future<SummaryResult> _generateDayRecap(CancelToken cancelToken) async {
@@ -175,8 +181,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildContent({VoidCallback? onOpenNavigation}) {
+    final Widget content;
     if (_editing) {
-      return SnippetEditorScreen(
+      content = SnippetEditorScreen(
         key: ValueKey(_editingSnippet?.id ?? 'new'),
         snippets: widget.snippets,
         settingsRepository: _settingsRepository,
@@ -184,16 +191,25 @@ class _AppShellState extends State<AppShell> {
         onDone: _closeEditor,
         onDirtyChanged: (dirty) => _editorDirty = dirty,
       );
+    } else {
+      content = ChatHomePanel(
+        snippetRepository: widget.snippetRepository,
+        snippets: widget.snippets,
+        memory: widget.memory,
+        conversations: widget.conversations,
+        settingsRepository: _settingsRepository,
+        captureSettingsRepository: widget.captureSettingsRepository,
+        onOpenNavigation: onOpenNavigation,
+      );
     }
 
-    return ChatHomePanel(
-      snippetRepository: widget.snippetRepository,
-      snippets: widget.snippets,
-      memory: widget.memory,
-      conversations: widget.conversations,
-      settingsRepository: _settingsRepository,
-      captureSettingsRepository: widget.captureSettingsRepository,
-      onOpenNavigation: onOpenNavigation,
+    final captureStatus = widget.captureStatus;
+    if (captureStatus == null) return content;
+    return Column(
+      children: [
+        CaptureStatusIndicator(controller: captureStatus),
+        Expanded(child: content),
+      ],
     );
   }
 }

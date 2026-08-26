@@ -2,9 +2,29 @@
 
 #include <flutter/standard_method_codec.h>
 
+#include <cstdint>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+bool IsWorkstationLocked() {
+  HDESK desktop = OpenInputDesktop(0, FALSE, DESKTOP_SWITCHDESKTOP);
+  if (!desktop) return true;
+  const bool locked = SwitchDesktop(desktop) == FALSE;
+  CloseDesktop(desktop);
+  return locked;
+}
+
+int64_t IdleMilliseconds() {
+  LASTINPUTINFO input = {};
+  input.cbSize = sizeof(LASTINPUTINFO);
+  if (!GetLastInputInfo(&input)) return 0;
+  return static_cast<int64_t>(GetTickCount() - input.dwTime);
+}
+
+}
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -38,6 +58,15 @@ bool FlutterWindow::OnCreate() {
         if (call.method_name() == "setCloseToTray") {
           close_to_tray_ = std::get<bool>(*call.arguments());
           result->Success();
+          return;
+        }
+        if (call.method_name() == "getCaptureEnvironment") {
+          flutter::EncodableMap environment;
+          environment[flutter::EncodableValue("locked")] =
+              flutter::EncodableValue(IsWorkstationLocked());
+          environment[flutter::EncodableValue("idleMilliseconds")] =
+              flutter::EncodableValue(IdleMilliseconds());
+          result->Success(flutter::EncodableValue(environment));
           return;
         }
         result->NotImplemented();

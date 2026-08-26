@@ -11,6 +11,7 @@ class SqliteActivityRepository implements ActivityRepository {
   @override
   Future<int> create(NewActivity activity) => database.logActivity(
         ActivitiesCompanion.insert(
+          sourceId: Value(activity.sourceId),
           appName: activity.appName,
           windowTitle: activity.windowTitle,
           capturedText: Value(activity.capturedText),

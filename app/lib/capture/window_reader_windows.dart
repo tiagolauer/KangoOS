@@ -13,7 +13,13 @@ WindowSnapshot? readForegroundWindowWindows() {
   final title = _windowTitle(hwnd);
   if (title == null || title.trim().isEmpty) return null;
 
-  return WindowSnapshot(appName: _processName(hwnd), windowTitle: title);
+  final identity = _processIdentity(hwnd);
+  return WindowSnapshot(
+    appId: identity.id,
+    appName: identity.name,
+    windowTitle: title,
+    nativeWindowId: hwnd,
+  );
 }
 
 String? _windowTitle(int hwnd) {
@@ -29,7 +35,7 @@ String? _windowTitle(int hwnd) {
   }
 }
 
-String _processName(int hwnd) {
+_ProcessIdentity _processIdentity(int hwnd) {
   final pidPtr = calloc<Uint32>();
   final int pid;
   try {
@@ -44,14 +50,23 @@ String _processName(int hwnd) {
     0,
     pid,
   );
-  if (process == 0) return 'pid:$pid';
+  if (process == 0) {
+    return _ProcessIdentity(id: 'windows:pid:$pid', name: 'pid:$pid');
+  }
 
   try {
     final sizePtr = calloc<Uint32>()..value = MAX_PATH;
     final nameBuffer = wsalloc(MAX_PATH);
     try {
       final ok = QueryFullProcessImageName(process, 0, nameBuffer, sizePtr);
-      return ok == 0 ? 'pid:$pid' : p.basename(nameBuffer.toDartString());
+      if (ok == 0) {
+        return _ProcessIdentity(id: 'windows:pid:$pid', name: 'pid:$pid');
+      }
+      final executable = p.normalize(nameBuffer.toDartString());
+      return _ProcessIdentity(
+        id: 'windows:${executable.toLowerCase()}',
+        name: p.basename(executable),
+      );
     } finally {
       free(sizePtr);
       free(nameBuffer);
@@ -59,4 +74,11 @@ String _processName(int hwnd) {
   } finally {
     CloseHandle(process);
   }
+}
+
+class _ProcessIdentity {
+  const _ProcessIdentity({required this.id, required this.name});
+
+  final String id;
+  final String name;
 }

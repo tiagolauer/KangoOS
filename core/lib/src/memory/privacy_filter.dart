@@ -30,6 +30,7 @@ class PrivacyFilter {
   }
 
   NewActivity filterActivity(NewActivity activity) => NewActivity(
+        sourceId: activity.sourceId,
         appName: activity.appName,
         windowTitle: filter(activity.windowTitle) ?? activity.windowTitle,
         capturedText: filter(activity.capturedText),

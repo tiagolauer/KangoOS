@@ -378,9 +378,9 @@
     }
   },
   "captureScreenText": "Capturar texto da tela (OCR)",
-  "captureScreenTextDescription": "Roda OCR na tela inteira toda vez que a janela em foco muda, e guarda o texto lido. Isso captura tudo que estiver visível — mensagens de outras pessoas, documentos que você nem abriu, qualquer coisa que um colega compartilhe numa chamada. É a fonte de captura mais invasiva: desativada por padrão, e apps excluídos NÃO protegem aqui, porque o OCR lê a tela toda, não uma janela.",
+  "captureScreenTextDescription": "Roda OCR somente na janela ativa quando ela muda. A captura é descartada se o foco mudar, o Windows for bloqueado ou a fonte estiver bloqueada. Desativado por padrão.",
   "captureAudio": "Transcrever áudio do microfone (Whisper)",
-  "captureAudioDescription": "A cada 10 minutos, grava {seconds} segundos do seu microfone padrão e transcreve localmente com o Whisper. O áudio nunca sai deste dispositivo e a gravação é apagada logo após a transcrição — só o texto fica. Isso grava quem estiver falando, incluindo outras pessoas na sala ou numa chamada, que não concordaram com isso. Verifique se gravar é legal e aceitável onde você está antes de ativar.",
+  "captureAudioDescription": "Enquanto ativado, grava blocos de {seconds} segundos do microfone e usa detecção de voz antes de transcrever localmente com Whisper. Blocos sem voz são ignorados e todo arquivo de áudio é apagado logo após o processamento. Verifique se gravar é legal e aceitável onde você está antes de ativar.",
   "@captureAudioDescription": {
     "placeholders": {
       "seconds": {
@@ -408,5 +408,31 @@
         "type": "String"
       }
     }
-  }
+  },
+  "pauseCaptureTemporarily": "Pausar temporariamente",
+  "pauseFor15Minutes": "15 minutos",
+  "pauseForOneHour": "1 hora",
+  "pauseForEightHours": "8 horas",
+  "resumeCaptureNow": "Retomar agora",
+  "capturePausedUntil": "A captura será retomada automaticamente às {time}.",
+  "@capturePausedUntil": {"placeholders": {"time": {"type": "String"}}},
+  "knownCaptureSources": "Fontes conhecidas",
+  "knownCaptureSourcesDescription": "Novas aplicações ficam desativadas até você permitir a captura individualmente.",
+  "noKnownCaptureSources": "Nenhuma aplicação detectada ainda.",
+  "blockCaptureSource": "Bloquear esta fonte",
+  "unblockCaptureSource": "Desbloquear esta fonte",
+  "captureSourceNeverCaptured": "Nunca capturada",
+  "captureSourceLastCaptured": "Última captura em {date} às {time}",
+  "@captureSourceLastCaptured": {"placeholders": {"date": {"type": "String"}, "time": {"type": "String"}}},
+  "captureSourceNoModalities": "nenhuma modalidade observada",
+  "captureModalityMetadata": "metadados",
+  "captureModalityClipboard": "área de transferência",
+  "captureModalityBrowser": "navegador",
+  "captureModalityVisibleText": "texto visível",
+  "captureModalityScreenText": "OCR",
+  "captureModalityAudio": "áudio",
+  "microphoneCaptureActive": "Microfone em captura",
+  "ocrCaptureActive": "OCR da janela ativo",
+  "captureSuspendedLocked": "Captura suspensa: Windows bloqueado",
+  "captureIdleMode": "Captura em modo ocioso"
 }

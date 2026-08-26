@@ -154,6 +154,35 @@ END;
     expect((await repaired.snippetVectors()).single.embedding, hasLength(2));
   });
 
+  test('migrates a v18 database to stable capture source identities', () async {
+    final tempDir = Directory.systemTemp.createTempSync('kangoos_v18_source');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+    final file = File('${tempDir.path}/legacy.db');
+
+    final initial = KangoosDatabase.native(file);
+    await initial.allActivities();
+    await initial.close();
+    final legacy = sqlite3.open(file.path);
+    legacy.execute('ALTER TABLE activities DROP COLUMN source_id;');
+    legacy.execute('PRAGMA user_version = 18;');
+    legacy.dispose();
+
+    final migrated = KangoosDatabase.native(file);
+    addTearDown(migrated.close);
+    await migrated.logActivity(
+      ActivitiesCompanion.insert(
+        sourceId: const Value('windows:c:/apps/code.exe'),
+        appName: 'code.exe',
+        windowTitle: 'main.dart',
+      ),
+    );
+
+    expect(
+      (await migrated.allActivities()).single.sourceId,
+      'windows:c:/apps/code.exe',
+    );
+  });
+
   test('migrating a v11 database converts json embeddings to binary', () async {
     final tempDir = Directory.systemTemp.createTempSync('kangoos_migration');
     addTearDown(() => tempDir.deleteSync(recursive: true));

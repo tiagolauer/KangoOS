@@ -5,6 +5,7 @@ const defaultRetentionDays = 30;
 class CaptureSettings {
   const CaptureSettings({
     this.paused = false,
+    this.resumeAt,
     this.excludedApps = const [],
     this.retentionDays = defaultRetentionDays,
     this.captureVisibleText = false,
@@ -17,6 +18,7 @@ class CaptureSettings {
   });
 
   final bool paused;
+  final DateTime? resumeAt;
   final List<String> excludedApps;
   final int retentionDays;
   final bool captureVisibleText;
@@ -32,6 +34,8 @@ class CaptureSettings {
 
   CaptureSettings copyWith({
     bool? paused,
+    DateTime? resumeAt,
+    bool clearResumeAt = false,
     List<String>? excludedApps,
     int? retentionDays,
     bool? captureVisibleText,
@@ -44,6 +48,7 @@ class CaptureSettings {
   }) {
     return CaptureSettings(
       paused: paused ?? this.paused,
+      resumeAt: clearResumeAt ? null : resumeAt ?? this.resumeAt,
       excludedApps: excludedApps ?? this.excludedApps,
       retentionDays: retentionDays ?? this.retentionDays,
       captureVisibleText: captureVisibleText ?? this.captureVisibleText,
@@ -59,6 +64,7 @@ class CaptureSettings {
 
 class CaptureSettingsRepository {
   static const _pausedKey = 'capture_paused';
+  static const _resumeAtKey = 'capture_resume_at';
   static const _excludedAppsKey = 'capture_excluded_apps';
   static const _retentionDaysKey = 'capture_retention_days';
   static const _captureVisibleTextKey = 'capture_visible_text';
@@ -72,8 +78,13 @@ class CaptureSettingsRepository {
 
   Future<CaptureSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
-    return CaptureSettings(
+    final resumeAtValue = prefs.getString(_resumeAtKey);
+    final resumeAt = resumeAtValue == null
+        ? null
+        : DateTime.tryParse(resumeAtValue)?.toLocal();
+    var settings = CaptureSettings(
       paused: prefs.getBool(_pausedKey) ?? false,
+      resumeAt: resumeAt,
       excludedApps: prefs.getStringList(_excludedAppsKey) ?? const [],
       retentionDays: prefs.getInt(_retentionDaysKey) ?? defaultRetentionDays,
       captureVisibleText: prefs.getBool(_captureVisibleTextKey) ?? false,
@@ -84,11 +95,28 @@ class CaptureSettingsRepository {
       allowRemoteSummaries: prefs.getBool(_allowRemoteSummariesKey) ?? false,
       redactPii: prefs.getBool(_redactPiiKey) ?? false,
     );
+    if (settings.paused &&
+        resumeAt != null &&
+        !DateTime.now().isBefore(resumeAt)) {
+      settings = settings.copyWith(paused: false, clearResumeAt: true);
+      await _save(prefs, settings);
+    }
+    return settings;
   }
 
   Future<void> save(CaptureSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
+    await _save(prefs, settings);
+  }
+
+  Future<void> _save(SharedPreferences prefs, CaptureSettings settings) async {
     await prefs.setBool(_pausedKey, settings.paused);
+    final resumeAt = settings.paused ? settings.resumeAt : null;
+    if (resumeAt != null) {
+      await prefs.setString(_resumeAtKey, resumeAt.toUtc().toIso8601String());
+    } else {
+      await prefs.remove(_resumeAtKey);
+    }
     await prefs.setStringList(_excludedAppsKey, settings.excludedApps);
     await prefs.setInt(_retentionDaysKey, settings.retentionDays);
     await prefs.setBool(_captureVisibleTextKey, settings.captureVisibleText);
@@ -97,7 +125,9 @@ class CaptureSettingsRepository {
     await prefs.setBool(_captureBrowserUrlsKey, settings.captureBrowserUrls);
     await prefs.setBool(_captureClipboardKey, settings.captureClipboard);
     await prefs.setBool(
-        _allowRemoteSummariesKey, settings.allowRemoteSummaries);
+      _allowRemoteSummariesKey,
+      settings.allowRemoteSummaries,
+    );
     await prefs.setBool(_redactPiiKey, settings.redactPii);
   }
 

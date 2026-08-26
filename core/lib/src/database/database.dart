@@ -36,7 +36,7 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -103,12 +103,18 @@ class KangoosDatabase extends _$KangoosDatabase {
           if (from < 18) {
             await _repairLegacySchema(m);
           }
+          if (from < 19 && !await _hasColumn('activities', 'source_id')) {
+            await m.addColumn(activities, activities.sourceId);
+          }
         },
       );
 
   Future<void> _repairLegacySchema(Migrator migrator) async {
     if (!await _hasColumn('activities', 'captured_url')) {
       await migrator.addColumn(activities, activities.capturedUrl);
+    }
+    if (!await _hasColumn('activities', 'source_id')) {
+      await migrator.addColumn(activities, activities.sourceId);
     }
     if (!await _hasColumn('activities', 'captured_clipboard')) {
       await migrator.addColumn(activities, activities.capturedClipboard);

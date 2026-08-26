@@ -30,11 +30,11 @@ struct Screenshot {
   int height = 0;
 };
 
-bool CaptureVirtualScreen(Screenshot& out) {
-  const int left = GetSystemMetrics(SM_XVIRTUALSCREEN);
-  const int top = GetSystemMetrics(SM_YVIRTUALSCREEN);
-  const int width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-  const int height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+bool CaptureWindow(HWND window, Screenshot& out) {
+  RECT bounds = {};
+  if (!IsWindow(window) || !GetWindowRect(window, &bounds)) return false;
+  const int width = bounds.right - bounds.left;
+  const int height = bounds.bottom - bounds.top;
   if (width <= 0 || height <= 0) return false;
 
   HDC screen = GetDC(nullptr);
@@ -46,7 +46,7 @@ bool CaptureVirtualScreen(Screenshot& out) {
 
   if (memory && bitmap) {
     HGDIOBJ previous = SelectObject(memory, bitmap);
-    if (BitBlt(memory, 0, 0, width, height, screen, left, top, SRCCOPY)) {
+    if (PrintWindow(window, memory, PW_RENDERFULLCONTENT)) {
       BITMAPINFO info = {};
       info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
       info.bmiHeader.biWidth = width;
@@ -105,18 +105,23 @@ void WriteUtf8(const std::wstring& text) {
 
 }  // namespace
 
-int main() {
+int wmain(int argc, wchar_t** argv) {
   try {
+    if (argc != 2) return kExitFailed;
+    const auto value = _wcstoui64(argv[1], nullptr, 10);
+    HWND window = reinterpret_cast<HWND>(value);
+    if (!window || GetForegroundWindow() != window) return kExitNoText;
     winrt::init_apartment();
 
     Screenshot shot;
-    if (!CaptureVirtualScreen(shot)) return kExitFailed;
+    if (!CaptureWindow(window, shot)) return kExitFailed;
 
     auto engine = winrt::Windows::Media::Ocr::OcrEngine::
         TryCreateFromUserProfileLanguages();
     if (!engine) return kExitFailed;
 
     auto result = engine.RecognizeAsync(ToSoftwareBitmap(shot)).get();
+    if (GetForegroundWindow() != window) return kExitNoText;
     std::wstring text(result.Text());
     if (text.empty()) return kExitNoText;
     if (text.size() > kMaxCapturedTextLength) {

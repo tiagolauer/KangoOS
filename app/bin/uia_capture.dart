@@ -8,14 +8,18 @@ const maxCapturedTextLength = 2000;
 const coinitApartmentThreaded = 0x2;
 const uiaValuePatternId = 10002;
 
-void main() {
+void main(List<String> arguments) {
+  if (arguments.length != 1) exit(1);
+  final window = int.tryParse(arguments.single);
+  if (window == null || window == 0 || GetForegroundWindow() != window) exit(1);
+
   final hr = CoInitializeEx(nullptr, coinitApartmentThreaded);
   if (FAILED(hr) && hr != S_FALSE) exit(1);
 
   var exitCode = 1;
   try {
     final text = _focusedElementText();
-    if (text != null && text.isNotEmpty) {
+    if (text != null && text.isNotEmpty && GetForegroundWindow() == window) {
       stdout.write(
         text.length > maxCapturedTextLength
             ? text.substring(0, maxCapturedTextLength)
@@ -33,7 +37,8 @@ void main() {
 
 String? _focusedElementText() {
   final automation = IUIAutomation(
-      COMObject.createFromID(CLSID_CUIAutomation, IID_IUIAutomation));
+    COMObject.createFromID(CLSID_CUIAutomation, IID_IUIAutomation),
+  );
 
   final elementPtr = calloc<COMObject>();
   IUIAutomationElement? element;

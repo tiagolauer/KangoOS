@@ -10,6 +10,8 @@ import 'package:path_provider/path_provider.dart';
 import 'capture/activity_summary_service.dart';
 import 'capture/audio_capture_service.dart';
 import 'capture/capture_settings_repository.dart';
+import 'capture/capture_source_registry.dart';
+import 'capture/capture_status.dart';
 import 'capture/whisper_model_repository.dart';
 import 'capture/window_capture_service.dart';
 import 'database_encryption.dart';
@@ -75,6 +77,8 @@ Future<void> _startKangoos() async {
   final conversationRepository = SqliteConversationRepository(database);
   final episodeRepository = SqliteEpisodeRepository(database);
   final captureSettingsRepository = CaptureSettingsRepository();
+  final captureSourceRegistry = CaptureSourceRegistry();
+  final captureStatus = CaptureStatusController();
   final memoryQueryEngine = MemoryQueryEngine(
     episodes: episodeRepository,
     embeddingProvider: embeddingProvider,
@@ -105,6 +109,8 @@ Future<void> _startKangoos() async {
   final windowCapture = WindowCaptureService(
     memory: memory,
     settingsRepository: captureSettingsRepository,
+    sourceRegistry: captureSourceRegistry,
+    captureStatus: captureStatus,
   );
   final activitySummary = ActivitySummaryService(
     memory: memory,
@@ -116,6 +122,8 @@ Future<void> _startKangoos() async {
     memory: memory,
     settingsRepository: captureSettingsRepository,
     modelRepository: WhisperModelRepository(),
+    sourceRegistry: captureSourceRegistry,
+    captureStatus: captureStatus,
   );
   final memoryCompaction = MemoryCompactionService(hierarchy: hierarchy);
   final quickCapture = QuickCaptureService(
@@ -145,6 +153,7 @@ Future<void> _startKangoos() async {
     memory: memory,
     conversations: conversationRepository,
     captureSettingsRepository: captureSettingsRepository,
+    captureStatus: captureStatus,
     needsCaptureConsent: needsCaptureConsent,
     trayService: tray,
   ));
@@ -255,6 +264,7 @@ class KangoosApp extends StatelessWidget {
     required this.memory,
     required this.conversations,
     required this.captureSettingsRepository,
+    this.captureStatus,
     this.needsCaptureConsent = false,
     this.trayService,
   });
@@ -264,6 +274,7 @@ class KangoosApp extends StatelessWidget {
   final MemoryService memory;
   final ConversationRepository conversations;
   final CaptureSettingsRepository captureSettingsRepository;
+  final CaptureStatusController? captureStatus;
   final bool needsCaptureConsent;
   final TrayService? trayService;
 
@@ -288,6 +299,7 @@ class KangoosApp extends StatelessWidget {
       memory: memory,
       conversations: conversations,
       captureSettingsRepository: captureSettingsRepository,
+      captureStatus: captureStatus,
       needsCaptureConsent: needsCaptureConsent,
     );
     final tray = trayService;
@@ -296,6 +308,7 @@ class KangoosApp extends StatelessWidget {
       data: KangoosTheme.dark,
       child: TrayPanel(
         captureSettingsRepository: captureSettingsRepository,
+        captureStatus: captureStatus,
         onOpen: tray.showMainWindow,
         onHide: tray.hideTrayPanel,
         onToggleCapture: tray.toggleCapture,

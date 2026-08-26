@@ -11,68 +11,110 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
-      'title', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _contentMeta =
-      const VerificationMeta('content');
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
   @override
   late final GeneratedColumn<String> content = GeneratedColumn<String>(
-      'content', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _languageMeta =
-      const VerificationMeta('language');
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _languageMeta = const VerificationMeta(
+    'language',
+  );
   @override
   late final GeneratedColumn<String> language = GeneratedColumn<String>(
-      'language', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+    'language',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> tags =
-      GeneratedColumn<String>('tags', aliasedName, false,
-              type: DriftSqlType.string,
-              requiredDuringInsert: false,
-              defaultValue: const Constant('[]'))
-          .withConverter<List<String>>($SnippetsTable.$convertertags);
+      GeneratedColumn<String>(
+    'tags',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  ).withConverter<List<String>>($SnippetsTable.$convertertags);
   @override
   late final GeneratedColumnWithTypeConverter<List<double>?, Uint8List>
-      embedding = GeneratedColumn<Uint8List>('embedding', aliasedName, true,
-              type: DriftSqlType.blob, requiredDuringInsert: false)
-          .withConverter<List<double>?>($SnippetsTable.$converterembeddingn);
+      embedding = GeneratedColumn<Uint8List>(
+    'embedding',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  ).withConverter<List<double>?>($SnippetsTable.$converterembeddingn);
   static const VerificationMeta _embeddingProviderIdMeta =
       const VerificationMeta('embeddingProviderId');
   @override
   late final GeneratedColumn<String> embeddingProviderId =
-      GeneratedColumn<String>('embedding_provider_id', aliasedName, true,
-          type: DriftSqlType.string, requiredDuringInsert: false);
+      GeneratedColumn<String>(
+    'embedding_provider_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _syncIdMeta = const VerificationMeta('syncId');
   @override
   late final GeneratedColumn<String> syncId = GeneratedColumn<String>(
-      'sync_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
+    'sync_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
-  static const VerificationMeta _updatedAtMeta =
-      const VerificationMeta('updatedAt');
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
   @override
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-      'updated_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -84,7 +126,7 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
         embeddingProviderId,
         syncId,
         createdAt,
-        updatedAt
+        updatedAt,
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -92,8 +134,10 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
   String get actualTableName => $name;
   static const String $name = 'snippets';
   @override
-  VerificationContext validateIntegrity(Insertable<Snippet> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<Snippet> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -101,37 +145,52 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
     }
     if (data.containsKey('title')) {
       context.handle(
-          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
     } else if (isInserting) {
       context.missing(_titleMeta);
     }
     if (data.containsKey('content')) {
-      context.handle(_contentMeta,
-          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
     } else if (isInserting) {
       context.missing(_contentMeta);
     }
     if (data.containsKey('language')) {
-      context.handle(_languageMeta,
-          language.isAcceptableOrUnknown(data['language']!, _languageMeta));
+      context.handle(
+        _languageMeta,
+        language.isAcceptableOrUnknown(data['language']!, _languageMeta),
+      );
     }
     if (data.containsKey('embedding_provider_id')) {
       context.handle(
+        _embeddingProviderIdMeta,
+        embeddingProviderId.isAcceptableOrUnknown(
+          data['embedding_provider_id']!,
           _embeddingProviderIdMeta,
-          embeddingProviderId.isAcceptableOrUnknown(
-              data['embedding_provider_id']!, _embeddingProviderIdMeta));
+        ),
+      );
     }
     if (data.containsKey('sync_id')) {
-      context.handle(_syncIdMeta,
-          syncId.isAcceptableOrUnknown(data['sync_id']!, _syncIdMeta));
+      context.handle(
+        _syncIdMeta,
+        syncId.isAcceptableOrUnknown(data['sync_id']!, _syncIdMeta),
+      );
     }
     if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
     }
     if (data.containsKey('updated_at')) {
-      context.handle(_updatedAtMeta,
-          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
     }
     return context;
   }
@@ -142,27 +201,50 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
   Snippet map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Snippet(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      title: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
-      content: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
-      language: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}language']),
-      tags: $SnippetsTable.$convertertags.fromSql(attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}tags'])!),
-      embedding: $SnippetsTable.$converterembeddingn.fromSql(attachedDatabase
-          .typeMapping
-          .read(DriftSqlType.blob, data['${effectivePrefix}embedding'])),
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      language: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}language'],
+      ),
+      tags: $SnippetsTable.$convertertags.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}tags'],
+        )!,
+      ),
+      embedding: $SnippetsTable.$converterembeddingn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.blob,
+          data['${effectivePrefix}embedding'],
+        ),
+      ),
       embeddingProviderId: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}embedding_provider_id']),
-      syncId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}sync_id']),
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
-      updatedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+        DriftSqlType.string,
+        data['${effectivePrefix}embedding_provider_id'],
+      ),
+      syncId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -190,17 +272,18 @@ class Snippet extends DataClass implements Insertable<Snippet> {
   final String? syncId;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const Snippet(
-      {required this.id,
-      required this.title,
-      required this.content,
-      this.language,
-      required this.tags,
-      this.embedding,
-      this.embeddingProviderId,
-      this.syncId,
-      required this.createdAt,
-      required this.updatedAt});
+  const Snippet({
+    required this.id,
+    required this.title,
+    required this.content,
+    this.language,
+    required this.tags,
+    this.embedding,
+    this.embeddingProviderId,
+    this.syncId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -215,7 +298,8 @@ class Snippet extends DataClass implements Insertable<Snippet> {
     }
     if (!nullToAbsent || embedding != null) {
       map['embedding'] = Variable<Uint8List>(
-          $SnippetsTable.$converterembeddingn.toSql(embedding));
+        $SnippetsTable.$converterembeddingn.toSql(embedding),
+      );
     }
     if (!nullToAbsent || embeddingProviderId != null) {
       map['embedding_provider_id'] = Variable<String>(embeddingProviderId);
@@ -250,8 +334,10 @@ class Snippet extends DataClass implements Insertable<Snippet> {
     );
   }
 
-  factory Snippet.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory Snippet.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Snippet(
       id: serializer.fromJson<int>(json['id']),
@@ -260,8 +346,9 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       language: serializer.fromJson<String?>(json['language']),
       tags: serializer.fromJson<List<String>>(json['tags']),
       embedding: serializer.fromJson<List<double>?>(json['embedding']),
-      embeddingProviderId:
-          serializer.fromJson<String?>(json['embeddingProviderId']),
+      embeddingProviderId: serializer.fromJson<String?>(
+        json['embeddingProviderId'],
+      ),
       syncId: serializer.fromJson<String?>(json['syncId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -284,17 +371,18 @@ class Snippet extends DataClass implements Insertable<Snippet> {
     };
   }
 
-  Snippet copyWith(
-          {int? id,
-          String? title,
-          String? content,
-          Value<String?> language = const Value.absent(),
-          List<String>? tags,
-          Value<List<double>?> embedding = const Value.absent(),
-          Value<String?> embeddingProviderId = const Value.absent(),
-          Value<String?> syncId = const Value.absent(),
-          DateTime? createdAt,
-          DateTime? updatedAt}) =>
+  Snippet copyWith({
+    int? id,
+    String? title,
+    String? content,
+    Value<String?> language = const Value.absent(),
+    List<String>? tags,
+    Value<List<double>?> embedding = const Value.absent(),
+    Value<String?> embeddingProviderId = const Value.absent(),
+    Value<String?> syncId = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) =>
       Snippet(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -344,8 +432,18 @@ class Snippet extends DataClass implements Insertable<Snippet> {
   }
 
   @override
-  int get hashCode => Object.hash(id, title, content, language, tags, embedding,
-      embeddingProviderId, syncId, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+        id,
+        title,
+        content,
+        language,
+        tags,
+        embedding,
+        embeddingProviderId,
+        syncId,
+        createdAt,
+        updatedAt,
+      );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -425,17 +523,18 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
     });
   }
 
-  SnippetsCompanion copyWith(
-      {Value<int>? id,
-      Value<String>? title,
-      Value<String>? content,
-      Value<String?>? language,
-      Value<List<String>>? tags,
-      Value<List<double>?>? embedding,
-      Value<String?>? embeddingProviderId,
-      Value<String?>? syncId,
-      Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+  SnippetsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<String>? content,
+    Value<String?>? language,
+    Value<List<String>>? tags,
+    Value<List<double>?>? embedding,
+    Value<String?>? embeddingProviderId,
+    Value<String?>? syncId,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
     return SnippetsCompanion(
       id: id ?? this.id,
       title: title ?? this.title,
@@ -466,16 +565,19 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       map['language'] = Variable<String>(language.value);
     }
     if (tags.present) {
-      map['tags'] =
-          Variable<String>($SnippetsTable.$convertertags.toSql(tags.value));
+      map['tags'] = Variable<String>(
+        $SnippetsTable.$convertertags.toSql(tags.value),
+      );
     }
     if (embedding.present) {
       map['embedding'] = Variable<Uint8List>(
-          $SnippetsTable.$converterembeddingn.toSql(embedding.value));
+        $SnippetsTable.$converterembeddingn.toSql(embedding.value),
+      );
     }
     if (embeddingProviderId.present) {
-      map['embedding_provider_id'] =
-          Variable<String>(embeddingProviderId.value);
+      map['embedding_provider_id'] = Variable<String>(
+        embeddingProviderId.value,
+      );
     }
     if (syncId.present) {
       map['sync_id'] = Variable<String>(syncId.value);
@@ -516,65 +618,122 @@ class $ActivitiesTable extends Activities
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _appNameMeta =
-      const VerificationMeta('appName');
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _appNameMeta = const VerificationMeta(
+    'appName',
+  );
   @override
   late final GeneratedColumn<String> appName = GeneratedColumn<String>(
-      'app_name', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _windowTitleMeta =
-      const VerificationMeta('windowTitle');
+    'app_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _windowTitleMeta = const VerificationMeta(
+    'windowTitle',
+  );
   @override
   late final GeneratedColumn<String> windowTitle = GeneratedColumn<String>(
-      'window_title', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _capturedTextMeta =
-      const VerificationMeta('capturedText');
+    'window_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _capturedTextMeta = const VerificationMeta(
+    'capturedText',
+  );
   @override
   late final GeneratedColumn<String> capturedText = GeneratedColumn<String>(
-      'captured_text', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _capturedUrlMeta =
-      const VerificationMeta('capturedUrl');
+    'captured_text',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _capturedUrlMeta = const VerificationMeta(
+    'capturedUrl',
+  );
   @override
   late final GeneratedColumn<String> capturedUrl = GeneratedColumn<String>(
-      'captured_url', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _capturedClipboardMeta =
-      const VerificationMeta('capturedClipboard');
+    'captured_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _capturedClipboardMeta = const VerificationMeta(
+    'capturedClipboard',
+  );
   @override
   late final GeneratedColumn<String> capturedClipboard =
-      GeneratedColumn<String>('captured_clipboard', aliasedName, true,
-          type: DriftSqlType.string, requiredDuringInsert: false);
+      GeneratedColumn<String>(
+    'captured_clipboard',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _capturedScreenTextMeta =
       const VerificationMeta('capturedScreenText');
   @override
   late final GeneratedColumn<String> capturedScreenText =
-      GeneratedColumn<String>('captured_screen_text', aliasedName, true,
-          type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _capturedAudioTextMeta =
-      const VerificationMeta('capturedAudioText');
+      GeneratedColumn<String>(
+    'captured_screen_text',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _capturedAudioTextMeta = const VerificationMeta(
+    'capturedAudioText',
+  );
   @override
   late final GeneratedColumn<String> capturedAudioText =
-      GeneratedColumn<String>('captured_audio_text', aliasedName, true,
-          type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _capturedAtMeta =
-      const VerificationMeta('capturedAt');
+      GeneratedColumn<String>(
+    'captured_audio_text',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _capturedAtMeta = const VerificationMeta(
+    'capturedAt',
+  );
   @override
   late final GeneratedColumn<DateTime> capturedAt = GeneratedColumn<DateTime>(
-      'captured_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+    'captured_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
   @override
   List<GeneratedColumn> get $columns => [
         id,
+        sourceId,
         appName,
         windowTitle,
         capturedText,
@@ -582,7 +741,7 @@ class $ActivitiesTable extends Activities
         capturedClipboard,
         capturedScreenText,
         capturedAudioText,
-        capturedAt
+        capturedAt,
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -590,62 +749,90 @@ class $ActivitiesTable extends Activities
   String get actualTableName => $name;
   static const String $name = 'activities';
   @override
-  VerificationContext validateIntegrity(Insertable<Activity> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<Activity> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    }
     if (data.containsKey('app_name')) {
-      context.handle(_appNameMeta,
-          appName.isAcceptableOrUnknown(data['app_name']!, _appNameMeta));
+      context.handle(
+        _appNameMeta,
+        appName.isAcceptableOrUnknown(data['app_name']!, _appNameMeta),
+      );
     } else if (isInserting) {
       context.missing(_appNameMeta);
     }
     if (data.containsKey('window_title')) {
       context.handle(
+        _windowTitleMeta,
+        windowTitle.isAcceptableOrUnknown(
+          data['window_title']!,
           _windowTitleMeta,
-          windowTitle.isAcceptableOrUnknown(
-              data['window_title']!, _windowTitleMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_windowTitleMeta);
     }
     if (data.containsKey('captured_text')) {
       context.handle(
+        _capturedTextMeta,
+        capturedText.isAcceptableOrUnknown(
+          data['captured_text']!,
           _capturedTextMeta,
-          capturedText.isAcceptableOrUnknown(
-              data['captured_text']!, _capturedTextMeta));
+        ),
+      );
     }
     if (data.containsKey('captured_url')) {
       context.handle(
+        _capturedUrlMeta,
+        capturedUrl.isAcceptableOrUnknown(
+          data['captured_url']!,
           _capturedUrlMeta,
-          capturedUrl.isAcceptableOrUnknown(
-              data['captured_url']!, _capturedUrlMeta));
+        ),
+      );
     }
     if (data.containsKey('captured_clipboard')) {
       context.handle(
+        _capturedClipboardMeta,
+        capturedClipboard.isAcceptableOrUnknown(
+          data['captured_clipboard']!,
           _capturedClipboardMeta,
-          capturedClipboard.isAcceptableOrUnknown(
-              data['captured_clipboard']!, _capturedClipboardMeta));
+        ),
+      );
     }
     if (data.containsKey('captured_screen_text')) {
       context.handle(
+        _capturedScreenTextMeta,
+        capturedScreenText.isAcceptableOrUnknown(
+          data['captured_screen_text']!,
           _capturedScreenTextMeta,
-          capturedScreenText.isAcceptableOrUnknown(
-              data['captured_screen_text']!, _capturedScreenTextMeta));
+        ),
+      );
     }
     if (data.containsKey('captured_audio_text')) {
       context.handle(
+        _capturedAudioTextMeta,
+        capturedAudioText.isAcceptableOrUnknown(
+          data['captured_audio_text']!,
           _capturedAudioTextMeta,
-          capturedAudioText.isAcceptableOrUnknown(
-              data['captured_audio_text']!, _capturedAudioTextMeta));
+        ),
+      );
     }
     if (data.containsKey('captured_at')) {
       context.handle(
-          _capturedAtMeta,
-          capturedAt.isAcceptableOrUnknown(
-              data['captured_at']!, _capturedAtMeta));
+        _capturedAtMeta,
+        capturedAt.isAcceptableOrUnknown(data['captured_at']!, _capturedAtMeta),
+      );
     }
     return context;
   }
@@ -656,24 +843,46 @@ class $ActivitiesTable extends Activities
   Activity map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Activity(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      appName: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}app_name'])!,
-      windowTitle: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}window_title'])!,
-      capturedText: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}captured_text']),
-      capturedUrl: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}captured_url']),
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      ),
+      appName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}app_name'],
+      )!,
+      windowTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}window_title'],
+      )!,
+      capturedText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}captured_text'],
+      ),
+      capturedUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}captured_url'],
+      ),
       capturedClipboard: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}captured_clipboard']),
+        DriftSqlType.string,
+        data['${effectivePrefix}captured_clipboard'],
+      ),
       capturedScreenText: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}captured_screen_text']),
+        DriftSqlType.string,
+        data['${effectivePrefix}captured_screen_text'],
+      ),
       capturedAudioText: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}captured_audio_text']),
-      capturedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}captured_at'])!,
+        DriftSqlType.string,
+        data['${effectivePrefix}captured_audio_text'],
+      ),
+      capturedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}captured_at'],
+      )!,
     );
   }
 
@@ -685,6 +894,7 @@ class $ActivitiesTable extends Activities
 
 class Activity extends DataClass implements Insertable<Activity> {
   final int id;
+  final String? sourceId;
   final String appName;
   final String windowTitle;
   final String? capturedText;
@@ -693,20 +903,25 @@ class Activity extends DataClass implements Insertable<Activity> {
   final String? capturedScreenText;
   final String? capturedAudioText;
   final DateTime capturedAt;
-  const Activity(
-      {required this.id,
-      required this.appName,
-      required this.windowTitle,
-      this.capturedText,
-      this.capturedUrl,
-      this.capturedClipboard,
-      this.capturedScreenText,
-      this.capturedAudioText,
-      required this.capturedAt});
+  const Activity({
+    required this.id,
+    this.sourceId,
+    required this.appName,
+    required this.windowTitle,
+    this.capturedText,
+    this.capturedUrl,
+    this.capturedClipboard,
+    this.capturedScreenText,
+    this.capturedAudioText,
+    required this.capturedAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    if (!nullToAbsent || sourceId != null) {
+      map['source_id'] = Variable<String>(sourceId);
+    }
     map['app_name'] = Variable<String>(appName);
     map['window_title'] = Variable<String>(windowTitle);
     if (!nullToAbsent || capturedText != null) {
@@ -731,6 +946,9 @@ class Activity extends DataClass implements Insertable<Activity> {
   ActivitiesCompanion toCompanion(bool nullToAbsent) {
     return ActivitiesCompanion(
       id: Value(id),
+      sourceId: sourceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceId),
       appName: Value(appName),
       windowTitle: Value(windowTitle),
       capturedText: capturedText == null && nullToAbsent
@@ -752,21 +970,27 @@ class Activity extends DataClass implements Insertable<Activity> {
     );
   }
 
-  factory Activity.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory Activity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Activity(
       id: serializer.fromJson<int>(json['id']),
+      sourceId: serializer.fromJson<String?>(json['sourceId']),
       appName: serializer.fromJson<String>(json['appName']),
       windowTitle: serializer.fromJson<String>(json['windowTitle']),
       capturedText: serializer.fromJson<String?>(json['capturedText']),
       capturedUrl: serializer.fromJson<String?>(json['capturedUrl']),
-      capturedClipboard:
-          serializer.fromJson<String?>(json['capturedClipboard']),
-      capturedScreenText:
-          serializer.fromJson<String?>(json['capturedScreenText']),
-      capturedAudioText:
-          serializer.fromJson<String?>(json['capturedAudioText']),
+      capturedClipboard: serializer.fromJson<String?>(
+        json['capturedClipboard'],
+      ),
+      capturedScreenText: serializer.fromJson<String?>(
+        json['capturedScreenText'],
+      ),
+      capturedAudioText: serializer.fromJson<String?>(
+        json['capturedAudioText'],
+      ),
       capturedAt: serializer.fromJson<DateTime>(json['capturedAt']),
     );
   }
@@ -775,6 +999,7 @@ class Activity extends DataClass implements Insertable<Activity> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'sourceId': serializer.toJson<String?>(sourceId),
       'appName': serializer.toJson<String>(appName),
       'windowTitle': serializer.toJson<String>(windowTitle),
       'capturedText': serializer.toJson<String?>(capturedText),
@@ -786,18 +1011,21 @@ class Activity extends DataClass implements Insertable<Activity> {
     };
   }
 
-  Activity copyWith(
-          {int? id,
-          String? appName,
-          String? windowTitle,
-          Value<String?> capturedText = const Value.absent(),
-          Value<String?> capturedUrl = const Value.absent(),
-          Value<String?> capturedClipboard = const Value.absent(),
-          Value<String?> capturedScreenText = const Value.absent(),
-          Value<String?> capturedAudioText = const Value.absent(),
-          DateTime? capturedAt}) =>
+  Activity copyWith({
+    int? id,
+    Value<String?> sourceId = const Value.absent(),
+    String? appName,
+    String? windowTitle,
+    Value<String?> capturedText = const Value.absent(),
+    Value<String?> capturedUrl = const Value.absent(),
+    Value<String?> capturedClipboard = const Value.absent(),
+    Value<String?> capturedScreenText = const Value.absent(),
+    Value<String?> capturedAudioText = const Value.absent(),
+    DateTime? capturedAt,
+  }) =>
       Activity(
         id: id ?? this.id,
+        sourceId: sourceId.present ? sourceId.value : this.sourceId,
         appName: appName ?? this.appName,
         windowTitle: windowTitle ?? this.windowTitle,
         capturedText:
@@ -817,6 +1045,7 @@ class Activity extends DataClass implements Insertable<Activity> {
   Activity copyWithCompanion(ActivitiesCompanion data) {
     return Activity(
       id: data.id.present ? data.id.value : this.id,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
       appName: data.appName.present ? data.appName.value : this.appName,
       windowTitle:
           data.windowTitle.present ? data.windowTitle.value : this.windowTitle,
@@ -843,6 +1072,7 @@ class Activity extends DataClass implements Insertable<Activity> {
   String toString() {
     return (StringBuffer('Activity(')
           ..write('id: $id, ')
+          ..write('sourceId: $sourceId, ')
           ..write('appName: $appName, ')
           ..write('windowTitle: $windowTitle, ')
           ..write('capturedText: $capturedText, ')
@@ -857,20 +1087,23 @@ class Activity extends DataClass implements Insertable<Activity> {
 
   @override
   int get hashCode => Object.hash(
-      id,
-      appName,
-      windowTitle,
-      capturedText,
-      capturedUrl,
-      capturedClipboard,
-      capturedScreenText,
-      capturedAudioText,
-      capturedAt);
+        id,
+        sourceId,
+        appName,
+        windowTitle,
+        capturedText,
+        capturedUrl,
+        capturedClipboard,
+        capturedScreenText,
+        capturedAudioText,
+        capturedAt,
+      );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Activity &&
           other.id == this.id &&
+          other.sourceId == this.sourceId &&
           other.appName == this.appName &&
           other.windowTitle == this.windowTitle &&
           other.capturedText == this.capturedText &&
@@ -883,6 +1116,7 @@ class Activity extends DataClass implements Insertable<Activity> {
 
 class ActivitiesCompanion extends UpdateCompanion<Activity> {
   final Value<int> id;
+  final Value<String?> sourceId;
   final Value<String> appName;
   final Value<String> windowTitle;
   final Value<String?> capturedText;
@@ -893,6 +1127,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
   final Value<DateTime> capturedAt;
   const ActivitiesCompanion({
     this.id = const Value.absent(),
+    this.sourceId = const Value.absent(),
     this.appName = const Value.absent(),
     this.windowTitle = const Value.absent(),
     this.capturedText = const Value.absent(),
@@ -904,6 +1139,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
   });
   ActivitiesCompanion.insert({
     this.id = const Value.absent(),
+    this.sourceId = const Value.absent(),
     required String appName,
     required String windowTitle,
     this.capturedText = const Value.absent(),
@@ -916,6 +1152,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
         windowTitle = Value(windowTitle);
   static Insertable<Activity> custom({
     Expression<int>? id,
+    Expression<String>? sourceId,
     Expression<String>? appName,
     Expression<String>? windowTitle,
     Expression<String>? capturedText,
@@ -927,6 +1164,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (sourceId != null) 'source_id': sourceId,
       if (appName != null) 'app_name': appName,
       if (windowTitle != null) 'window_title': windowTitle,
       if (capturedText != null) 'captured_text': capturedText,
@@ -939,18 +1177,21 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     });
   }
 
-  ActivitiesCompanion copyWith(
-      {Value<int>? id,
-      Value<String>? appName,
-      Value<String>? windowTitle,
-      Value<String?>? capturedText,
-      Value<String?>? capturedUrl,
-      Value<String?>? capturedClipboard,
-      Value<String?>? capturedScreenText,
-      Value<String?>? capturedAudioText,
-      Value<DateTime>? capturedAt}) {
+  ActivitiesCompanion copyWith({
+    Value<int>? id,
+    Value<String?>? sourceId,
+    Value<String>? appName,
+    Value<String>? windowTitle,
+    Value<String?>? capturedText,
+    Value<String?>? capturedUrl,
+    Value<String?>? capturedClipboard,
+    Value<String?>? capturedScreenText,
+    Value<String?>? capturedAudioText,
+    Value<DateTime>? capturedAt,
+  }) {
     return ActivitiesCompanion(
       id: id ?? this.id,
+      sourceId: sourceId ?? this.sourceId,
       appName: appName ?? this.appName,
       windowTitle: windowTitle ?? this.windowTitle,
       capturedText: capturedText ?? this.capturedText,
@@ -967,6 +1208,9 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
     }
     if (appName.present) {
       map['app_name'] = Variable<String>(appName.value);
@@ -999,6 +1243,7 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
   String toString() {
     return (StringBuffer('ActivitiesCompanion(')
           ..write('id: $id, ')
+          ..write('sourceId: $sourceId, ')
           ..write('appName: $appName, ')
           ..write('windowTitle: $windowTitle, ')
           ..write('capturedText: $capturedText, ')
@@ -1021,54 +1266,89 @@ class $ActivitySummariesTable extends ActivitySummaries
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
   @override
   late final GeneratedColumnWithTypeConverter<SummaryKind, String> kind =
-      GeneratedColumn<String>('kind', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
-          .withConverter<SummaryKind>($ActivitySummariesTable.$converterkind);
-  static const VerificationMeta _periodStartMeta =
-      const VerificationMeta('periodStart');
+      GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<SummaryKind>($ActivitySummariesTable.$converterkind);
+  static const VerificationMeta _periodStartMeta = const VerificationMeta(
+    'periodStart',
+  );
   @override
   late final GeneratedColumn<DateTime> periodStart = GeneratedColumn<DateTime>(
-      'period_start', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _periodEndMeta =
-      const VerificationMeta('periodEnd');
+    'period_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _periodEndMeta = const VerificationMeta(
+    'periodEnd',
+  );
   @override
   late final GeneratedColumn<DateTime> periodEnd = GeneratedColumn<DateTime>(
-      'period_end', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _contentMeta =
-      const VerificationMeta('content');
+    'period_end',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
   @override
   late final GeneratedColumn<String> content = GeneratedColumn<String>(
-      'content', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, kind, periodStart, periodEnd, content, createdAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        kind,
+        periodStart,
+        periodEnd,
+        content,
+        createdAt,
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'activity_summaries';
   @override
-  VerificationContext validateIntegrity(Insertable<ActivitySummary> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<ActivitySummary> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -1076,27 +1356,36 @@ class $ActivitySummariesTable extends ActivitySummaries
     }
     if (data.containsKey('period_start')) {
       context.handle(
+        _periodStartMeta,
+        periodStart.isAcceptableOrUnknown(
+          data['period_start']!,
           _periodStartMeta,
-          periodStart.isAcceptableOrUnknown(
-              data['period_start']!, _periodStartMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_periodStartMeta);
     }
     if (data.containsKey('period_end')) {
-      context.handle(_periodEndMeta,
-          periodEnd.isAcceptableOrUnknown(data['period_end']!, _periodEndMeta));
+      context.handle(
+        _periodEndMeta,
+        periodEnd.isAcceptableOrUnknown(data['period_end']!, _periodEndMeta),
+      );
     } else if (isInserting) {
       context.missing(_periodEndMeta);
     }
     if (data.containsKey('content')) {
-      context.handle(_contentMeta,
-          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
     } else if (isInserting) {
       context.missing(_contentMeta);
     }
     if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
     }
     return context;
   }
@@ -1107,19 +1396,32 @@ class $ActivitySummariesTable extends ActivitySummaries
   ActivitySummary map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ActivitySummary(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      kind: $ActivitySummariesTable.$converterkind.fromSql(attachedDatabase
-          .typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!),
-      periodStart: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}period_start'])!,
-      periodEnd: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}period_end'])!,
-      content: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: $ActivitySummariesTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      periodStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}period_start'],
+      )!,
+      periodEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}period_end'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
     );
   }
 
@@ -1139,20 +1441,22 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
   final DateTime periodEnd;
   final String content;
   final DateTime createdAt;
-  const ActivitySummary(
-      {required this.id,
-      required this.kind,
-      required this.periodStart,
-      required this.periodEnd,
-      required this.content,
-      required this.createdAt});
+  const ActivitySummary({
+    required this.id,
+    required this.kind,
+    required this.periodStart,
+    required this.periodEnd,
+    required this.content,
+    required this.createdAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     {
-      map['kind'] =
-          Variable<String>($ActivitySummariesTable.$converterkind.toSql(kind));
+      map['kind'] = Variable<String>(
+        $ActivitySummariesTable.$converterkind.toSql(kind),
+      );
     }
     map['period_start'] = Variable<DateTime>(periodStart);
     map['period_end'] = Variable<DateTime>(periodEnd);
@@ -1172,8 +1476,10 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
     );
   }
 
-  factory ActivitySummary.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory ActivitySummary.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ActivitySummary(
       id: serializer.fromJson<int>(json['id']),
@@ -1197,13 +1503,14 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
     };
   }
 
-  ActivitySummary copyWith(
-          {int? id,
-          SummaryKind? kind,
-          DateTime? periodStart,
-          DateTime? periodEnd,
-          String? content,
-          DateTime? createdAt}) =>
+  ActivitySummary copyWith({
+    int? id,
+    SummaryKind? kind,
+    DateTime? periodStart,
+    DateTime? periodEnd,
+    String? content,
+    DateTime? createdAt,
+  }) =>
       ActivitySummary(
         id: id ?? this.id,
         kind: kind ?? this.kind,
@@ -1296,13 +1603,14 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
     });
   }
 
-  ActivitySummariesCompanion copyWith(
-      {Value<int>? id,
-      Value<SummaryKind>? kind,
-      Value<DateTime>? periodStart,
-      Value<DateTime>? periodEnd,
-      Value<String>? content,
-      Value<DateTime>? createdAt}) {
+  ActivitySummariesCompanion copyWith({
+    Value<int>? id,
+    Value<SummaryKind>? kind,
+    Value<DateTime>? periodStart,
+    Value<DateTime>? periodEnd,
+    Value<String>? content,
+    Value<DateTime>? createdAt,
+  }) {
     return ActivitySummariesCompanion(
       id: id ?? this.id,
       kind: kind ?? this.kind,
@@ -1321,7 +1629,8 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
     }
     if (kind.present) {
       map['kind'] = Variable<String>(
-          $ActivitySummariesTable.$converterkind.toSql(kind.value));
+        $ActivitySummariesTable.$converterkind.toSql(kind.value),
+      );
     }
     if (periodStart.present) {
       map['period_start'] = Variable<DateTime>(periodStart.value);
@@ -1361,28 +1670,40 @@ class $ConversationsTable extends Conversations
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
-  static const VerificationMeta _updatedAtMeta =
-      const VerificationMeta('updatedAt');
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
   @override
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-      'updated_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
   @override
   List<GeneratedColumn> get $columns => [id, createdAt, updatedAt];
   @override
@@ -1391,20 +1712,26 @@ class $ConversationsTable extends Conversations
   String get actualTableName => $name;
   static const String $name = 'conversations';
   @override
-  VerificationContext validateIntegrity(Insertable<Conversation> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<Conversation> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
     if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
     }
     if (data.containsKey('updated_at')) {
-      context.handle(_updatedAtMeta,
-          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
     }
     return context;
   }
@@ -1415,12 +1742,18 @@ class $ConversationsTable extends Conversations
   Conversation map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Conversation(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
-      updatedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -1434,8 +1767,11 @@ class Conversation extends DataClass implements Insertable<Conversation> {
   final int id;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const Conversation(
-      {required this.id, required this.createdAt, required this.updatedAt});
+  const Conversation({
+    required this.id,
+    required this.createdAt,
+    required this.updatedAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1453,8 +1789,10 @@ class Conversation extends DataClass implements Insertable<Conversation> {
     );
   }
 
-  factory Conversation.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory Conversation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Conversation(
       id: serializer.fromJson<int>(json['id']),
@@ -1533,10 +1871,11 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
     });
   }
 
-  ConversationsCompanion copyWith(
-      {Value<int>? id,
-      Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+  ConversationsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
     return ConversationsCompanion(
       id: id ?? this.id,
       createdAt: createdAt ?? this.createdAt,
@@ -1579,40 +1918,67 @@ class $ConversationMessagesTable extends ConversationMessages
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _conversationIdMeta =
-      const VerificationMeta('conversationId');
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
   @override
   late final GeneratedColumn<int> conversationId = GeneratedColumn<int>(
-      'conversation_id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'conversation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<LlmRole, String> role =
-      GeneratedColumn<String>('role', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
-          .withConverter<LlmRole>($ConversationMessagesTable.$converterrole);
-  static const VerificationMeta _contentMeta =
-      const VerificationMeta('content');
+      GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<LlmRole>($ConversationMessagesTable.$converterrole);
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
   @override
   late final GeneratedColumn<String> content = GeneratedColumn<String>(
-      'content', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, conversationId, role, content, createdAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        conversationId,
+        role,
+        content,
+        createdAt,
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1620,8 +1986,9 @@ class $ConversationMessagesTable extends ConversationMessages
   static const String $name = 'conversation_messages';
   @override
   VerificationContext validateIntegrity(
-      Insertable<ConversationMessage> instance,
-      {bool isInserting = false}) {
+    Insertable<ConversationMessage> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -1629,21 +1996,28 @@ class $ConversationMessagesTable extends ConversationMessages
     }
     if (data.containsKey('conversation_id')) {
       context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
           _conversationIdMeta,
-          conversationId.isAcceptableOrUnknown(
-              data['conversation_id']!, _conversationIdMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_conversationIdMeta);
     }
     if (data.containsKey('content')) {
-      context.handle(_contentMeta,
-          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
     } else if (isInserting) {
       context.missing(_contentMeta);
     }
     if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
     }
     return context;
   }
@@ -1654,17 +2028,28 @@ class $ConversationMessagesTable extends ConversationMessages
   ConversationMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ConversationMessage(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      conversationId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}conversation_id'])!,
-      role: $ConversationMessagesTable.$converterrole.fromSql(attachedDatabase
-          .typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}role'])!),
-      content: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      conversationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}conversation_id'],
+      )!,
+      role: $ConversationMessagesTable.$converterrole.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}role'],
+        )!,
+      ),
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
     );
   }
 
@@ -1684,12 +2069,13 @@ class ConversationMessage extends DataClass
   final LlmRole role;
   final String content;
   final DateTime createdAt;
-  const ConversationMessage(
-      {required this.id,
-      required this.conversationId,
-      required this.role,
-      required this.content,
-      required this.createdAt});
+  const ConversationMessage({
+    required this.id,
+    required this.conversationId,
+    required this.role,
+    required this.content,
+    required this.createdAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1697,7 +2083,8 @@ class ConversationMessage extends DataClass
     map['conversation_id'] = Variable<int>(conversationId);
     {
       map['role'] = Variable<String>(
-          $ConversationMessagesTable.$converterrole.toSql(role));
+        $ConversationMessagesTable.$converterrole.toSql(role),
+      );
     }
     map['content'] = Variable<String>(content);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -1714,8 +2101,10 @@ class ConversationMessage extends DataClass
     );
   }
 
-  factory ConversationMessage.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory ConversationMessage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ConversationMessage(
       id: serializer.fromJson<int>(json['id']),
@@ -1737,12 +2126,13 @@ class ConversationMessage extends DataClass
     };
   }
 
-  ConversationMessage copyWith(
-          {int? id,
-          int? conversationId,
-          LlmRole? role,
-          String? content,
-          DateTime? createdAt}) =>
+  ConversationMessage copyWith({
+    int? id,
+    int? conversationId,
+    LlmRole? role,
+    String? content,
+    DateTime? createdAt,
+  }) =>
       ConversationMessage(
         id: id ?? this.id,
         conversationId: conversationId ?? this.conversationId,
@@ -1826,12 +2216,13 @@ class ConversationMessagesCompanion
     });
   }
 
-  ConversationMessagesCompanion copyWith(
-      {Value<int>? id,
-      Value<int>? conversationId,
-      Value<LlmRole>? role,
-      Value<String>? content,
-      Value<DateTime>? createdAt}) {
+  ConversationMessagesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? conversationId,
+    Value<LlmRole>? role,
+    Value<String>? content,
+    Value<DateTime>? createdAt,
+  }) {
     return ConversationMessagesCompanion(
       id: id ?? this.id,
       conversationId: conversationId ?? this.conversationId,
@@ -1852,7 +2243,8 @@ class ConversationMessagesCompanion
     }
     if (role.present) {
       map['role'] = Variable<String>(
-          $ConversationMessagesTable.$converterrole.toSql(role.value));
+        $ConversationMessagesTable.$converterrole.toSql(role.value),
+      );
     }
     if (content.present) {
       map['content'] = Variable<String>(content.value);
@@ -1885,16 +2277,24 @@ class $DeletedSnippetsTable extends DeletedSnippets
   static const VerificationMeta _syncIdMeta = const VerificationMeta('syncId');
   @override
   late final GeneratedColumn<String> syncId = GeneratedColumn<String>(
-      'sync_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _deletedAtMeta =
-      const VerificationMeta('deletedAt');
+    'sync_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
   @override
   late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
-      'deleted_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+    'deleted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
   @override
   List<GeneratedColumn> get $columns => [syncId, deletedAt];
   @override
@@ -1903,19 +2303,25 @@ class $DeletedSnippetsTable extends DeletedSnippets
   String get actualTableName => $name;
   static const String $name = 'deleted_snippets';
   @override
-  VerificationContext validateIntegrity(Insertable<DeletedSnippet> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<DeletedSnippet> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('sync_id')) {
-      context.handle(_syncIdMeta,
-          syncId.isAcceptableOrUnknown(data['sync_id']!, _syncIdMeta));
+      context.handle(
+        _syncIdMeta,
+        syncId.isAcceptableOrUnknown(data['sync_id']!, _syncIdMeta),
+      );
     } else if (isInserting) {
       context.missing(_syncIdMeta);
     }
     if (data.containsKey('deleted_at')) {
-      context.handle(_deletedAtMeta,
-          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
     }
     return context;
   }
@@ -1926,10 +2332,14 @@ class $DeletedSnippetsTable extends DeletedSnippets
   DeletedSnippet map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return DeletedSnippet(
-      syncId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}sync_id'])!,
-      deletedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at'])!,
+      syncId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_id'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      )!,
     );
   }
 
@@ -1958,8 +2368,10 @@ class DeletedSnippet extends DataClass implements Insertable<DeletedSnippet> {
     );
   }
 
-  factory DeletedSnippet.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory DeletedSnippet.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return DeletedSnippet(
       syncId: serializer.fromJson<String>(json['syncId']),
@@ -2032,8 +2444,11 @@ class DeletedSnippetsCompanion extends UpdateCompanion<DeletedSnippet> {
     });
   }
 
-  DeletedSnippetsCompanion copyWith(
-      {Value<String>? syncId, Value<DateTime>? deletedAt, Value<int>? rowid}) {
+  DeletedSnippetsCompanion copyWith({
+    Value<String>? syncId,
+    Value<DateTime>? deletedAt,
+    Value<int>? rowid,
+  }) {
     return DeletedSnippetsCompanion(
       syncId: syncId ?? this.syncId,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -2076,101 +2491,152 @@ class $MemoryEpisodesTable extends MemoryEpisodes
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _sourceKeyMeta =
-      const VerificationMeta('sourceKey');
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _sourceKeyMeta = const VerificationMeta(
+    'sourceKey',
+  );
   @override
   late final GeneratedColumn<String> sourceKey = GeneratedColumn<String>(
-      'source_key', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
-  static const VerificationMeta _startedAtMeta =
-      const VerificationMeta('startedAt');
+    'source_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
   @override
   late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
-      'started_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _endedAtMeta =
-      const VerificationMeta('endedAt');
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endedAtMeta = const VerificationMeta(
+    'endedAt',
+  );
   @override
   late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
-      'ended_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+    'ended_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
-      'title', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _summaryMeta =
-      const VerificationMeta('summary');
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _summaryMeta = const VerificationMeta(
+    'summary',
+  );
   @override
   late final GeneratedColumn<String> summary = GeneratedColumn<String>(
-      'summary', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'summary',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String>
-      applications = GeneratedColumn<String>('applications', aliasedName, false,
-              type: DriftSqlType.string,
-              requiredDuringInsert: false,
-              defaultValue: const Constant('[]'))
-          .withConverter<List<String>>(
-              $MemoryEpisodesTable.$converterapplications);
+      applications = GeneratedColumn<String>(
+    'applications',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  ).withConverter<List<String>>($MemoryEpisodesTable.$converterapplications);
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> urls =
-      GeneratedColumn<String>('urls', aliasedName, false,
-              type: DriftSqlType.string,
-              requiredDuringInsert: false,
-              defaultValue: const Constant('[]'))
-          .withConverter<List<String>>($MemoryEpisodesTable.$converterurls);
+      GeneratedColumn<String>(
+    'urls',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  ).withConverter<List<String>>($MemoryEpisodesTable.$converterurls);
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> topics =
-      GeneratedColumn<String>('topics', aliasedName, false,
-              type: DriftSqlType.string,
-              requiredDuringInsert: false,
-              defaultValue: const Constant('[]'))
-          .withConverter<List<String>>($MemoryEpisodesTable.$convertertopics);
+      GeneratedColumn<String>(
+    'topics',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  ).withConverter<List<String>>($MemoryEpisodesTable.$convertertopics);
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> entities =
-      GeneratedColumn<String>('entities', aliasedName, false,
-              type: DriftSqlType.string,
-              requiredDuringInsert: false,
-              defaultValue: const Constant('[]'))
-          .withConverter<List<String>>($MemoryEpisodesTable.$converterentities);
+      GeneratedColumn<String>(
+    'entities',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  ).withConverter<List<String>>($MemoryEpisodesTable.$converterentities);
   @override
   late final GeneratedColumnWithTypeConverter<List<int>, String>
       sourceActivityIds = GeneratedColumn<String>(
-              'source_activity_ids', aliasedName, false,
-              type: DriftSqlType.string,
-              requiredDuringInsert: false,
-              defaultValue: const Constant('[]'))
-          .withConverter<List<int>>(
-              $MemoryEpisodesTable.$convertersourceActivityIds);
+    'source_activity_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  ).withConverter<List<int>>($MemoryEpisodesTable.$convertersourceActivityIds);
   @override
   late final GeneratedColumnWithTypeConverter<List<double>?, Uint8List>
-      embedding = GeneratedColumn<Uint8List>('embedding', aliasedName, true,
-              type: DriftSqlType.blob, requiredDuringInsert: false)
-          .withConverter<List<double>?>(
-              $MemoryEpisodesTable.$converterembeddingn);
+      embedding = GeneratedColumn<Uint8List>(
+    'embedding',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  ).withConverter<List<double>?>($MemoryEpisodesTable.$converterembeddingn);
   static const VerificationMeta _embeddingProviderIdMeta =
       const VerificationMeta('embeddingProviderId');
   @override
   late final GeneratedColumn<String> embeddingProviderId =
-      GeneratedColumn<String>('embedding_provider_id', aliasedName, true,
-          type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
+      GeneratedColumn<String>(
+    'embedding_provider_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2186,7 +2652,7 @@ class $MemoryEpisodesTable extends MemoryEpisodes
         sourceActivityIds,
         embedding,
         embeddingProviderId,
-        createdAt
+        createdAt,
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2194,52 +2660,69 @@ class $MemoryEpisodesTable extends MemoryEpisodes
   String get actualTableName => $name;
   static const String $name = 'memory_episodes';
   @override
-  VerificationContext validateIntegrity(Insertable<MemoryEpisode> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<MemoryEpisode> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
     if (data.containsKey('source_key')) {
-      context.handle(_sourceKeyMeta,
-          sourceKey.isAcceptableOrUnknown(data['source_key']!, _sourceKeyMeta));
+      context.handle(
+        _sourceKeyMeta,
+        sourceKey.isAcceptableOrUnknown(data['source_key']!, _sourceKeyMeta),
+      );
     } else if (isInserting) {
       context.missing(_sourceKeyMeta);
     }
     if (data.containsKey('started_at')) {
-      context.handle(_startedAtMeta,
-          startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta));
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
     } else if (isInserting) {
       context.missing(_startedAtMeta);
     }
     if (data.containsKey('ended_at')) {
-      context.handle(_endedAtMeta,
-          endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta));
+      context.handle(
+        _endedAtMeta,
+        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+      );
     } else if (isInserting) {
       context.missing(_endedAtMeta);
     }
     if (data.containsKey('title')) {
       context.handle(
-          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
     } else if (isInserting) {
       context.missing(_titleMeta);
     }
     if (data.containsKey('summary')) {
-      context.handle(_summaryMeta,
-          summary.isAcceptableOrUnknown(data['summary']!, _summaryMeta));
+      context.handle(
+        _summaryMeta,
+        summary.isAcceptableOrUnknown(data['summary']!, _summaryMeta),
+      );
     } else if (isInserting) {
       context.missing(_summaryMeta);
     }
     if (data.containsKey('embedding_provider_id')) {
       context.handle(
+        _embeddingProviderIdMeta,
+        embeddingProviderId.isAcceptableOrUnknown(
+          data['embedding_provider_id']!,
           _embeddingProviderIdMeta,
-          embeddingProviderId.isAcceptableOrUnknown(
-              data['embedding_provider_id']!, _embeddingProviderIdMeta));
+        ),
+      );
     }
     if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
     }
     return context;
   }
@@ -2250,40 +2733,75 @@ class $MemoryEpisodesTable extends MemoryEpisodes
   MemoryEpisode map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return MemoryEpisode(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      sourceKey: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}source_key'])!,
-      startedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}started_at'])!,
-      endedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}ended_at'])!,
-      title: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
-      summary: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}summary'])!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      sourceKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_key'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      endedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ended_at'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      summary: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}summary'],
+      )!,
       applications: $MemoryEpisodesTable.$converterapplications.fromSql(
-          attachedDatabase.typeMapping.read(
-              DriftSqlType.string, data['${effectivePrefix}applications'])!),
-      urls: $MemoryEpisodesTable.$converterurls.fromSql(attachedDatabase
-          .typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}urls'])!),
-      topics: $MemoryEpisodesTable.$convertertopics.fromSql(attachedDatabase
-          .typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}topics'])!),
-      entities: $MemoryEpisodesTable.$converterentities.fromSql(attachedDatabase
-          .typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}entities'])!),
-      sourceActivityIds: $MemoryEpisodesTable.$convertersourceActivityIds
-          .fromSql(attachedDatabase.typeMapping.read(DriftSqlType.string,
-              data['${effectivePrefix}source_activity_ids'])!),
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}applications'],
+        )!,
+      ),
+      urls: $MemoryEpisodesTable.$converterurls.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}urls'],
+        )!,
+      ),
+      topics: $MemoryEpisodesTable.$convertertopics.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}topics'],
+        )!,
+      ),
+      entities: $MemoryEpisodesTable.$converterentities.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}entities'],
+        )!,
+      ),
+      sourceActivityIds:
+          $MemoryEpisodesTable.$convertersourceActivityIds.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}source_activity_ids'],
+        )!,
+      ),
       embedding: $MemoryEpisodesTable.$converterembeddingn.fromSql(
-          attachedDatabase.typeMapping
-              .read(DriftSqlType.blob, data['${effectivePrefix}embedding'])),
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.blob,
+          data['${effectivePrefix}embedding'],
+        ),
+      ),
       embeddingProviderId: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}embedding_provider_id']),
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+        DriftSqlType.string,
+        data['${effectivePrefix}embedding_provider_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
     );
   }
 
@@ -2323,21 +2841,22 @@ class MemoryEpisode extends DataClass implements Insertable<MemoryEpisode> {
   final List<double>? embedding;
   final String? embeddingProviderId;
   final DateTime createdAt;
-  const MemoryEpisode(
-      {required this.id,
-      required this.sourceKey,
-      required this.startedAt,
-      required this.endedAt,
-      required this.title,
-      required this.summary,
-      required this.applications,
-      required this.urls,
-      required this.topics,
-      required this.entities,
-      required this.sourceActivityIds,
-      this.embedding,
-      this.embeddingProviderId,
-      required this.createdAt});
+  const MemoryEpisode({
+    required this.id,
+    required this.sourceKey,
+    required this.startedAt,
+    required this.endedAt,
+    required this.title,
+    required this.summary,
+    required this.applications,
+    required this.urls,
+    required this.topics,
+    required this.entities,
+    required this.sourceActivityIds,
+    this.embedding,
+    this.embeddingProviderId,
+    required this.createdAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2349,28 +2868,35 @@ class MemoryEpisode extends DataClass implements Insertable<MemoryEpisode> {
     map['summary'] = Variable<String>(summary);
     {
       map['applications'] = Variable<String>(
-          $MemoryEpisodesTable.$converterapplications.toSql(applications));
+        $MemoryEpisodesTable.$converterapplications.toSql(applications),
+      );
     }
     {
-      map['urls'] =
-          Variable<String>($MemoryEpisodesTable.$converterurls.toSql(urls));
+      map['urls'] = Variable<String>(
+        $MemoryEpisodesTable.$converterurls.toSql(urls),
+      );
     }
     {
-      map['topics'] =
-          Variable<String>($MemoryEpisodesTable.$convertertopics.toSql(topics));
+      map['topics'] = Variable<String>(
+        $MemoryEpisodesTable.$convertertopics.toSql(topics),
+      );
     }
     {
       map['entities'] = Variable<String>(
-          $MemoryEpisodesTable.$converterentities.toSql(entities));
+        $MemoryEpisodesTable.$converterentities.toSql(entities),
+      );
     }
     {
-      map['source_activity_ids'] = Variable<String>($MemoryEpisodesTable
-          .$convertersourceActivityIds
-          .toSql(sourceActivityIds));
+      map['source_activity_ids'] = Variable<String>(
+        $MemoryEpisodesTable.$convertersourceActivityIds.toSql(
+          sourceActivityIds,
+        ),
+      );
     }
     if (!nullToAbsent || embedding != null) {
       map['embedding'] = Variable<Uint8List>(
-          $MemoryEpisodesTable.$converterembeddingn.toSql(embedding));
+        $MemoryEpisodesTable.$converterembeddingn.toSql(embedding),
+      );
     }
     if (!nullToAbsent || embeddingProviderId != null) {
       map['embedding_provider_id'] = Variable<String>(embeddingProviderId);
@@ -2402,8 +2928,10 @@ class MemoryEpisode extends DataClass implements Insertable<MemoryEpisode> {
     );
   }
 
-  factory MemoryEpisode.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory MemoryEpisode.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MemoryEpisode(
       id: serializer.fromJson<int>(json['id']),
@@ -2416,11 +2944,13 @@ class MemoryEpisode extends DataClass implements Insertable<MemoryEpisode> {
       urls: serializer.fromJson<List<String>>(json['urls']),
       topics: serializer.fromJson<List<String>>(json['topics']),
       entities: serializer.fromJson<List<String>>(json['entities']),
-      sourceActivityIds:
-          serializer.fromJson<List<int>>(json['sourceActivityIds']),
+      sourceActivityIds: serializer.fromJson<List<int>>(
+        json['sourceActivityIds'],
+      ),
       embedding: serializer.fromJson<List<double>?>(json['embedding']),
-      embeddingProviderId:
-          serializer.fromJson<String?>(json['embeddingProviderId']),
+      embeddingProviderId: serializer.fromJson<String?>(
+        json['embeddingProviderId'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -2445,21 +2975,22 @@ class MemoryEpisode extends DataClass implements Insertable<MemoryEpisode> {
     };
   }
 
-  MemoryEpisode copyWith(
-          {int? id,
-          String? sourceKey,
-          DateTime? startedAt,
-          DateTime? endedAt,
-          String? title,
-          String? summary,
-          List<String>? applications,
-          List<String>? urls,
-          List<String>? topics,
-          List<String>? entities,
-          List<int>? sourceActivityIds,
-          Value<List<double>?> embedding = const Value.absent(),
-          Value<String?> embeddingProviderId = const Value.absent(),
-          DateTime? createdAt}) =>
+  MemoryEpisode copyWith({
+    int? id,
+    String? sourceKey,
+    DateTime? startedAt,
+    DateTime? endedAt,
+    String? title,
+    String? summary,
+    List<String>? applications,
+    List<String>? urls,
+    List<String>? topics,
+    List<String>? entities,
+    List<int>? sourceActivityIds,
+    Value<List<double>?> embedding = const Value.absent(),
+    Value<String?> embeddingProviderId = const Value.absent(),
+    DateTime? createdAt,
+  }) =>
       MemoryEpisode(
         id: id ?? this.id,
         sourceKey: sourceKey ?? this.sourceKey,
@@ -2526,20 +3057,21 @@ class MemoryEpisode extends DataClass implements Insertable<MemoryEpisode> {
 
   @override
   int get hashCode => Object.hash(
-      id,
-      sourceKey,
-      startedAt,
-      endedAt,
-      title,
-      summary,
-      applications,
-      urls,
-      topics,
-      entities,
-      sourceActivityIds,
-      embedding,
-      embeddingProviderId,
-      createdAt);
+        id,
+        sourceKey,
+        startedAt,
+        endedAt,
+        title,
+        summary,
+        applications,
+        urls,
+        topics,
+        entities,
+        sourceActivityIds,
+        embedding,
+        embeddingProviderId,
+        createdAt,
+      );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2646,21 +3178,22 @@ class MemoryEpisodesCompanion extends UpdateCompanion<MemoryEpisode> {
     });
   }
 
-  MemoryEpisodesCompanion copyWith(
-      {Value<int>? id,
-      Value<String>? sourceKey,
-      Value<DateTime>? startedAt,
-      Value<DateTime>? endedAt,
-      Value<String>? title,
-      Value<String>? summary,
-      Value<List<String>>? applications,
-      Value<List<String>>? urls,
-      Value<List<String>>? topics,
-      Value<List<String>>? entities,
-      Value<List<int>>? sourceActivityIds,
-      Value<List<double>?>? embedding,
-      Value<String?>? embeddingProviderId,
-      Value<DateTime>? createdAt}) {
+  MemoryEpisodesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? sourceKey,
+    Value<DateTime>? startedAt,
+    Value<DateTime>? endedAt,
+    Value<String>? title,
+    Value<String>? summary,
+    Value<List<String>>? applications,
+    Value<List<String>>? urls,
+    Value<List<String>>? topics,
+    Value<List<String>>? entities,
+    Value<List<int>>? sourceActivityIds,
+    Value<List<double>?>? embedding,
+    Value<String?>? embeddingProviderId,
+    Value<DateTime>? createdAt,
+  }) {
     return MemoryEpisodesCompanion(
       id: id ?? this.id,
       sourceKey: sourceKey ?? this.sourceKey,
@@ -2701,34 +3234,41 @@ class MemoryEpisodesCompanion extends UpdateCompanion<MemoryEpisode> {
       map['summary'] = Variable<String>(summary.value);
     }
     if (applications.present) {
-      map['applications'] = Variable<String>($MemoryEpisodesTable
-          .$converterapplications
-          .toSql(applications.value));
+      map['applications'] = Variable<String>(
+        $MemoryEpisodesTable.$converterapplications.toSql(applications.value),
+      );
     }
     if (urls.present) {
       map['urls'] = Variable<String>(
-          $MemoryEpisodesTable.$converterurls.toSql(urls.value));
+        $MemoryEpisodesTable.$converterurls.toSql(urls.value),
+      );
     }
     if (topics.present) {
       map['topics'] = Variable<String>(
-          $MemoryEpisodesTable.$convertertopics.toSql(topics.value));
+        $MemoryEpisodesTable.$convertertopics.toSql(topics.value),
+      );
     }
     if (entities.present) {
       map['entities'] = Variable<String>(
-          $MemoryEpisodesTable.$converterentities.toSql(entities.value));
+        $MemoryEpisodesTable.$converterentities.toSql(entities.value),
+      );
     }
     if (sourceActivityIds.present) {
-      map['source_activity_ids'] = Variable<String>($MemoryEpisodesTable
-          .$convertersourceActivityIds
-          .toSql(sourceActivityIds.value));
+      map['source_activity_ids'] = Variable<String>(
+        $MemoryEpisodesTable.$convertersourceActivityIds.toSql(
+          sourceActivityIds.value,
+        ),
+      );
     }
     if (embedding.present) {
       map['embedding'] = Variable<Uint8List>(
-          $MemoryEpisodesTable.$converterembeddingn.toSql(embedding.value));
+        $MemoryEpisodesTable.$converterembeddingn.toSql(embedding.value),
+      );
     }
     if (embeddingProviderId.present) {
-      map['embedding_provider_id'] =
-          Variable<String>(embeddingProviderId.value);
+      map['embedding_provider_id'] = Variable<String>(
+        embeddingProviderId.value,
+      );
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -2768,28 +3308,38 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
   late final $ConversationsTable conversations = $ConversationsTable(this);
   late final $ConversationMessagesTable conversationMessages =
       $ConversationMessagesTable(this);
-  late final $DeletedSnippetsTable deletedSnippets =
-      $DeletedSnippetsTable(this);
+  late final $DeletedSnippetsTable deletedSnippets = $DeletedSnippetsTable(
+    this,
+  );
   late final $MemoryEpisodesTable memoryEpisodes = $MemoryEpisodesTable(this);
-  late final Index snippetsUpdatedAtIdx = Index('snippets_updated_at_idx',
-      'CREATE INDEX snippets_updated_at_idx ON snippets (updated_at)');
-  late final Index activitiesCapturedAtIdx = Index('activities_captured_at_idx',
-      'CREATE INDEX activities_captured_at_idx ON activities (captured_at)');
+  late final Index snippetsUpdatedAtIdx = Index(
+    'snippets_updated_at_idx',
+    'CREATE INDEX snippets_updated_at_idx ON snippets (updated_at)',
+  );
+  late final Index activitiesCapturedAtIdx = Index(
+    'activities_captured_at_idx',
+    'CREATE INDEX activities_captured_at_idx ON activities (captured_at)',
+  );
   late final Index activitySummariesPeriodEndIdx = Index(
-      'activity_summaries_period_end_idx',
-      'CREATE INDEX activity_summaries_period_end_idx ON activity_summaries (period_end)');
+    'activity_summaries_period_end_idx',
+    'CREATE INDEX activity_summaries_period_end_idx ON activity_summaries (period_end)',
+  );
   late final Index conversationMessagesConversationIdIdx = Index(
-      'conversation_messages_conversation_id_idx',
-      'CREATE INDEX conversation_messages_conversation_id_idx ON conversation_messages (conversation_id)');
+    'conversation_messages_conversation_id_idx',
+    'CREATE INDEX conversation_messages_conversation_id_idx ON conversation_messages (conversation_id)',
+  );
   late final Index deletedSnippetsDeletedAtIdx = Index(
-      'deleted_snippets_deleted_at_idx',
-      'CREATE INDEX deleted_snippets_deleted_at_idx ON deleted_snippets (deleted_at)');
+    'deleted_snippets_deleted_at_idx',
+    'CREATE INDEX deleted_snippets_deleted_at_idx ON deleted_snippets (deleted_at)',
+  );
   late final Index memoryEpisodesStartedAtIdx = Index(
-      'memory_episodes_started_at_idx',
-      'CREATE INDEX memory_episodes_started_at_idx ON memory_episodes (started_at)');
+    'memory_episodes_started_at_idx',
+    'CREATE INDEX memory_episodes_started_at_idx ON memory_episodes (started_at)',
+  );
   late final Index memoryEpisodesEndedAtIdx = Index(
-      'memory_episodes_ended_at_idx',
-      'CREATE INDEX memory_episodes_ended_at_idx ON memory_episodes (ended_at)');
+    'memory_episodes_ended_at_idx',
+    'CREATE INDEX memory_episodes_ended_at_idx ON memory_episodes (ended_at)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2808,7 +3358,7 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
         conversationMessagesConversationIdIdx,
         deletedSnippetsDeletedAtIdx,
         memoryEpisodesStartedAtIdx,
-        memoryEpisodesEndedAtIdx
+        memoryEpisodesEndedAtIdx,
       ];
 }
 
@@ -2847,39 +3397,56 @@ class $$SnippetsTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+        column: $table.id,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get title => $composableBuilder(
-      column: $table.title, builder: (column) => ColumnFilters(column));
+        column: $table.title,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get content => $composableBuilder(
-      column: $table.content, builder: (column) => ColumnFilters(column));
+        column: $table.content,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get language => $composableBuilder(
-      column: $table.language, builder: (column) => ColumnFilters(column));
+        column: $table.language,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnWithTypeConverterFilters<List<String>, List<String>, String> get tags =>
       $composableBuilder(
-          column: $table.tags,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+        column: $table.tags,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnWithTypeConverterFilters<List<double>?, List<double>, Uint8List>
       get embedding => $composableBuilder(
-          column: $table.embedding,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+            column: $table.embedding,
+            builder: (column) => ColumnWithTypeConverterFilters(column),
+          );
 
   ColumnFilters<String> get embeddingProviderId => $composableBuilder(
-      column: $table.embeddingProviderId,
-      builder: (column) => ColumnFilters(column));
+        column: $table.embeddingProviderId,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get syncId => $composableBuilder(
-      column: $table.syncId, builder: (column) => ColumnFilters(column));
+        column: $table.syncId,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+        column: $table.updatedAt,
+        builder: (column) => ColumnFilters(column),
+      );
 }
 
 class $$SnippetsTableOrderingComposer
@@ -2892,35 +3459,54 @@ class $$SnippetsTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+        column: $table.id,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get title => $composableBuilder(
-      column: $table.title, builder: (column) => ColumnOrderings(column));
+        column: $table.title,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get content => $composableBuilder(
-      column: $table.content, builder: (column) => ColumnOrderings(column));
+        column: $table.content,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get language => $composableBuilder(
-      column: $table.language, builder: (column) => ColumnOrderings(column));
+        column: $table.language,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get tags => $composableBuilder(
-      column: $table.tags, builder: (column) => ColumnOrderings(column));
+        column: $table.tags,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<Uint8List> get embedding => $composableBuilder(
-      column: $table.embedding, builder: (column) => ColumnOrderings(column));
+        column: $table.embedding,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get embeddingProviderId => $composableBuilder(
-      column: $table.embeddingProviderId,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.embeddingProviderId,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get syncId => $composableBuilder(
-      column: $table.syncId, builder: (column) => ColumnOrderings(column));
+        column: $table.syncId,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+        column: $table.updatedAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 }
 
 class $$SnippetsTableAnnotationComposer
@@ -2951,7 +3537,9 @@ class $$SnippetsTableAnnotationComposer
       $composableBuilder(column: $table.embedding, builder: (column) => column);
 
   GeneratedColumn<String> get embeddingProviderId => $composableBuilder(
-      column: $table.embeddingProviderId, builder: (column) => column);
+        column: $table.embeddingProviderId,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<String> get syncId =>
       $composableBuilder(column: $table.syncId, builder: (column) => column);
@@ -2976,68 +3564,75 @@ class $$SnippetsTableTableManager extends RootTableManager<
     Snippet,
     PrefetchHooks Function()> {
   $$SnippetsTableTableManager(_$KangoosDatabase db, $SnippetsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$SnippetsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$SnippetsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$SnippetsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> title = const Value.absent(),
-            Value<String> content = const Value.absent(),
-            Value<String?> language = const Value.absent(),
-            Value<List<String>> tags = const Value.absent(),
-            Value<List<double>?> embedding = const Value.absent(),
-            Value<String?> embeddingProviderId = const Value.absent(),
-            Value<String?> syncId = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<DateTime> updatedAt = const Value.absent(),
-          }) =>
-              SnippetsCompanion(
-            id: id,
-            title: title,
-            content: content,
-            language: language,
-            tags: tags,
-            embedding: embedding,
-            embeddingProviderId: embeddingProviderId,
-            syncId: syncId,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
+      : super(
+          TableManagerState(
+            db: db,
+            table: table,
+            createFilteringComposer: () =>
+                $$SnippetsTableFilterComposer($db: db, $table: table),
+            createOrderingComposer: () =>
+                $$SnippetsTableOrderingComposer($db: db, $table: table),
+            createComputedFieldComposer: () =>
+                $$SnippetsTableAnnotationComposer($db: db, $table: table),
+            updateCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              Value<String> title = const Value.absent(),
+              Value<String> content = const Value.absent(),
+              Value<String?> language = const Value.absent(),
+              Value<List<String>> tags = const Value.absent(),
+              Value<List<double>?> embedding = const Value.absent(),
+              Value<String?> embeddingProviderId = const Value.absent(),
+              Value<String?> syncId = const Value.absent(),
+              Value<DateTime> createdAt = const Value.absent(),
+              Value<DateTime> updatedAt = const Value.absent(),
+            }) =>
+                SnippetsCompanion(
+              id: id,
+              title: title,
+              content: content,
+              language: language,
+              tags: tags,
+              embedding: embedding,
+              embeddingProviderId: embeddingProviderId,
+              syncId: syncId,
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+            ),
+            createCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              required String title,
+              required String content,
+              Value<String?> language = const Value.absent(),
+              Value<List<String>> tags = const Value.absent(),
+              Value<List<double>?> embedding = const Value.absent(),
+              Value<String?> embeddingProviderId = const Value.absent(),
+              Value<String?> syncId = const Value.absent(),
+              Value<DateTime> createdAt = const Value.absent(),
+              Value<DateTime> updatedAt = const Value.absent(),
+            }) =>
+                SnippetsCompanion.insert(
+              id: id,
+              title: title,
+              content: content,
+              language: language,
+              tags: tags,
+              embedding: embedding,
+              embeddingProviderId: embeddingProviderId,
+              syncId: syncId,
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+            ),
+            withReferenceMapper: (p0) => p0
+                .map(
+                  (e) => (
+                    e.readTable(table),
+                    BaseReferences(db, table, e),
+                  ),
+                )
+                .toList(),
+            prefetchHooksCallback: null,
           ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String title,
-            required String content,
-            Value<String?> language = const Value.absent(),
-            Value<List<String>> tags = const Value.absent(),
-            Value<List<double>?> embedding = const Value.absent(),
-            Value<String?> embeddingProviderId = const Value.absent(),
-            Value<String?> syncId = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<DateTime> updatedAt = const Value.absent(),
-          }) =>
-              SnippetsCompanion.insert(
-            id: id,
-            title: title,
-            content: content,
-            language: language,
-            tags: tags,
-            embedding: embedding,
-            embeddingProviderId: embeddingProviderId,
-            syncId: syncId,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
+        );
 }
 
 typedef $$SnippetsTableProcessedTableManager = ProcessedTableManager<
@@ -3054,6 +3649,7 @@ typedef $$SnippetsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function()>;
 typedef $$ActivitiesTableCreateCompanionBuilder = ActivitiesCompanion Function({
   Value<int> id,
+  Value<String?> sourceId,
   required String appName,
   required String windowTitle,
   Value<String?> capturedText,
@@ -3065,6 +3661,7 @@ typedef $$ActivitiesTableCreateCompanionBuilder = ActivitiesCompanion Function({
 });
 typedef $$ActivitiesTableUpdateCompanionBuilder = ActivitiesCompanion Function({
   Value<int> id,
+  Value<String?> sourceId,
   Value<String> appName,
   Value<String> windowTitle,
   Value<String?> capturedText,
@@ -3085,34 +3682,54 @@ class $$ActivitiesTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+        column: $table.id,
+        builder: (column) => ColumnFilters(column),
+      );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+        column: $table.sourceId,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get appName => $composableBuilder(
-      column: $table.appName, builder: (column) => ColumnFilters(column));
+        column: $table.appName,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get windowTitle => $composableBuilder(
-      column: $table.windowTitle, builder: (column) => ColumnFilters(column));
+        column: $table.windowTitle,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get capturedText => $composableBuilder(
-      column: $table.capturedText, builder: (column) => ColumnFilters(column));
+        column: $table.capturedText,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get capturedUrl => $composableBuilder(
-      column: $table.capturedUrl, builder: (column) => ColumnFilters(column));
+        column: $table.capturedUrl,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get capturedClipboard => $composableBuilder(
-      column: $table.capturedClipboard,
-      builder: (column) => ColumnFilters(column));
+        column: $table.capturedClipboard,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get capturedScreenText => $composableBuilder(
-      column: $table.capturedScreenText,
-      builder: (column) => ColumnFilters(column));
+        column: $table.capturedScreenText,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get capturedAudioText => $composableBuilder(
-      column: $table.capturedAudioText,
-      builder: (column) => ColumnFilters(column));
+        column: $table.capturedAudioText,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get capturedAt => $composableBuilder(
-      column: $table.capturedAt, builder: (column) => ColumnFilters(column));
+        column: $table.capturedAt,
+        builder: (column) => ColumnFilters(column),
+      );
 }
 
 class $$ActivitiesTableOrderingComposer
@@ -3125,35 +3742,54 @@ class $$ActivitiesTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+        column: $table.id,
+        builder: (column) => ColumnOrderings(column),
+      );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+        column: $table.sourceId,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get appName => $composableBuilder(
-      column: $table.appName, builder: (column) => ColumnOrderings(column));
+        column: $table.appName,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get windowTitle => $composableBuilder(
-      column: $table.windowTitle, builder: (column) => ColumnOrderings(column));
+        column: $table.windowTitle,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get capturedText => $composableBuilder(
-      column: $table.capturedText,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.capturedText,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get capturedUrl => $composableBuilder(
-      column: $table.capturedUrl, builder: (column) => ColumnOrderings(column));
+        column: $table.capturedUrl,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get capturedClipboard => $composableBuilder(
-      column: $table.capturedClipboard,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.capturedClipboard,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get capturedScreenText => $composableBuilder(
-      column: $table.capturedScreenText,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.capturedScreenText,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get capturedAudioText => $composableBuilder(
-      column: $table.capturedAudioText,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.capturedAudioText,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get capturedAt => $composableBuilder(
-      column: $table.capturedAt, builder: (column) => ColumnOrderings(column));
+        column: $table.capturedAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 }
 
 class $$ActivitiesTableAnnotationComposer
@@ -3168,29 +3804,46 @@ class $$ActivitiesTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
   GeneratedColumn<String> get appName =>
       $composableBuilder(column: $table.appName, builder: (column) => column);
 
   GeneratedColumn<String> get windowTitle => $composableBuilder(
-      column: $table.windowTitle, builder: (column) => column);
+        column: $table.windowTitle,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<String> get capturedText => $composableBuilder(
-      column: $table.capturedText, builder: (column) => column);
+        column: $table.capturedText,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<String> get capturedUrl => $composableBuilder(
-      column: $table.capturedUrl, builder: (column) => column);
+        column: $table.capturedUrl,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<String> get capturedClipboard => $composableBuilder(
-      column: $table.capturedClipboard, builder: (column) => column);
+        column: $table.capturedClipboard,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<String> get capturedScreenText => $composableBuilder(
-      column: $table.capturedScreenText, builder: (column) => column);
+        column: $table.capturedScreenText,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<String> get capturedAudioText => $composableBuilder(
-      column: $table.capturedAudioText, builder: (column) => column);
+        column: $table.capturedAudioText,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<DateTime> get capturedAt => $composableBuilder(
-      column: $table.capturedAt, builder: (column) => column);
+        column: $table.capturedAt,
+        builder: (column) => column,
+      );
 }
 
 class $$ActivitiesTableTableManager extends RootTableManager<
@@ -3202,68 +3855,82 @@ class $$ActivitiesTableTableManager extends RootTableManager<
     $$ActivitiesTableAnnotationComposer,
     $$ActivitiesTableCreateCompanionBuilder,
     $$ActivitiesTableUpdateCompanionBuilder,
-    (Activity, BaseReferences<_$KangoosDatabase, $ActivitiesTable, Activity>),
+    (
+      Activity,
+      BaseReferences<_$KangoosDatabase, $ActivitiesTable, Activity>,
+    ),
     Activity,
     PrefetchHooks Function()> {
   $$ActivitiesTableTableManager(_$KangoosDatabase db, $ActivitiesTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ActivitiesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ActivitiesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ActivitiesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> appName = const Value.absent(),
-            Value<String> windowTitle = const Value.absent(),
-            Value<String?> capturedText = const Value.absent(),
-            Value<String?> capturedUrl = const Value.absent(),
-            Value<String?> capturedClipboard = const Value.absent(),
-            Value<String?> capturedScreenText = const Value.absent(),
-            Value<String?> capturedAudioText = const Value.absent(),
-            Value<DateTime> capturedAt = const Value.absent(),
-          }) =>
-              ActivitiesCompanion(
-            id: id,
-            appName: appName,
-            windowTitle: windowTitle,
-            capturedText: capturedText,
-            capturedUrl: capturedUrl,
-            capturedClipboard: capturedClipboard,
-            capturedScreenText: capturedScreenText,
-            capturedAudioText: capturedAudioText,
-            capturedAt: capturedAt,
+      : super(
+          TableManagerState(
+            db: db,
+            table: table,
+            createFilteringComposer: () =>
+                $$ActivitiesTableFilterComposer($db: db, $table: table),
+            createOrderingComposer: () =>
+                $$ActivitiesTableOrderingComposer($db: db, $table: table),
+            createComputedFieldComposer: () =>
+                $$ActivitiesTableAnnotationComposer($db: db, $table: table),
+            updateCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              Value<String?> sourceId = const Value.absent(),
+              Value<String> appName = const Value.absent(),
+              Value<String> windowTitle = const Value.absent(),
+              Value<String?> capturedText = const Value.absent(),
+              Value<String?> capturedUrl = const Value.absent(),
+              Value<String?> capturedClipboard = const Value.absent(),
+              Value<String?> capturedScreenText = const Value.absent(),
+              Value<String?> capturedAudioText = const Value.absent(),
+              Value<DateTime> capturedAt = const Value.absent(),
+            }) =>
+                ActivitiesCompanion(
+              id: id,
+              sourceId: sourceId,
+              appName: appName,
+              windowTitle: windowTitle,
+              capturedText: capturedText,
+              capturedUrl: capturedUrl,
+              capturedClipboard: capturedClipboard,
+              capturedScreenText: capturedScreenText,
+              capturedAudioText: capturedAudioText,
+              capturedAt: capturedAt,
+            ),
+            createCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              Value<String?> sourceId = const Value.absent(),
+              required String appName,
+              required String windowTitle,
+              Value<String?> capturedText = const Value.absent(),
+              Value<String?> capturedUrl = const Value.absent(),
+              Value<String?> capturedClipboard = const Value.absent(),
+              Value<String?> capturedScreenText = const Value.absent(),
+              Value<String?> capturedAudioText = const Value.absent(),
+              Value<DateTime> capturedAt = const Value.absent(),
+            }) =>
+                ActivitiesCompanion.insert(
+              id: id,
+              sourceId: sourceId,
+              appName: appName,
+              windowTitle: windowTitle,
+              capturedText: capturedText,
+              capturedUrl: capturedUrl,
+              capturedClipboard: capturedClipboard,
+              capturedScreenText: capturedScreenText,
+              capturedAudioText: capturedAudioText,
+              capturedAt: capturedAt,
+            ),
+            withReferenceMapper: (p0) => p0
+                .map(
+                  (e) => (
+                    e.readTable(table),
+                    BaseReferences(db, table, e),
+                  ),
+                )
+                .toList(),
+            prefetchHooksCallback: null,
           ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String appName,
-            required String windowTitle,
-            Value<String?> capturedText = const Value.absent(),
-            Value<String?> capturedUrl = const Value.absent(),
-            Value<String?> capturedClipboard = const Value.absent(),
-            Value<String?> capturedScreenText = const Value.absent(),
-            Value<String?> capturedAudioText = const Value.absent(),
-            Value<DateTime> capturedAt = const Value.absent(),
-          }) =>
-              ActivitiesCompanion.insert(
-            id: id,
-            appName: appName,
-            windowTitle: windowTitle,
-            capturedText: capturedText,
-            capturedUrl: capturedUrl,
-            capturedClipboard: capturedClipboard,
-            capturedScreenText: capturedScreenText,
-            capturedAudioText: capturedAudioText,
-            capturedAt: capturedAt,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
+        );
 }
 
 typedef $$ActivitiesTableProcessedTableManager = ProcessedTableManager<
@@ -3307,24 +3974,35 @@ class $$ActivitySummariesTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+        column: $table.id,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnWithTypeConverterFilters<SummaryKind, SummaryKind, String> get kind =>
       $composableBuilder(
-          column: $table.kind,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+        column: $table.kind,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<DateTime> get periodStart => $composableBuilder(
-      column: $table.periodStart, builder: (column) => ColumnFilters(column));
+        column: $table.periodStart,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get periodEnd => $composableBuilder(
-      column: $table.periodEnd, builder: (column) => ColumnFilters(column));
+        column: $table.periodEnd,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get content => $composableBuilder(
-      column: $table.content, builder: (column) => ColumnFilters(column));
+        column: $table.content,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnFilters(column),
+      );
 }
 
 class $$ActivitySummariesTableOrderingComposer
@@ -3337,22 +4015,34 @@ class $$ActivitySummariesTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+        column: $table.id,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get kind => $composableBuilder(
-      column: $table.kind, builder: (column) => ColumnOrderings(column));
+        column: $table.kind,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get periodStart => $composableBuilder(
-      column: $table.periodStart, builder: (column) => ColumnOrderings(column));
+        column: $table.periodStart,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get periodEnd => $composableBuilder(
-      column: $table.periodEnd, builder: (column) => ColumnOrderings(column));
+        column: $table.periodEnd,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get content => $composableBuilder(
-      column: $table.content, builder: (column) => ColumnOrderings(column));
+        column: $table.content,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 }
 
 class $$ActivitySummariesTableAnnotationComposer
@@ -3371,7 +4061,9 @@ class $$ActivitySummariesTableAnnotationComposer
       $composableBuilder(column: $table.kind, builder: (column) => column);
 
   GeneratedColumn<DateTime> get periodStart => $composableBuilder(
-      column: $table.periodStart, builder: (column) => column);
+        column: $table.periodStart,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<DateTime> get periodEnd =>
       $composableBuilder(column: $table.periodEnd, builder: (column) => column);
@@ -3395,59 +4087,75 @@ class $$ActivitySummariesTableTableManager extends RootTableManager<
     (
       ActivitySummary,
       BaseReferences<_$KangoosDatabase, $ActivitySummariesTable,
-          ActivitySummary>
+          ActivitySummary>,
     ),
     ActivitySummary,
     PrefetchHooks Function()> {
   $$ActivitySummariesTableTableManager(
-      _$KangoosDatabase db, $ActivitySummariesTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ActivitySummariesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ActivitySummariesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ActivitySummariesTableAnnotationComposer(
-                  $db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<SummaryKind> kind = const Value.absent(),
-            Value<DateTime> periodStart = const Value.absent(),
-            Value<DateTime> periodEnd = const Value.absent(),
-            Value<String> content = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-          }) =>
-              ActivitySummariesCompanion(
-            id: id,
-            kind: kind,
-            periodStart: periodStart,
-            periodEnd: periodEnd,
-            content: content,
-            createdAt: createdAt,
+    _$KangoosDatabase db,
+    $ActivitySummariesTable table,
+  ) : super(
+          TableManagerState(
+            db: db,
+            table: table,
+            createFilteringComposer: () =>
+                $$ActivitySummariesTableFilterComposer(
+              $db: db,
+              $table: table,
+            ),
+            createOrderingComposer: () =>
+                $$ActivitySummariesTableOrderingComposer(
+              $db: db,
+              $table: table,
+            ),
+            createComputedFieldComposer: () =>
+                $$ActivitySummariesTableAnnotationComposer(
+              $db: db,
+              $table: table,
+            ),
+            updateCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              Value<SummaryKind> kind = const Value.absent(),
+              Value<DateTime> periodStart = const Value.absent(),
+              Value<DateTime> periodEnd = const Value.absent(),
+              Value<String> content = const Value.absent(),
+              Value<DateTime> createdAt = const Value.absent(),
+            }) =>
+                ActivitySummariesCompanion(
+              id: id,
+              kind: kind,
+              periodStart: periodStart,
+              periodEnd: periodEnd,
+              content: content,
+              createdAt: createdAt,
+            ),
+            createCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              required SummaryKind kind,
+              required DateTime periodStart,
+              required DateTime periodEnd,
+              required String content,
+              Value<DateTime> createdAt = const Value.absent(),
+            }) =>
+                ActivitySummariesCompanion.insert(
+              id: id,
+              kind: kind,
+              periodStart: periodStart,
+              periodEnd: periodEnd,
+              content: content,
+              createdAt: createdAt,
+            ),
+            withReferenceMapper: (p0) => p0
+                .map(
+                  (e) => (
+                    e.readTable(table),
+                    BaseReferences(db, table, e),
+                  ),
+                )
+                .toList(),
+            prefetchHooksCallback: null,
           ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required SummaryKind kind,
-            required DateTime periodStart,
-            required DateTime periodEnd,
-            required String content,
-            Value<DateTime> createdAt = const Value.absent(),
-          }) =>
-              ActivitySummariesCompanion.insert(
-            id: id,
-            kind: kind,
-            periodStart: periodStart,
-            periodEnd: periodEnd,
-            content: content,
-            createdAt: createdAt,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
+        );
 }
 
 typedef $$ActivitySummariesTableProcessedTableManager = ProcessedTableManager<
@@ -3462,7 +4170,7 @@ typedef $$ActivitySummariesTableProcessedTableManager = ProcessedTableManager<
     (
       ActivitySummary,
       BaseReferences<_$KangoosDatabase, $ActivitySummariesTable,
-          ActivitySummary>
+          ActivitySummary>,
     ),
     ActivitySummary,
     PrefetchHooks Function()>;
@@ -3489,13 +4197,19 @@ class $$ConversationsTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+        column: $table.id,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+        column: $table.updatedAt,
+        builder: (column) => ColumnFilters(column),
+      );
 }
 
 class $$ConversationsTableOrderingComposer
@@ -3508,13 +4222,19 @@ class $$ConversationsTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+        column: $table.id,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+        column: $table.updatedAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 }
 
 class $$ConversationsTableAnnotationComposer
@@ -3547,46 +4267,57 @@ class $$ConversationsTableTableManager extends RootTableManager<
     $$ConversationsTableUpdateCompanionBuilder,
     (
       Conversation,
-      BaseReferences<_$KangoosDatabase, $ConversationsTable, Conversation>
+      BaseReferences<_$KangoosDatabase, $ConversationsTable, Conversation>,
     ),
     Conversation,
     PrefetchHooks Function()> {
   $$ConversationsTableTableManager(
-      _$KangoosDatabase db, $ConversationsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ConversationsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ConversationsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ConversationsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<DateTime> updatedAt = const Value.absent(),
-          }) =>
-              ConversationsCompanion(
-            id: id,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
+    _$KangoosDatabase db,
+    $ConversationsTable table,
+  ) : super(
+          TableManagerState(
+            db: db,
+            table: table,
+            createFilteringComposer: () =>
+                $$ConversationsTableFilterComposer($db: db, $table: table),
+            createOrderingComposer: () =>
+                $$ConversationsTableOrderingComposer($db: db, $table: table),
+            createComputedFieldComposer: () =>
+                $$ConversationsTableAnnotationComposer(
+              $db: db,
+              $table: table,
+            ),
+            updateCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              Value<DateTime> createdAt = const Value.absent(),
+              Value<DateTime> updatedAt = const Value.absent(),
+            }) =>
+                ConversationsCompanion(
+              id: id,
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+            ),
+            createCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              Value<DateTime> createdAt = const Value.absent(),
+              Value<DateTime> updatedAt = const Value.absent(),
+            }) =>
+                ConversationsCompanion.insert(
+              id: id,
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+            ),
+            withReferenceMapper: (p0) => p0
+                .map(
+                  (e) => (
+                    e.readTable(table),
+                    BaseReferences(db, table, e),
+                  ),
+                )
+                .toList(),
+            prefetchHooksCallback: null,
           ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<DateTime> updatedAt = const Value.absent(),
-          }) =>
-              ConversationsCompanion.insert(
-            id: id,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
+        );
 }
 
 typedef $$ConversationsTableProcessedTableManager = ProcessedTableManager<
@@ -3600,7 +4331,7 @@ typedef $$ConversationsTableProcessedTableManager = ProcessedTableManager<
     $$ConversationsTableUpdateCompanionBuilder,
     (
       Conversation,
-      BaseReferences<_$KangoosDatabase, $ConversationsTable, Conversation>
+      BaseReferences<_$KangoosDatabase, $ConversationsTable, Conversation>,
     ),
     Conversation,
     PrefetchHooks Function()>;
@@ -3631,22 +4362,30 @@ class $$ConversationMessagesTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+        column: $table.id,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<int> get conversationId => $composableBuilder(
-      column: $table.conversationId,
-      builder: (column) => ColumnFilters(column));
+        column: $table.conversationId,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnWithTypeConverterFilters<LlmRole, LlmRole, String> get role =>
       $composableBuilder(
-          column: $table.role,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+        column: $table.role,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<String> get content => $composableBuilder(
-      column: $table.content, builder: (column) => ColumnFilters(column));
+        column: $table.content,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnFilters(column),
+      );
 }
 
 class $$ConversationMessagesTableOrderingComposer
@@ -3659,20 +4398,29 @@ class $$ConversationMessagesTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+        column: $table.id,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<int> get conversationId => $composableBuilder(
-      column: $table.conversationId,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.conversationId,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get role => $composableBuilder(
-      column: $table.role, builder: (column) => ColumnOrderings(column));
+        column: $table.role,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get content => $composableBuilder(
-      column: $table.content, builder: (column) => ColumnOrderings(column));
+        column: $table.content,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 }
 
 class $$ConversationMessagesTableAnnotationComposer
@@ -3688,7 +4436,9 @@ class $$ConversationMessagesTableAnnotationComposer
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<int> get conversationId => $composableBuilder(
-      column: $table.conversationId, builder: (column) => column);
+        column: $table.conversationId,
+        builder: (column) => column,
+      );
 
   GeneratedColumnWithTypeConverter<LlmRole, String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
@@ -3712,56 +4462,71 @@ class $$ConversationMessagesTableTableManager extends RootTableManager<
     (
       ConversationMessage,
       BaseReferences<_$KangoosDatabase, $ConversationMessagesTable,
-          ConversationMessage>
+          ConversationMessage>,
     ),
     ConversationMessage,
     PrefetchHooks Function()> {
   $$ConversationMessagesTableTableManager(
-      _$KangoosDatabase db, $ConversationMessagesTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ConversationMessagesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ConversationMessagesTableOrderingComposer(
-                  $db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ConversationMessagesTableAnnotationComposer(
-                  $db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<int> conversationId = const Value.absent(),
-            Value<LlmRole> role = const Value.absent(),
-            Value<String> content = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-          }) =>
-              ConversationMessagesCompanion(
-            id: id,
-            conversationId: conversationId,
-            role: role,
-            content: content,
-            createdAt: createdAt,
+    _$KangoosDatabase db,
+    $ConversationMessagesTable table,
+  ) : super(
+          TableManagerState(
+            db: db,
+            table: table,
+            createFilteringComposer: () =>
+                $$ConversationMessagesTableFilterComposer(
+              $db: db,
+              $table: table,
+            ),
+            createOrderingComposer: () =>
+                $$ConversationMessagesTableOrderingComposer(
+              $db: db,
+              $table: table,
+            ),
+            createComputedFieldComposer: () =>
+                $$ConversationMessagesTableAnnotationComposer(
+              $db: db,
+              $table: table,
+            ),
+            updateCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              Value<int> conversationId = const Value.absent(),
+              Value<LlmRole> role = const Value.absent(),
+              Value<String> content = const Value.absent(),
+              Value<DateTime> createdAt = const Value.absent(),
+            }) =>
+                ConversationMessagesCompanion(
+              id: id,
+              conversationId: conversationId,
+              role: role,
+              content: content,
+              createdAt: createdAt,
+            ),
+            createCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              required int conversationId,
+              required LlmRole role,
+              required String content,
+              Value<DateTime> createdAt = const Value.absent(),
+            }) =>
+                ConversationMessagesCompanion.insert(
+              id: id,
+              conversationId: conversationId,
+              role: role,
+              content: content,
+              createdAt: createdAt,
+            ),
+            withReferenceMapper: (p0) => p0
+                .map(
+                  (e) => (
+                    e.readTable(table),
+                    BaseReferences(db, table, e),
+                  ),
+                )
+                .toList(),
+            prefetchHooksCallback: null,
           ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required int conversationId,
-            required LlmRole role,
-            required String content,
-            Value<DateTime> createdAt = const Value.absent(),
-          }) =>
-              ConversationMessagesCompanion.insert(
-            id: id,
-            conversationId: conversationId,
-            role: role,
-            content: content,
-            createdAt: createdAt,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
+        );
 }
 
 typedef $$ConversationMessagesTableProcessedTableManager
@@ -3777,7 +4542,7 @@ typedef $$ConversationMessagesTableProcessedTableManager
         (
           ConversationMessage,
           BaseReferences<_$KangoosDatabase, $ConversationMessagesTable,
-              ConversationMessage>
+              ConversationMessage>,
         ),
         ConversationMessage,
         PrefetchHooks Function()>;
@@ -3804,10 +4569,14 @@ class $$DeletedSnippetsTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<String> get syncId => $composableBuilder(
-      column: $table.syncId, builder: (column) => ColumnFilters(column));
+        column: $table.syncId,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get deletedAt => $composableBuilder(
-      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+        column: $table.deletedAt,
+        builder: (column) => ColumnFilters(column),
+      );
 }
 
 class $$DeletedSnippetsTableOrderingComposer
@@ -3820,10 +4589,14 @@ class $$DeletedSnippetsTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<String> get syncId => $composableBuilder(
-      column: $table.syncId, builder: (column) => ColumnOrderings(column));
+        column: $table.syncId,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
-      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+        column: $table.deletedAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 }
 
 class $$DeletedSnippetsTableAnnotationComposer
@@ -3853,46 +4626,60 @@ class $$DeletedSnippetsTableTableManager extends RootTableManager<
     $$DeletedSnippetsTableUpdateCompanionBuilder,
     (
       DeletedSnippet,
-      BaseReferences<_$KangoosDatabase, $DeletedSnippetsTable, DeletedSnippet>
+      BaseReferences<_$KangoosDatabase, $DeletedSnippetsTable, DeletedSnippet>,
     ),
     DeletedSnippet,
     PrefetchHooks Function()> {
   $$DeletedSnippetsTableTableManager(
-      _$KangoosDatabase db, $DeletedSnippetsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$DeletedSnippetsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$DeletedSnippetsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$DeletedSnippetsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> syncId = const Value.absent(),
-            Value<DateTime> deletedAt = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              DeletedSnippetsCompanion(
-            syncId: syncId,
-            deletedAt: deletedAt,
-            rowid: rowid,
+    _$KangoosDatabase db,
+    $DeletedSnippetsTable table,
+  ) : super(
+          TableManagerState(
+            db: db,
+            table: table,
+            createFilteringComposer: () =>
+                $$DeletedSnippetsTableFilterComposer($db: db, $table: table),
+            createOrderingComposer: () =>
+                $$DeletedSnippetsTableOrderingComposer(
+              $db: db,
+              $table: table,
+            ),
+            createComputedFieldComposer: () =>
+                $$DeletedSnippetsTableAnnotationComposer(
+              $db: db,
+              $table: table,
+            ),
+            updateCompanionCallback: ({
+              Value<String> syncId = const Value.absent(),
+              Value<DateTime> deletedAt = const Value.absent(),
+              Value<int> rowid = const Value.absent(),
+            }) =>
+                DeletedSnippetsCompanion(
+              syncId: syncId,
+              deletedAt: deletedAt,
+              rowid: rowid,
+            ),
+            createCompanionCallback: ({
+              required String syncId,
+              Value<DateTime> deletedAt = const Value.absent(),
+              Value<int> rowid = const Value.absent(),
+            }) =>
+                DeletedSnippetsCompanion.insert(
+              syncId: syncId,
+              deletedAt: deletedAt,
+              rowid: rowid,
+            ),
+            withReferenceMapper: (p0) => p0
+                .map(
+                  (e) => (
+                    e.readTable(table),
+                    BaseReferences(db, table, e),
+                  ),
+                )
+                .toList(),
+            prefetchHooksCallback: null,
           ),
-          createCompanionCallback: ({
-            required String syncId,
-            Value<DateTime> deletedAt = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              DeletedSnippetsCompanion.insert(
-            syncId: syncId,
-            deletedAt: deletedAt,
-            rowid: rowid,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
+        );
 }
 
 typedef $$DeletedSnippetsTableProcessedTableManager = ProcessedTableManager<
@@ -3906,7 +4693,7 @@ typedef $$DeletedSnippetsTableProcessedTableManager = ProcessedTableManager<
     $$DeletedSnippetsTableUpdateCompanionBuilder,
     (
       DeletedSnippet,
-      BaseReferences<_$KangoosDatabase, $DeletedSnippetsTable, DeletedSnippet>
+      BaseReferences<_$KangoosDatabase, $DeletedSnippetsTable, DeletedSnippet>,
     ),
     DeletedSnippet,
     PrefetchHooks Function()>;
@@ -3955,59 +4742,80 @@ class $$MemoryEpisodesTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+        column: $table.id,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get sourceKey => $composableBuilder(
-      column: $table.sourceKey, builder: (column) => ColumnFilters(column));
+        column: $table.sourceKey,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get startedAt => $composableBuilder(
-      column: $table.startedAt, builder: (column) => ColumnFilters(column));
+        column: $table.startedAt,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get endedAt => $composableBuilder(
-      column: $table.endedAt, builder: (column) => ColumnFilters(column));
+        column: $table.endedAt,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get title => $composableBuilder(
-      column: $table.title, builder: (column) => ColumnFilters(column));
+        column: $table.title,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<String> get summary => $composableBuilder(
-      column: $table.summary, builder: (column) => ColumnFilters(column));
+        column: $table.summary,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnWithTypeConverterFilters<List<String>, List<String>, String>
       get applications => $composableBuilder(
-          column: $table.applications,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+            column: $table.applications,
+            builder: (column) => ColumnWithTypeConverterFilters(column),
+          );
 
   ColumnWithTypeConverterFilters<List<String>, List<String>, String> get urls =>
       $composableBuilder(
-          column: $table.urls,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+        column: $table.urls,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnWithTypeConverterFilters<List<String>, List<String>, String>
       get topics => $composableBuilder(
-          column: $table.topics,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+            column: $table.topics,
+            builder: (column) => ColumnWithTypeConverterFilters(column),
+          );
 
   ColumnWithTypeConverterFilters<List<String>, List<String>, String>
       get entities => $composableBuilder(
-          column: $table.entities,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+            column: $table.entities,
+            builder: (column) => ColumnWithTypeConverterFilters(column),
+          );
 
   ColumnWithTypeConverterFilters<List<int>, List<int>, String>
       get sourceActivityIds => $composableBuilder(
-          column: $table.sourceActivityIds,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+            column: $table.sourceActivityIds,
+            builder: (column) => ColumnWithTypeConverterFilters(column),
+          );
 
   ColumnWithTypeConverterFilters<List<double>?, List<double>, Uint8List>
       get embedding => $composableBuilder(
-          column: $table.embedding,
-          builder: (column) => ColumnWithTypeConverterFilters(column));
+            column: $table.embedding,
+            builder: (column) => ColumnWithTypeConverterFilters(column),
+          );
 
   ColumnFilters<String> get embeddingProviderId => $composableBuilder(
-      column: $table.embeddingProviderId,
-      builder: (column) => ColumnFilters(column));
+        column: $table.embeddingProviderId,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnFilters(column),
+      );
 }
 
 class $$MemoryEpisodesTableOrderingComposer
@@ -4020,49 +4828,74 @@ class $$MemoryEpisodesTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+        column: $table.id,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get sourceKey => $composableBuilder(
-      column: $table.sourceKey, builder: (column) => ColumnOrderings(column));
+        column: $table.sourceKey,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get startedAt => $composableBuilder(
-      column: $table.startedAt, builder: (column) => ColumnOrderings(column));
+        column: $table.startedAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get endedAt => $composableBuilder(
-      column: $table.endedAt, builder: (column) => ColumnOrderings(column));
+        column: $table.endedAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get title => $composableBuilder(
-      column: $table.title, builder: (column) => ColumnOrderings(column));
+        column: $table.title,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get summary => $composableBuilder(
-      column: $table.summary, builder: (column) => ColumnOrderings(column));
+        column: $table.summary,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get applications => $composableBuilder(
-      column: $table.applications,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.applications,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get urls => $composableBuilder(
-      column: $table.urls, builder: (column) => ColumnOrderings(column));
+        column: $table.urls,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get topics => $composableBuilder(
-      column: $table.topics, builder: (column) => ColumnOrderings(column));
+        column: $table.topics,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get entities => $composableBuilder(
-      column: $table.entities, builder: (column) => ColumnOrderings(column));
+        column: $table.entities,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get sourceActivityIds => $composableBuilder(
-      column: $table.sourceActivityIds,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.sourceActivityIds,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<Uint8List> get embedding => $composableBuilder(
-      column: $table.embedding, builder: (column) => ColumnOrderings(column));
+        column: $table.embedding,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get embeddingProviderId => $composableBuilder(
-      column: $table.embeddingProviderId,
-      builder: (column) => ColumnOrderings(column));
+        column: $table.embeddingProviderId,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+        column: $table.createdAt,
+        builder: (column) => ColumnOrderings(column),
+      );
 }
 
 class $$MemoryEpisodesTableAnnotationComposer
@@ -4094,7 +4927,9 @@ class $$MemoryEpisodesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<List<String>, String> get applications =>
       $composableBuilder(
-          column: $table.applications, builder: (column) => column);
+        column: $table.applications,
+        builder: (column) => column,
+      );
 
   GeneratedColumnWithTypeConverter<List<String>, String> get urls =>
       $composableBuilder(column: $table.urls, builder: (column) => column);
@@ -4107,13 +4942,17 @@ class $$MemoryEpisodesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<List<int>, String> get sourceActivityIds =>
       $composableBuilder(
-          column: $table.sourceActivityIds, builder: (column) => column);
+        column: $table.sourceActivityIds,
+        builder: (column) => column,
+      );
 
   GeneratedColumnWithTypeConverter<List<double>?, Uint8List> get embedding =>
       $composableBuilder(column: $table.embedding, builder: (column) => column);
 
   GeneratedColumn<String> get embeddingProviderId => $composableBuilder(
-      column: $table.embeddingProviderId, builder: (column) => column);
+        column: $table.embeddingProviderId,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4130,90 +4969,101 @@ class $$MemoryEpisodesTableTableManager extends RootTableManager<
     $$MemoryEpisodesTableUpdateCompanionBuilder,
     (
       MemoryEpisode,
-      BaseReferences<_$KangoosDatabase, $MemoryEpisodesTable, MemoryEpisode>
+      BaseReferences<_$KangoosDatabase, $MemoryEpisodesTable, MemoryEpisode>,
     ),
     MemoryEpisode,
     PrefetchHooks Function()> {
   $$MemoryEpisodesTableTableManager(
-      _$KangoosDatabase db, $MemoryEpisodesTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$MemoryEpisodesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$MemoryEpisodesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$MemoryEpisodesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> sourceKey = const Value.absent(),
-            Value<DateTime> startedAt = const Value.absent(),
-            Value<DateTime> endedAt = const Value.absent(),
-            Value<String> title = const Value.absent(),
-            Value<String> summary = const Value.absent(),
-            Value<List<String>> applications = const Value.absent(),
-            Value<List<String>> urls = const Value.absent(),
-            Value<List<String>> topics = const Value.absent(),
-            Value<List<String>> entities = const Value.absent(),
-            Value<List<int>> sourceActivityIds = const Value.absent(),
-            Value<List<double>?> embedding = const Value.absent(),
-            Value<String?> embeddingProviderId = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-          }) =>
-              MemoryEpisodesCompanion(
-            id: id,
-            sourceKey: sourceKey,
-            startedAt: startedAt,
-            endedAt: endedAt,
-            title: title,
-            summary: summary,
-            applications: applications,
-            urls: urls,
-            topics: topics,
-            entities: entities,
-            sourceActivityIds: sourceActivityIds,
-            embedding: embedding,
-            embeddingProviderId: embeddingProviderId,
-            createdAt: createdAt,
+    _$KangoosDatabase db,
+    $MemoryEpisodesTable table,
+  ) : super(
+          TableManagerState(
+            db: db,
+            table: table,
+            createFilteringComposer: () =>
+                $$MemoryEpisodesTableFilterComposer($db: db, $table: table),
+            createOrderingComposer: () =>
+                $$MemoryEpisodesTableOrderingComposer($db: db, $table: table),
+            createComputedFieldComposer: () =>
+                $$MemoryEpisodesTableAnnotationComposer(
+              $db: db,
+              $table: table,
+            ),
+            updateCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              Value<String> sourceKey = const Value.absent(),
+              Value<DateTime> startedAt = const Value.absent(),
+              Value<DateTime> endedAt = const Value.absent(),
+              Value<String> title = const Value.absent(),
+              Value<String> summary = const Value.absent(),
+              Value<List<String>> applications = const Value.absent(),
+              Value<List<String>> urls = const Value.absent(),
+              Value<List<String>> topics = const Value.absent(),
+              Value<List<String>> entities = const Value.absent(),
+              Value<List<int>> sourceActivityIds = const Value.absent(),
+              Value<List<double>?> embedding = const Value.absent(),
+              Value<String?> embeddingProviderId = const Value.absent(),
+              Value<DateTime> createdAt = const Value.absent(),
+            }) =>
+                MemoryEpisodesCompanion(
+              id: id,
+              sourceKey: sourceKey,
+              startedAt: startedAt,
+              endedAt: endedAt,
+              title: title,
+              summary: summary,
+              applications: applications,
+              urls: urls,
+              topics: topics,
+              entities: entities,
+              sourceActivityIds: sourceActivityIds,
+              embedding: embedding,
+              embeddingProviderId: embeddingProviderId,
+              createdAt: createdAt,
+            ),
+            createCompanionCallback: ({
+              Value<int> id = const Value.absent(),
+              required String sourceKey,
+              required DateTime startedAt,
+              required DateTime endedAt,
+              required String title,
+              required String summary,
+              Value<List<String>> applications = const Value.absent(),
+              Value<List<String>> urls = const Value.absent(),
+              Value<List<String>> topics = const Value.absent(),
+              Value<List<String>> entities = const Value.absent(),
+              Value<List<int>> sourceActivityIds = const Value.absent(),
+              Value<List<double>?> embedding = const Value.absent(),
+              Value<String?> embeddingProviderId = const Value.absent(),
+              Value<DateTime> createdAt = const Value.absent(),
+            }) =>
+                MemoryEpisodesCompanion.insert(
+              id: id,
+              sourceKey: sourceKey,
+              startedAt: startedAt,
+              endedAt: endedAt,
+              title: title,
+              summary: summary,
+              applications: applications,
+              urls: urls,
+              topics: topics,
+              entities: entities,
+              sourceActivityIds: sourceActivityIds,
+              embedding: embedding,
+              embeddingProviderId: embeddingProviderId,
+              createdAt: createdAt,
+            ),
+            withReferenceMapper: (p0) => p0
+                .map(
+                  (e) => (
+                    e.readTable(table),
+                    BaseReferences(db, table, e),
+                  ),
+                )
+                .toList(),
+            prefetchHooksCallback: null,
           ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String sourceKey,
-            required DateTime startedAt,
-            required DateTime endedAt,
-            required String title,
-            required String summary,
-            Value<List<String>> applications = const Value.absent(),
-            Value<List<String>> urls = const Value.absent(),
-            Value<List<String>> topics = const Value.absent(),
-            Value<List<String>> entities = const Value.absent(),
-            Value<List<int>> sourceActivityIds = const Value.absent(),
-            Value<List<double>?> embedding = const Value.absent(),
-            Value<String?> embeddingProviderId = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-          }) =>
-              MemoryEpisodesCompanion.insert(
-            id: id,
-            sourceKey: sourceKey,
-            startedAt: startedAt,
-            endedAt: endedAt,
-            title: title,
-            summary: summary,
-            applications: applications,
-            urls: urls,
-            topics: topics,
-            entities: entities,
-            sourceActivityIds: sourceActivityIds,
-            embedding: embedding,
-            embeddingProviderId: embeddingProviderId,
-            createdAt: createdAt,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
+        );
 }
 
 typedef $$MemoryEpisodesTableProcessedTableManager = ProcessedTableManager<
@@ -4227,7 +5077,7 @@ typedef $$MemoryEpisodesTableProcessedTableManager = ProcessedTableManager<
     $$MemoryEpisodesTableUpdateCompanionBuilder,
     (
       MemoryEpisode,
-      BaseReferences<_$KangoosDatabase, $MemoryEpisodesTable, MemoryEpisode>
+      BaseReferences<_$KangoosDatabase, $MemoryEpisodesTable, MemoryEpisode>,
     ),
     MemoryEpisode,
     PrefetchHooks Function()>;

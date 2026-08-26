@@ -130,8 +130,9 @@ class TrayService with TrayListener, WindowListener implements RuntimeService {
 
   Future<void> toggleCapture() async {
     final current = await captureSettingsRepository.load();
-    await captureSettingsRepository
-        .save(current.copyWith(paused: !current.paused));
+    await captureSettingsRepository.save(
+      current.copyWith(paused: !current.paused, clearResumeAt: true),
+    );
   }
 
   Future<bool> saveClipboardAsSnippet() async {

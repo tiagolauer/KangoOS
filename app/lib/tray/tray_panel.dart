@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../capture/capture_settings_repository.dart';
+import '../capture/capture_status.dart';
+import '../capture/capture_status_indicator.dart';
 import '../theme/kangoos_theme.dart';
 
 class TrayPanel extends StatefulWidget {
   const TrayPanel({
     super.key,
     required this.captureSettingsRepository,
+    this.captureStatus,
     required this.onOpen,
     required this.onHide,
     required this.onToggleCapture,
@@ -15,6 +18,7 @@ class TrayPanel extends StatefulWidget {
   });
 
   final CaptureSettingsRepository captureSettingsRepository;
+  final CaptureStatusController? captureStatus;
   final Future<void> Function() onOpen;
   final Future<void> Function() onHide;
   final Future<void> Function() onToggleCapture;
@@ -63,9 +67,11 @@ class _TrayPanelState extends State<TrayPanel> {
     try {
       final saved = await widget.onQuickCapture();
       if (mounted) {
-        setState(() => _feedback = saved
-            ? 'Snippet salvo a partir da área de transferência.'
-            : 'A área de transferência não contém texto.');
+        setState(
+          () => _feedback = saved
+              ? 'Snippet salvo a partir da área de transferência.'
+              : 'A área de transferência não contém texto.',
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -87,9 +93,7 @@ class _TrayPanelState extends State<TrayPanel> {
     return Scaffold(
       backgroundColor: colors.surface,
       body: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border.all(color: colors.outline),
-        ),
+        decoration: BoxDecoration(border: Border.all(color: colors.outline)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
           child: Column(
@@ -132,6 +136,10 @@ class _TrayPanelState extends State<TrayPanel> {
                   ),
                 ],
               ),
+              if (widget.captureStatus case final captureStatus?) ...[
+                const SizedBox(height: 10),
+                CaptureStatusIndicator(controller: captureStatus),
+              ],
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.only(top: 18, bottom: 8),
@@ -155,8 +163,10 @@ class _TrayPanelState extends State<TrayPanel> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('CAPTURA LOCAL',
-                              style: theme.textTheme.labelSmall),
+                          Text(
+                            'CAPTURA LOCAL',
+                            style: theme.textTheme.labelSmall,
+                          ),
                           const SizedBox(height: 10),
                           Row(
                             children: [
@@ -287,9 +297,9 @@ class _TrayAction extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: contentColor,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelLarge?.copyWith(color: contentColor),
                       ),
                       const SizedBox(height: 2),
                       Text(

@@ -4,6 +4,7 @@ class NewActivity {
   const NewActivity({
     required this.appName,
     required this.windowTitle,
+    this.sourceId,
     this.capturedText,
     this.capturedUrl,
     this.capturedClipboard,
@@ -14,6 +15,7 @@ class NewActivity {
 
   final String appName;
   final String windowTitle;
+  final String? sourceId;
   final String? capturedText;
   final String? capturedUrl;
   final String? capturedClipboard;

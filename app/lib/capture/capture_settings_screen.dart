@@ -5,6 +5,7 @@ import 'package:kangoos_core/kangoos_core.dart';
 import '../autostart/autostart_service.dart';
 import 'audio_capture_service.dart';
 import 'capture_settings_repository.dart';
+import 'capture_source_registry.dart';
 import 'whisper_model_repository.dart';
 import 'window_capture_service.dart';
 
@@ -13,10 +14,12 @@ class CaptureSettingsScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.memory,
+    this.sourceRegistry,
   });
 
   final CaptureSettingsRepository repository;
   final MemoryService memory;
+  final CaptureSourceRegistry? sourceRegistry;
 
   @override
   State<CaptureSettingsScreen> createState() => _CaptureSettingsScreenState();
@@ -25,10 +28,12 @@ class CaptureSettingsScreen extends StatefulWidget {
 class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
   final _autostartService = AutostartService();
   final _modelRepository = WhisperModelRepository();
+  late final CaptureSourceRegistry _sourceRegistry;
   var _modelReady = false;
   int? _modelDownloadPercent;
   String? _modelError;
   var _settings = const CaptureSettings();
+  var _sources = <CaptureSource>[];
   var _autostartEnabled = false;
   var _loading = true;
   final _excludeController = TextEditingController();
@@ -36,14 +41,17 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _sourceRegistry = widget.sourceRegistry ?? CaptureSourceRegistry();
     _load();
   }
 
   Future<void> _load() async {
     final settings = await widget.repository.load();
+    final sources = await _sourceRegistry.list();
     if (!mounted) return;
     setState(() {
       _settings = settings;
+      _sources = sources;
       _autostartEnabled = _autostartService.isEnabled();
       _loading = false;
     });
@@ -71,6 +79,29 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
     await widget.repository.save(updated);
   }
 
+  Future<void> _pauseFor(Duration duration) => _apply(
+        _settings.copyWith(
+            paused: true, resumeAt: DateTime.now().add(duration)),
+      );
+
+  Future<void> _resumeNow() =>
+      _apply(_settings.copyWith(paused: false, clearResumeAt: true));
+
+  Future<void> _setSourceEnabled(CaptureSource source, bool enabled) async {
+    await _sourceRegistry.setEnabled(source.id, enabled);
+    await _reloadSources();
+  }
+
+  Future<void> _toggleSourceBlocked(CaptureSource source) async {
+    await _sourceRegistry.setBlocked(source.id, !source.blocked);
+    await _reloadSources();
+  }
+
+  Future<void> _reloadSources() async {
+    final sources = await _sourceRegistry.list();
+    if (mounted) setState(() => _sources = sources);
+  }
+
   Future<void> _addExcludedApp() async {
     final app = _excludeController.text.trim();
     if (app.isEmpty ||
@@ -79,7 +110,8 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
     }
     _excludeController.clear();
     await _apply(
-        _settings.copyWith(excludedApps: [..._settings.excludedApps, app]));
+      _settings.copyWith(excludedApps: [..._settings.excludedApps, app]),
+    );
   }
 
   Future<void> _removeExcludedApp(String app) => _apply(
@@ -134,9 +166,42 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
 
     final cleared = await widget.memory.clear();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(l10n.clearedEntries(
-            cleared.activities, cleared.summaries + cleared.episodes))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          l10n.clearedEntries(
+            cleared.activities,
+            cleared.summaries + cleared.episodes,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _sourceSubtitle(BuildContext context, CaptureSource source) {
+    final l10n = AppLocalizations.of(context);
+    final lastCapturedAt = source.lastCapturedAt;
+    final captured = lastCapturedAt == null
+        ? l10n.captureSourceNeverCaptured
+        : l10n.captureSourceLastCaptured(
+            MaterialLocalizations.of(context).formatShortDate(lastCapturedAt),
+            MaterialLocalizations.of(
+              context,
+            ).formatTimeOfDay(TimeOfDay.fromDateTime(lastCapturedAt)),
+          );
+    final modalities = source.modalities.isEmpty
+        ? l10n.captureSourceNoModalities
+        : source.modalities.map((modality) {
+            return switch (modality) {
+              CaptureModality.metadata => l10n.captureModalityMetadata,
+              CaptureModality.clipboard => l10n.captureModalityClipboard,
+              CaptureModality.browser => l10n.captureModalityBrowser,
+              CaptureModality.visibleText => l10n.captureModalityVisibleText,
+              CaptureModality.screenText => l10n.captureModalityScreenText,
+              CaptureModality.audio => l10n.captureModalityAudio,
+            };
+          }).join(', ');
+    return '$captured • $modalities\n${source.id}';
   }
 
   @override
@@ -164,12 +229,62 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                 ),
               SwitchListTile(
                 title: Text(l10n.captureActiveWindow),
-                subtitle: Text(
-                  l10n.captureActiveWindowDescription,
-                ),
+                subtitle: Text(l10n.captureActiveWindowDescription),
                 value: !_settings.paused,
-                onChanged: (enabled) =>
-                    _apply(_settings.copyWith(paused: !enabled)),
+                onChanged: (enabled) => _apply(
+                  _settings.copyWith(paused: !enabled, clearResumeAt: true),
+                ),
+              ),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.pauseCaptureTemporarily,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      if (_settings.resumeAt case final resumeAt?) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.capturePausedUntil(
+                            MaterialLocalizations.of(
+                              context,
+                            ).formatTimeOfDay(TimeOfDay.fromDateTime(resumeAt)),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () =>
+                                _pauseFor(const Duration(minutes: 15)),
+                            child: Text(l10n.pauseFor15Minutes),
+                          ),
+                          OutlinedButton(
+                            onPressed: () =>
+                                _pauseFor(const Duration(hours: 1)),
+                            child: Text(l10n.pauseForOneHour),
+                          ),
+                          OutlinedButton(
+                            onPressed: () =>
+                                _pauseFor(const Duration(hours: 8)),
+                            child: Text(l10n.pauseForEightHours),
+                          ),
+                          if (_settings.paused)
+                            FilledButton.tonal(
+                              onPressed: _resumeNow,
+                              child: Text(l10n.resumeCaptureNow),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
               SwitchListTile(
                 title: Text(l10n.captureBrowserUrls),
@@ -195,8 +310,9 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
               if (AudioCaptureService.isSupported) ...[
                 SwitchListTile(
                   title: Text(l10n.captureAudio),
-                  subtitle:
-                      Text(l10n.captureAudioDescription(audioClipSeconds)),
+                  subtitle: Text(
+                    l10n.captureAudioDescription(audioClipSeconds),
+                  ),
                   value: _settings.captureAudio,
                   onChanged: _modelReady
                       ? (enabled) =>
@@ -213,7 +329,8 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                               ? l10n.whisperModelDownloadFailed(_modelError!)
                               : _modelDownloadPercent != null
                                   ? l10n.downloadingWhisperModel(
-                                      _modelDownloadPercent!)
+                                      _modelDownloadPercent!,
+                                    )
                                   : _modelReady
                                       ? l10n.whisperModelReady
                                       : l10n.whisperModelMissing,
@@ -242,8 +359,9 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                 title: Text(l10n.allowRemoteSummaries),
                 subtitle: Text(l10n.allowRemoteSummariesDescription),
                 value: _settings.allowRemoteSummaries,
-                onChanged: (enabled) =>
-                    _apply(_settings.copyWith(allowRemoteSummaries: enabled)),
+                onChanged: (enabled) => _apply(
+                  _settings.copyWith(allowRemoteSummaries: enabled),
+                ),
               ),
               SwitchListTile(
                 title: Text(l10n.redactCapturedPii),
@@ -253,20 +371,28 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                     _apply(_settings.copyWith(redactPii: enabled)),
               ),
               const SizedBox(height: 16),
-              Text(l10n.keepHistoryFor,
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                l10n.keepHistoryFor,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               Text(l10n.keepHistoryDescription),
               const SizedBox(height: 8),
               DropdownButtonFormField<int>(
                 value: _settings.retentionDays,
                 decoration: const InputDecoration(
-                    border: OutlineInputBorder(), isDense: true),
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
                 items: [
                   for (final days in const [7, 30, 90])
                     DropdownMenuItem(
-                        value: days, child: Text(l10n.retentionDays(days))),
+                      value: days,
+                      child: Text(l10n.retentionDays(days)),
+                    ),
                   DropdownMenuItem(
-                      value: 0, child: Text(l10n.retentionForever)),
+                    value: 0,
+                    child: Text(l10n.retentionForever),
+                  ),
                 ],
                 onChanged: (value) {
                   if (value != null) {
@@ -275,8 +401,57 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              Text(l10n.excludedApps,
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                l10n.knownCaptureSources,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Text(l10n.knownCaptureSourcesDescription),
+              const SizedBox(height: 8),
+              if (_sources.isEmpty)
+                ListTile(
+                  leading: const Icon(Icons.apps_outlined),
+                  title: Text(l10n.noKnownCaptureSources),
+                ),
+              for (final source in _sources)
+                Card(
+                  child: ListTile(
+                    leading: Icon(
+                      source.blocked
+                          ? Icons.block
+                          : Icons.desktop_windows_outlined,
+                    ),
+                    title: Text(source.name),
+                    subtitle: Text(_sourceSubtitle(context, source)),
+                    isThreeLine: true,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: () => _toggleSourceBlocked(source),
+                          icon: Icon(
+                            source.blocked
+                                ? Icons.lock_open_outlined
+                                : Icons.block,
+                          ),
+                          tooltip: source.blocked
+                              ? l10n.unblockCaptureSource
+                              : l10n.blockCaptureSource,
+                        ),
+                        Switch(
+                          value: source.enabled,
+                          onChanged: source.blocked
+                              ? null
+                              : (enabled) => _setSourceEnabled(source, enabled),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.excludedApps,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               Text(l10n.excludedAppsDescription),
               const SizedBox(height: 8),
               Row(
@@ -294,7 +469,9 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                      onPressed: _addExcludedApp, icon: const Icon(Icons.add)),
+                    onPressed: _addExcludedApp,
+                    icon: const Icon(Icons.add),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),

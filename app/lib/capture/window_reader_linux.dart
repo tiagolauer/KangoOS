@@ -111,7 +111,12 @@ WindowSnapshot? readForegroundWindowLinux() {
       if (title == null || title.trim().isEmpty) return null;
 
       final appName = _fetchWmClass(x11, display, activeWindow) ?? 'unknown';
-      return WindowSnapshot(appName: appName, windowTitle: title);
+      return WindowSnapshot(
+        appId: 'linux:${appName.toLowerCase()}',
+        appName: appName,
+        windowTitle: title,
+        nativeWindowId: activeWindow,
+      );
     } finally {
       x11.closeDisplay(display);
     }
