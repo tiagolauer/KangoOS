@@ -61,9 +61,10 @@ KangoOS stores the code you keep re-writing, remembers what you were working on,
 ### Long-term memory
 
 - **Activity capture** — foreground application and window title, with opt-in first-run consent, retention and purge policies, a per-application denylist, swipe-to-delete and clear-all.
-- **Timeline** — automatic activity summaries every 20 minutes, an on-demand day recap, day-grouped history and a sparkline of today's activity.
-- **Full-text search over captured activity**, alongside snippets.
-- Chat and the `ask_kango_ltm` MCP tool answer over captured activity using plain-English time ranges (*today*, *yesterday*, *this week*, *last week*).
+- **Timeline** — deterministic memory episodes, automatic activity summaries every 20 minutes, an on-demand day recap, day-grouped history and a sparkline of today's activity.
+- **Hybrid memory search** — FTS5, semantic similarity and temporal filters over captured work episodes.
+- **Agentic retrieval and DeepStudy** — bounded multi-source investigation over episodes, summaries, snippets and conversations, with evidence trails, coverage, confidence and missing-evidence markers.
+- Chat and MCP tools answer over structured episodes using plain-English time ranges in English and Portuguese.
 
 ### LLM providers
 
@@ -97,7 +98,7 @@ Treat anything other than Windows as build-it-yourself until a later release.
 
 ### Prerequisites
 
-- [Flutter](https://docs.flutter.dev/get-started/install) 3.27.3 (stable) and Dart SDK 3.6.1.
+- [Flutter](https://docs.flutter.dev/get-started/install) 3.29.3 (Dart 3.7.2). Standalone Dart CI jobs use 3.7.3.
 - [Ollama](https://ollama.com/) running locally, if you want local inference and semantic search. Pull an embedding model with `ollama pull nomic-embed-text`.
 - Windows: Visual Studio Build Tools with the **C++ ATL** component, and OpenSSL (`choco install openssl`). See [Development](#development) for the details.
 
@@ -122,11 +123,12 @@ There is no account to create and no configuration required to start: the app op
 ```
 KangoOS/
 ├── app/      Flutter desktop application (Windows, Linux, macOS)
-├── core/     KangoOS Core — pure Dart: snippets, search, storage, LLM adapter, CLI, MCP server
+├── core/     KangoOS Core — pure Dart: snippets, search, memory, storage, LLM and tool registry
+├── mcp/      Official Dart MCP stdio adapter
 └── server/   Self-hosted HTTP server (Shelf) — exposes core over the network
 ```
 
-`app` and `server` both depend on `core` through a path dependency (`../core`). The same engine runs embedded in the desktop app (standalone mode) or behind the HTTP server (self-hosted mode) — identical snippet storage, semantic search and RAG chat logic in both.
+`app`, `mcp` and `server` depend on `core` through a path dependency (`../core`). The core is a modular monolith: UI, HTTP, CLI and MCP adapters call application services; repositories isolate drift/SQLite; sync transport is separate from reconciliation. The desktop app is the composition root and no UI widget queries drift directly.
 
 | Layer | Technology |
 |---|---|
@@ -170,6 +172,8 @@ Reliability varies significantly by platform:
 
 Every 10 minutes the app records a 30-second clip from the default input device and transcribes it locally with [whisper.cpp](https://github.com/ggml-org/whisper.cpp). The audio never leaves the machine and the clip is deleted immediately after transcription — only the text is stored, alongside the focused window, and indexed for full-text search.
 
+The native recorder applies voice activity detection before transcription. Timestamped transcripts are grouped by inactivity into session memories, and known conferencing applications mark meeting sessions. System-audio capture and speaker separation are not performed.
+
 A one-time ~140 MB speech-model download (`ggml-base`) is required and must be triggered explicitly from capture settings; the toggle stays disabled until the model is present. whisper.cpp is fetched and compiled by CMake during the Windows build from a pinned commit, adding roughly 30 seconds to a clean build — no prebuilt binaries are vendored.
 
 > [!WARNING]
@@ -184,8 +188,9 @@ Each time the focused window changes, a bundled `screen_ocr.exe` helper captures
 
 ## Privacy and security
 
-- **No account, no telemetry.** Nothing is transmitted unless you configure a remote LLM provider or a sync server.
-- **Encryption at rest.** The desktop database is SQLCipher-encrypted with a random key held in the OS keychain. The CLI, MCP and server databases are plain SQLite — separate stores, separate threat model.
+- **No account, no telemetry.** Nothing is transmitted unless you configure a remote LLM provider or a sync server. Automatic remote activity summaries require a separate explicit opt-in; loopback Ollama remains local by default.
+- **Privacy filtering before persistence.** Common credentials and tokens are redacted before captured activity is written to storage.
+- **Encryption at rest.** The desktop database is SQLCipher-encrypted with a random key held in the OS keychain. CLI, MCP and server can open an encrypted database when given the same path and key through the environment.
 - **Secrets in the keychain.** LLM API keys and the database key use the same OS-native mechanism, never plaintext on disk.
 - **The self-hosted server has no TLS of its own.** It binds `0.0.0.0` and sends the bearer token and every snippet body in cleartext, so anything beyond `localhost` belongs behind a TLS-terminating reverse proxy (Caddy, nginx, Traefik) or inside a private tunnel (Tailscale, WireGuard). The app warns before syncing to a plain `http://` host that is not local.
 
@@ -224,11 +229,13 @@ dart run bin/kango.dart edit 1 --title "New title"
 dart run bin/kango.dart delete 1
 ```
 
-By default the CLI uses its own database file (`KangoOS/kangoos.db` in the OS app-data folder) — **not** the file the desktop app uses, because replicating Flutter's `path_provider` resolution from a plain Dart binary would be fragile. Set `KANGOOS_DB_PATH` to the app's database to share storage, or leave it alone for a standalone CLI-only store.
+By default the CLI uses its own database file (`KangoOS/kangoos.db` in the OS app-data folder). To share the desktop database, set its exact path and provide the SQLCipher key directly or through a protected key file. Do not put real keys in shell history or source control.
 
 | Variable | Purpose |
 |---|---|
 | `KANGOOS_DB_PATH` | SQLite file to use. |
+| `KANGOOS_DB_KEY` | SQLCipher key for an encrypted database. |
+| `KANGOOS_DB_KEY_FILE` | File containing the SQLCipher key; preferred over an inline value. |
 | `KANGOOS_OLLAMA_BASE_URL` | Ollama endpoint for embeddings (default `http://localhost:11434`). |
 | `KANGOOS_EMBEDDING_MODEL` | Embedding model (default `nomic-embed-text`). |
 
@@ -237,10 +244,12 @@ By default the CLI uses its own database file (`KangoOS/kangoos.db` in the OS ap
 ## MCP server
 
 ```bash
-cd core && dart run bin/kango_mcp.dart
+cd mcp && dart run bin/kangoos_mcp.dart
 ```
 
-`kango_mcp` speaks MCP over stdio. Point Cursor, Claude Desktop or GitHub Copilot's MCP configuration at `dart run <path-to-core>/bin/kango_mcp.dart`, using the same environment variables as the CLI.
+The primary MCP entrypoint uses the official `dart_mcp` SDK and Dart 3.7. Point Cursor, Claude Desktop or GitHub Copilot's MCP configuration at `dart run <path-to-repository>/mcp/bin/kangoos_mcp.dart`, using the same environment variables as the CLI.
+
+Plain Dart binaries on Linux require `libsqlite3-dev` so the native SQLite library is discoverable.
 
 | Tool | Purpose |
 |---|---|
@@ -252,8 +261,20 @@ cd core && dart run bin/kango_mcp.dart
 | `delete_snippet` | Remove a snippet. |
 | `ask_kango_ltm` | Query long-term memory over a time range. |
 | `create_kango_memory` | Write an entry into long-term memory. |
+| `search_memories` | Hybrid memory search. |
+| `search_memories_semantic` | Semantic episode search. |
+| `search_memories_by_time` | Search episodes inside a parsed time range. |
+| `get_memory_episode` | Fetch one structured episode. |
+| `list_recent_memories` | List recent episodes. |
+| `find_related_memories` | Find episodes related to another episode. |
+| `investigate_memory` | Retrieve across memory sources and reflect on evidence quality. |
+| `deep_study` | Build a cross-referenced report with an evidence trail. |
+| `search_entities` / `search_projects` | Search extracted entity and project references. |
+| `forget_memory` | Delete a memory episode. |
+| `get_daily_summary` / `get_weekly_summary` | Read stored summaries. |
+| `remember` | Alias for manually storing a memory. |
 
-The project pins Dart SDK `^3.6.1`, while the official `package:dart_mcp` requires `>=3.7.0`. The stdio JSON-RPC transport here is therefore hand-rolled and deliberately minimal — tools only, no resources, prompts or sampling. It should be replaced by `package:dart_mcp` once the SDK floor moves to 3.7+.
+The repository is pinned to Flutter 3.29.3 (Dart 3.7.2), while standalone Dart jobs use 3.7.3. The legacy `core/bin/kango_mcp.dart` tools-only transport remains available, and both entrypoints share the same tool registry and composition root.
 
 ## Self-hosted server
 
@@ -269,7 +290,7 @@ Full API reference, configuration table and curl examples: **[server/README.md](
 
 ## Performance
 
-Semantic search runs brute-force cosine similarity, with embeddings stored as packed `float32` blobs. Scoring reads only `(id, embedding)` and fetches full rows just for the top hits. Measured with `dart run tool/semantic_search_benchmark.dart` at 768 dimensions, per query:
+Semantic search uses the `VectorIndex` contract with a measured brute-force implementation, and embeddings are stored as packed `float32` blobs. Scoring reads only `(id, embedding)` and fetches full rows just for the top hits. Measured with `dart run tool/semantic_search_benchmark.dart` at 768 dimensions, per query:
 
 | Snippets | Before | After |
 |---:|---:|---:|
@@ -281,15 +302,13 @@ An approximate-nearest-neighbour index was considered and rejected on these numb
 
 ## Development
 
-```bash
-cd core && dart pub get
+```powershell
+.\tool\verify.ps1
 ```
 
-```bash
-cd app && flutter pub get && flutter run -d windows
-```
+The command resolves dependencies, analyzes and tests `core`, `server`, `mcp` and `app`. Add `-BuildInstaller` on Windows to build the release bundle, verify an encrypted database upgrade against its SQLCipher library and compile the installer. See the [M0 verification baseline](docs/m0-verification-baseline.md).
 
-CI runs `analyze` and `test` for `core`, `server` and `app` on Ubuntu, repeats the Dart suites on Windows, and produces a real `flutter build windows --release` artifact.
+CI runs `analyze` and `test` for `core`, `server`, `mcp` and `app` on Ubuntu, repeats the Dart suites on Windows, builds and smoke-tests the authenticated Docker server, and produces a real `flutter build windows --release` artifact.
 
 ### Native requirements
 
@@ -331,6 +350,7 @@ Currently out of scope, in rough order of interest:
 - VS Code extension and browser extension
 - Mobile application
 - Plugin system
+- ANN/vector storage only after brute-force search exceeds its measured ceiling
 - Syncing anything beyond snippets — activity, summaries and chat history stay device-local by design
 
 ## Contributing

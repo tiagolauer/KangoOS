@@ -1,23 +1,25 @@
 # kangoos_core
 
-Pure Dart core engine for [KangoOS](../README.md): snippet storage (drift/SQLite), search and LLM adapter. Consumed by the `app` package via a path dependency.
+Pure Dart core engine for [KangoOS](../README.md): application services, repository contracts, drift/SQLite adapters, search, memory, sync and LLM adapters. Consumed by the desktop app and server through path dependencies.
 
 ## Usage
 
 ```dart
 import 'package:kangoos_core/kangoos_core.dart';
-import 'package:drift/drift.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 
-final db = KangoosDatabase.memory(); // or KangoosDatabase.native(File(path))
+final db = KangoosDatabase.memory();
+final repository = SqliteSnippetRepository(db);
+final snippets = SnippetService(repository: repository);
 
-final id = await db.createSnippet(SnippetsCompanion.insert(
+final result = await snippets.create(const NewSnippet(
   title: 'Reverse a string',
   content: 'input.split("").reversed.join()',
-  language: const Value('dart'),
-  tags: const Value(['string', 'algorithm']),
+  language: 'dart',
+  tags: ['string', 'algorithm'],
 ));
 
-final snippet = await db.getSnippetById(id);
+final snippet = await snippets.get(result.snippet.id);
 ```
 
 ## LLM providers
@@ -46,17 +48,27 @@ await for (final chunk in ollama.chat([
 
 ```dart
 final search = SemanticSearch(
-  database: db,
+  repository: repository,
   embeddingProvider: OllamaEmbeddingProvider(model: 'nomic-embed-text'),
 );
+final snippets = SnippetService(
+  repository: repository,
+  semanticSearch: search,
+);
 
-await search.indexSnippet(snippet); // after create/update
-await search.indexMissing(); // backfill snippets saved before indexing existed
+final result = await snippets.create(const NewSnippet(
+  title: 'Reverse a string',
+  content: 'input.split("").reversed.join()',
+));
+final report = await snippets.indexPending();
 
-final matches = await search.search('reverse a string'); // List<SemanticMatch>
+final matches = await snippets.search(
+  'reverse a string',
+  mode: SnippetSearchMode.semantic,
+);
 ```
 
-Embeddings are stored as a JSON-encoded `List<double>` in the `snippets.embedding` column (nullable — snippets without one are simply excluded from semantic search).
+Embeddings are packed `float32` blobs and carry a provider/model fingerprint. Changing the model makes old vectors pending instead of mixing incompatible embedding spaces. Mutation and backfill results surface per-item indexing failures.
 
 ## Snippet sync
 
@@ -64,12 +76,31 @@ Embeddings are stored as a JSON-encoded `List<double>` in the `snippets.embeddin
 
 ```dart
 final client = SnippetSyncClient(
-  database: db,
-  baseUrl: Uri.parse('http://localhost:8080'),
-  apiToken: token,
+  engine: SnippetSyncEngine(
+    repository: repository,
+    snippets: snippets,
+    transport: HttpSyncTransport(
+      baseUrl: Uri.parse('http://localhost:8080'),
+      apiToken: token,
+    ),
+  ),
 );
 
 final result = await client.sync(); // SyncResult(pushed, pulled, updated)
 ```
 
-Snippets only — `embedding` is excluded from the sync payload (each device re-indexes locally, since the embedding model can differ across machines) and deletions don't propagate (deleting on one side doesn't delete on the other; sync only ever creates or updates).
+Snippets only — embeddings are excluded from the sync payload and re-indexed locally. Tombstones propagate deletions in both directions; a strictly newer edit resurrects a snippet, while deletion wins an exact timestamp tie.
+
+## Long-term memory
+
+Captured observations pass through `PrivacyFilter`, are persisted through `MemoryService`, and are grouped into deterministic inactivity-bounded episodes. Completed episodes are compacted into session, daily and weekly memories; explicit memories are durable. `MemoryQueryEngine` combines FTS5, semantic similarity and English/Portuguese temporal parsing, including fuzzy ranges and timezone offsets, without an external vector or graph database.
+
+`MemoryAgent` performs bounded retrieval across episodes, summaries, snippets and conversations, reflects on evidence coverage and confidence, and expands weak searches without exposing hidden reasoning. `deepStudy` returns a Markdown evidence trail with cross-references and missing-evidence markers.
+
+The Dart 3.7 `../mcp` package is the primary MCP entrypoint and uses the official `dart_mcp` SDK. The legacy `bin/kango_mcp.dart` tools-only transport remains available; both share the same tool registry and composition root.
+
+`kangoos_core.dart` is the stable application API. Composition roots that construct SQLite adapters import `kangoos_core_storage.dart`; UI, HTTP, MCP and CLI code should otherwise stay on services and repository contracts.
+
+## Database configuration
+
+CLI, MCP and server resolve `KANGOOS_DB_PATH`, `KANGOOS_DB_KEY` and `KANGOOS_DB_KEY_FILE` through `DatabaseConfiguration`. A key file is preferred for encrypted shared storage because it avoids putting a key directly in process arguments or shell history.
