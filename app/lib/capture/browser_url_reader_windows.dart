@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
@@ -18,7 +19,8 @@ String? readBrowserUrlWindows(String appName) {
     final hwnd = GetForegroundWindow();
     if (hwnd == 0) return null;
     return _addressBarText(hwnd);
-  } catch (_) {
+  } catch (error, stackTrace) {
+    stderr.writeln('Browser URL capture failed: $error\n$stackTrace');
     return null;
   }
 }
@@ -27,16 +29,19 @@ String? _addressBarText(int hwnd) {
   final comInitResult =
       CoInitializeEx(nullptr, COINIT.COINIT_APARTMENTTHREADED);
   final ownsCom = SUCCEEDED(comInitResult);
+  CUIAutomation? automation;
   try {
-    final automation = CUIAutomation.createInstance();
+    automation = CUIAutomation.createInstance();
 
-    final elementPtr = calloc<Pointer<COMObject>>();
+    final elementPtr = calloc<COMObject>();
+    IUIAutomationElement? root;
     try {
-      var hr = automation.elementFromHandle(hwnd, elementPtr);
-      if (FAILED(hr) || elementPtr.value == nullptr) return null;
-      final root = IUIAutomationElement(elementPtr.value);
+      var hr = automation.elementFromHandle(hwnd, elementPtr.cast());
+      if (FAILED(hr) || elementPtr.ref.isNull) return null;
+      root = IUIAutomationElement(elementPtr);
 
-      final conditionPtr = calloc<Pointer<COMObject>>();
+      final conditionPtr = calloc<COMObject>();
+      IUIAutomationCondition? condition;
       final typeVariant = calloc<VARIANT>();
       try {
         VariantInit(typeVariant);
@@ -47,17 +52,21 @@ String? _addressBarText(int hwnd) {
         hr = automation.createPropertyCondition(
           UIA_PROPERTY_ID.UIA_ControlTypePropertyId,
           typeVariant.ref,
-          conditionPtr,
+          conditionPtr.cast(),
         );
-        if (FAILED(hr) || conditionPtr.value == nullptr) return null;
-        final condition = IUIAutomationCondition(conditionPtr.value);
+        if (FAILED(hr) || conditionPtr.ref.isNull) return null;
+        condition = IUIAutomationCondition(conditionPtr);
 
-        final foundPtr = calloc<Pointer<COMObject>>();
+        final foundPtr = calloc<COMObject>();
+        IUIAutomationElement? edit;
         try {
           hr = root.findFirst(
-              TreeScope.TreeScope_Descendants, condition.ptr, foundPtr);
-          if (FAILED(hr) || foundPtr.value == nullptr) return null;
-          final edit = IUIAutomationElement(foundPtr.value);
+            TreeScope.TreeScope_Descendants,
+            condition.ptr.ref.lpVtbl.cast(),
+            foundPtr.cast(),
+          );
+          if (FAILED(hr) || foundPtr.ref.isNull) return null;
+          edit = IUIAutomationElement(foundPtr);
 
           final valueVariant = calloc<VARIANT>();
           try {
@@ -74,22 +83,41 @@ String? _addressBarText(int hwnd) {
             return _looksLikeUrl(value) ? value : null;
           } finally {
             VariantClear(valueVariant);
-            calloc.free(valueVariant);
+            free(valueVariant);
           }
         } finally {
-          calloc.free(foundPtr);
+          if (edit == null) {
+            free(foundPtr);
+          } else {
+            _disposeComObject(edit);
+          }
         }
       } finally {
         VariantClear(typeVariant);
-        calloc.free(typeVariant);
-        calloc.free(conditionPtr);
+        free(typeVariant);
+        if (condition == null) {
+          free(conditionPtr);
+        } else {
+          _disposeComObject(condition);
+        }
       }
     } finally {
-      calloc.free(elementPtr);
+      if (root == null) {
+        free(elementPtr);
+      } else {
+        _disposeComObject(root);
+      }
     }
   } finally {
+    if (automation != null) _disposeComObject(automation);
     if (ownsCom) CoUninitialize();
   }
+}
+
+void _disposeComObject(IUnknown object) {
+  object.detach();
+  object.release();
+  free(object.ptr);
 }
 
 final _urlLike = RegExp(r'^([a-zA-Z][a-zA-Z\d+.-]*://|[\w-]+\.[a-z]{2,})');

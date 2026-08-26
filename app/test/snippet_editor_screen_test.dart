@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kangoos_app/secure_credential_store.dart';
 import 'package:kangoos_app/settings_repository.dart';
 import 'package:kangoos_app/snippet_editor_screen.dart';
+
+import 'test_services.dart';
 
 class _FakeSecureCredentialStore implements SecureCredentialStore {
   final _values = <String, String>{};
@@ -44,14 +47,16 @@ class _FakeLlmProvider implements LlmProvider {
 
 void main() {
   late KangoosDatabase database;
-  late SemanticSearch semanticSearch;
+  late TestServices services;
   late SettingsRepository settingsRepository;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     database = KangoosDatabase.memory();
-    semanticSearch = SemanticSearch(
-        database: database, embeddingProvider: _FakeEmbeddingProvider());
+    services = TestServices(
+      database,
+      embeddingProvider: _FakeEmbeddingProvider(),
+    );
     settingsRepository =
         SettingsRepository(secureStore: _FakeSecureCredentialStore());
     await settingsRepository.save(
@@ -64,10 +69,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
       home: SnippetEditorScreen(
-        database: database,
-        semanticSearch: semanticSearch,
+        snippets: services.snippets,
         settingsRepository: settingsRepository,
         onDone: () {},
         providerBuilder: (_) => _FakeLlmProvider('["dart", "strings"]'),
@@ -94,10 +97,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
       home: SnippetEditorScreen(
-        database: database,
-        semanticSearch: semanticSearch,
+        snippets: services.snippets,
         settingsRepository: settingsRepository,
         onDone: () {},
         providerBuilder: (_) => _FakeLlmProvider('["should-not-appear"]'),
@@ -120,8 +121,7 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SnippetEditorScreen(
-        database: database,
-        semanticSearch: semanticSearch,
+        snippets: services.snippets,
         settingsRepository: settingsRepository,
         onDone: () => done = true,
       ),
@@ -144,8 +144,7 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SnippetEditorScreen(
-        database: database,
-        semanticSearch: semanticSearch,
+        snippets: services.snippets,
         settingsRepository: settingsRepository,
         onDone: () => done = true,
       ),
@@ -179,8 +178,7 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SnippetEditorScreen(
-        database: database,
-        semanticSearch: semanticSearch,
+        snippets: services.snippets,
         settingsRepository: settingsRepository,
         snippet: snippet,
         onDone: () {},

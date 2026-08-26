@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -14,9 +15,12 @@ import 'capture/window_capture_service.dart';
 import 'database_encryption.dart';
 import 'embedding/settings_embedding_provider.dart';
 import 'home/app_shell.dart';
+import 'memory/memory_compaction_service.dart';
 import 'quick_capture_service.dart';
+import 'runtime/kango_runtime.dart';
 import 'settings_repository.dart';
 import 'theme/kangoos_theme.dart';
+import 'tray/tray_panel.dart';
 import 'tray/tray_service.dart';
 
 Future<void> main() async {
@@ -31,15 +35,23 @@ Future<void> main() async {
 
 Future<void> _startKangoos() async {
   final supportDir = await getApplicationSupportDirectory();
-  final encryptionKey = await DatabaseEncryptionKeyProvider().getOrCreateKey();
-  final databaseFile = File(p.join(supportDir.path, 'kangoos.db'));
+  final environmentKey =
+      databaseEncryptionKeyFromEnvironment(Platform.environment);
+  final encryptionKey =
+      environmentKey ?? await DatabaseEncryptionKeyProvider().getOrCreateKey();
+  final databaseFile = File(
+    Platform.environment[databasePathEnvironmentKey] ??
+        p.join(supportDir.path, 'kangoos.db'),
+  );
 
   final KangoosDatabase database;
   try {
+    KangoosDatabase.removePlaintextBackups(databaseFile);
     if (KangoosDatabase.isPlaintextDatabase(databaseFile)) {
       KangoosDatabase.encryptPlaintextDatabase(databaseFile, encryptionKey);
     }
-    database = KangoosDatabase.native(databaseFile, encryptionKey: encryptionKey);
+    database =
+        KangoosDatabase.native(databaseFile, encryptionKey: encryptionKey);
     await database.allSnippets();
   } catch (e) {
     runApp(DatabaseErrorApp(error: e, databasePath: databaseFile.path));
@@ -47,42 +59,94 @@ Future<void> _startKangoos() async {
   }
 
   final settingsRepository = SettingsRepository();
+  final snippetRepository = SqliteSnippetRepository(database);
+  final embeddingProvider =
+      SettingsEmbeddingProvider(repository: settingsRepository);
   final semanticSearch = SemanticSearch(
-    database: database,
-    embeddingProvider:
-        SettingsEmbeddingProvider(repository: settingsRepository),
+    repository: snippetRepository,
+    embeddingProvider: embeddingProvider,
   );
+  final snippetService = SnippetService(
+    repository: snippetRepository,
+    semanticSearch: semanticSearch,
+  );
+  final activityRepository = SqliteActivityRepository(database);
+  final summaryRepository = SqliteSummaryRepository(database);
+  final conversationRepository = SqliteConversationRepository(database);
+  final episodeRepository = SqliteEpisodeRepository(database);
   final captureSettingsRepository = CaptureSettingsRepository();
+  final memoryQueryEngine = MemoryQueryEngine(
+    episodes: episodeRepository,
+    embeddingProvider: embeddingProvider,
+  );
+  final memory = MemoryService(
+    activities: activityRepository,
+    summaries: summaryRepository,
+    episodes: episodeRepository,
+    queryEngine: memoryQueryEngine,
+    privacyFilterProvider: () async => PrivacyFilter(
+      redactPii: (await captureSettingsRepository.load()).redactPii,
+    ),
+  );
+  final memoryFormation = MemoryFormationService(
+    activities: activityRepository,
+    episodes: episodeRepository,
+    embeddingProvider: embeddingProvider,
+  );
+  final hierarchy = MemoryHierarchyService(
+    episodes: episodeRepository,
+    summaries: summaryRepository,
+  );
   final needsCaptureConsent =
       !(await captureSettingsRepository.hasShownConsent());
   if (needsCaptureConsent) {
     await captureSettingsRepository.save(const CaptureSettings(paused: true));
   }
-  WindowCaptureService(
-          database: database, settingsRepository: captureSettingsRepository)
-      .start();
-  ActivitySummaryService(
-          database: database, settingsRepository: settingsRepository)
-      .start();
-  AudioCaptureService(
-    database: database,
+  final windowCapture = WindowCaptureService(
+    memory: memory,
+    settingsRepository: captureSettingsRepository,
+  );
+  final activitySummary = ActivitySummaryService(
+    memory: memory,
+    settingsRepository: settingsRepository,
+    captureSettingsRepository: captureSettingsRepository,
+    memoryFormation: memoryFormation,
+  );
+  final audioCapture = AudioCaptureService(
+    memory: memory,
     settingsRepository: captureSettingsRepository,
     modelRepository: WhisperModelRepository(),
-  ).start();
-  final quickCapture = QuickCaptureService(
-    database: database,
-    semanticSearch: semanticSearch,
   );
-  await TrayService(
+  final memoryCompaction = MemoryCompactionService(hierarchy: hierarchy);
+  final quickCapture = QuickCaptureService(
+    snippets: snippetService,
+  );
+  late final KangoRuntime runtime;
+  final tray = TrayService(
     captureSettingsRepository: captureSettingsRepository,
     onSaveClipboardAsSnippet: quickCapture.saveClipboard,
-  ).init();
+    onQuit: () => runtime.stop(),
+  );
+  runtime = KangoRuntime(
+    services: [
+      windowCapture,
+      activitySummary,
+      audioCapture,
+      memoryCompaction,
+      tray,
+    ],
+    onStopped: database.close,
+  );
+  await runtime.start();
 
   runApp(KangoosApp(
-    database: database,
-    semanticSearch: semanticSearch,
+    snippetRepository: snippetRepository,
+    snippets: snippetService,
+    memory: memory,
+    conversations: conversationRepository,
     captureSettingsRepository: captureSettingsRepository,
     needsCaptureConsent: needsCaptureConsent,
+    trayService: tray,
   ));
 }
 
@@ -94,6 +158,7 @@ class StartupErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      locale: const Locale('pt'),
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -143,6 +208,7 @@ class DatabaseErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      locale: const Locale('pt'),
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -184,32 +250,68 @@ class DatabaseErrorApp extends StatelessWidget {
 class KangoosApp extends StatelessWidget {
   const KangoosApp({
     super.key,
-    required this.database,
-    required this.semanticSearch,
+    required this.snippetRepository,
+    required this.snippets,
+    required this.memory,
+    required this.conversations,
     required this.captureSettingsRepository,
     this.needsCaptureConsent = false,
+    this.trayService,
   });
 
-  final KangoosDatabase database;
-  final SemanticSearch semanticSearch;
+  final SnippetRepository snippetRepository;
+  final SnippetService snippets;
+  final MemoryService memory;
+  final ConversationRepository conversations;
   final CaptureSettingsRepository captureSettingsRepository;
   final bool needsCaptureConsent;
+  final TrayService? trayService;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      locale: const Locale('pt'),
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: KangoosTheme.light,
       darkTheme: KangoosTheme.dark,
       themeMode: ThemeMode.system,
-      home: AppShell(
-        database: database,
-        semanticSearch: semanticSearch,
+      home: _home(),
+    );
+  }
+
+  Widget _home() {
+    final appShell = AppShell(
+      snippetRepository: snippetRepository,
+      snippets: snippets,
+      memory: memory,
+      conversations: conversations,
+      captureSettingsRepository: captureSettingsRepository,
+      needsCaptureConsent: needsCaptureConsent,
+    );
+    final tray = trayService;
+    if (tray == null) return appShell;
+    final trayPanel = Theme(
+      data: KangoosTheme.dark,
+      child: TrayPanel(
         captureSettingsRepository: captureSettingsRepository,
-        needsCaptureConsent: needsCaptureConsent,
+        onOpen: tray.showMainWindow,
+        onHide: tray.hideTrayPanel,
+        onToggleCapture: tray.toggleCapture,
+        onQuickCapture: tray.saveClipboardAsSnippet,
+        onQuit: tray.quit,
       ),
+    );
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: tray.panelVisible,
+      builder: (context, visible, _) {
+        return IndexedStack(
+          index: visible ? 1 : 0,
+          children: [appShell, trayPanel],
+        );
+      },
     );
   }
 }

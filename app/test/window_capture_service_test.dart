@@ -2,18 +2,22 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kangoos_app/capture/capture_settings_repository.dart';
 import 'package:kangoos_app/capture/window_capture_service.dart';
 
+import 'test_services.dart';
+
 void main() {
   late KangoosDatabase database;
+  late TestServices services;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     database = KangoosDatabase.memory();
+    services = TestServices(database);
   });
   tearDown(() => database.close());
 
@@ -25,7 +29,7 @@ void main() {
       const WindowSnapshot(appName: 'chrome.exe', windowTitle: 'Docs'),
     ];
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: CaptureSettingsRepository(),
       readWindow: () => windows[call++],
     );
@@ -44,7 +48,7 @@ void main() {
     await repository.save(const CaptureSettings(excludedApps: ['keepass.exe']));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'KeePass.exe', windowTitle: 'Vault'),
@@ -62,7 +66,7 @@ void main() {
     final blocked = Completer<String?>();
     var windowReads = 0;
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () {
         windowReads++;
@@ -87,7 +91,7 @@ void main() {
   test('a throwing tick is reported instead of escaping the timer', () async {
     final errors = <Object>[];
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: CaptureSettingsRepository(),
       readWindow: () => throw StateError('window reader exploded'),
       onError: (error, _) => errors.add(error),
@@ -106,7 +110,7 @@ void main() {
     await repository.save(const CaptureSettings(paused: true));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'a.exe', windowTitle: 'A'),
@@ -122,7 +126,7 @@ void main() {
     await repository.save(const CaptureSettings(excludedApps: ['keepass.exe']));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'keepass.exe', windowTitle: 'Vault'),
@@ -135,7 +139,7 @@ void main() {
 
   test('tick logs nothing when no foreground window is available', () async {
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: CaptureSettingsRepository(),
       readWindow: () => null,
     );
@@ -157,7 +161,7 @@ void main() {
         .save(const CaptureSettings(paused: true, retentionDays: 30));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () => null,
     );
@@ -172,7 +176,7 @@ void main() {
     await repository.save(const CaptureSettings(captureBrowserUrls: true));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'chrome.exe', windowTitle: 'Docs'),
@@ -191,7 +195,7 @@ void main() {
     var called = false;
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'chrome.exe', windowTitle: 'Docs'),
@@ -220,7 +224,7 @@ void main() {
         .save(const CaptureSettings(paused: true, retentionDays: 0));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () => null,
     );
@@ -230,13 +234,12 @@ void main() {
     expect(await database.watchRecentActivities().first, hasLength(1));
   });
 
-  test('tick attaches visible text only when the setting is enabled',
-      () async {
+  test('tick attaches visible text only when the setting is enabled', () async {
     final repository = CaptureSettingsRepository();
     await repository.save(const CaptureSettings(captureVisibleText: true));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
@@ -255,7 +258,7 @@ void main() {
     await repository.save(const CaptureSettings(captureScreenText: true));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
@@ -270,7 +273,7 @@ void main() {
 
   test('tick never runs screen OCR when the setting is disabled', () async {
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: CaptureSettingsRepository(),
       readWindow: () =>
           const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
@@ -289,7 +292,7 @@ void main() {
     await repository.save(const CaptureSettings(captureScreenText: true));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
@@ -302,10 +305,9 @@ void main() {
     expect(hits.single.windowTitle, 'main.dart');
   });
 
-  test('tick leaves capturedText null when the setting is disabled',
-      () async {
+  test('tick leaves capturedText null when the setting is disabled', () async {
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: CaptureSettingsRepository(),
       readWindow: () =>
           const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
@@ -324,7 +326,7 @@ void main() {
     await repository.save(const CaptureSettings(captureVisibleText: true));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
@@ -342,7 +344,7 @@ void main() {
     await repository.save(const CaptureSettings(captureClipboard: true));
 
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       readWindow: () =>
           const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),
@@ -359,7 +361,7 @@ void main() {
       () async {
     var called = false;
     final service = WindowCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: CaptureSettingsRepository(),
       readWindow: () =>
           const WindowSnapshot(appName: 'code.exe', windowTitle: 'main.dart'),

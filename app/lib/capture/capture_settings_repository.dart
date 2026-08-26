@@ -12,6 +12,8 @@ class CaptureSettings {
     this.captureAudio = false,
     this.captureBrowserUrls = false,
     this.captureClipboard = false,
+    this.allowRemoteSummaries = false,
+    this.redactPii = false,
   });
 
   final bool paused;
@@ -25,6 +27,8 @@ class CaptureSettings {
   final bool captureBrowserUrls;
 
   final bool captureClipboard;
+  final bool allowRemoteSummaries;
+  final bool redactPii;
 
   CaptureSettings copyWith({
     bool? paused,
@@ -35,6 +39,8 @@ class CaptureSettings {
     bool? captureAudio,
     bool? captureBrowserUrls,
     bool? captureClipboard,
+    bool? allowRemoteSummaries,
+    bool? redactPii,
   }) {
     return CaptureSettings(
       paused: paused ?? this.paused,
@@ -45,6 +51,8 @@ class CaptureSettings {
       captureAudio: captureAudio ?? this.captureAudio,
       captureBrowserUrls: captureBrowserUrls ?? this.captureBrowserUrls,
       captureClipboard: captureClipboard ?? this.captureClipboard,
+      allowRemoteSummaries: allowRemoteSummaries ?? this.allowRemoteSummaries,
+      redactPii: redactPii ?? this.redactPii,
     );
   }
 }
@@ -58,6 +66,8 @@ class CaptureSettingsRepository {
   static const _captureAudioKey = 'capture_audio';
   static const _captureBrowserUrlsKey = 'capture_browser_urls';
   static const _captureClipboardKey = 'capture_clipboard';
+  static const _allowRemoteSummariesKey = 'allow_remote_activity_summaries';
+  static const _redactPiiKey = 'redact_captured_pii';
   static const _consentShownKey = 'capture_consent_shown';
 
   Future<CaptureSettings> load() async {
@@ -71,6 +81,8 @@ class CaptureSettingsRepository {
       captureAudio: prefs.getBool(_captureAudioKey) ?? false,
       captureBrowserUrls: prefs.getBool(_captureBrowserUrlsKey) ?? false,
       captureClipboard: prefs.getBool(_captureClipboardKey) ?? false,
+      allowRemoteSummaries: prefs.getBool(_allowRemoteSummariesKey) ?? false,
+      redactPii: prefs.getBool(_redactPiiKey) ?? false,
     );
   }
 
@@ -84,6 +96,9 @@ class CaptureSettingsRepository {
     await prefs.setBool(_captureAudioKey, settings.captureAudio);
     await prefs.setBool(_captureBrowserUrlsKey, settings.captureBrowserUrls);
     await prefs.setBool(_captureClipboardKey, settings.captureClipboard);
+    await prefs.setBool(
+        _allowRemoteSummariesKey, settings.allowRemoteSummaries);
+    await prefs.setBool(_redactPiiKey, settings.redactPii);
   }
 
   Future<bool> hasShownConsent() async {

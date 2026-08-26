@@ -42,13 +42,7 @@ class SettingsRepository {
   }
 
   Future<LlmSettings> loadEmbeddingSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    return LlmSettings(
-      provider: LlmProviderKind.ollama,
-      baseUrl: prefs.getString(_baseUrlKey) ?? '',
-      embeddingModel:
-          prefs.getString(_embeddingModelKey) ?? defaultEmbeddingModel,
-    );
+    return load();
   }
 
   /// Reads the API key from the OS keychain, migrating a pre-existing

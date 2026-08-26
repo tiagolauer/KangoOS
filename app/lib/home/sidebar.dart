@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
@@ -13,19 +12,21 @@ enum SidebarTab { snippets, activity, timeline }
 class Sidebar extends StatefulWidget {
   const Sidebar({
     super.key,
-    required this.database,
-    required this.semanticSearch,
+    required this.snippets,
+    required this.memory,
     required this.onSelectSnippet,
     required this.onCreateSnippet,
     required this.onGenerateDayRecap,
+    this.width = 352,
   });
 
-  final KangoosDatabase database;
-  final SemanticSearch semanticSearch;
+  final SnippetService snippets;
+  final MemoryService memory;
   final void Function(Snippet snippet) onSelectSnippet;
   final VoidCallback onCreateSnippet;
   final Future<SummaryResult> Function(CancelToken cancelToken)
       onGenerateDayRecap;
+  final double? width;
 
   @override
   State<Sidebar> createState() => _SidebarState();
@@ -71,9 +72,10 @@ class _SidebarState extends State<Sidebar> {
   }
 
   Future<List<Snippet>> _runSearch(String query) async {
-    if (!_semantic) return widget.database.searchByKeyword(query);
-    final matches = await widget.semanticSearch.search(query);
-    return matches.map((match) => match.snippet).toList();
+    return widget.snippets.search(
+      query,
+      mode: _semantic ? SnippetSearchMode.semantic : SnippetSearchMode.keyword,
+    );
   }
 
   Future<void> _generateDayRecap() async {
@@ -91,8 +93,7 @@ class _SidebarState extends State<Sidebar> {
         SummarySuccess() => l10n.dayRecapGenerated,
         SummaryFailure(error: SummaryError.noActivity) =>
           l10n.dayRecapNoActivity,
-        SummaryFailure(error: SummaryError.llmFailed) =>
-          l10n.dayRecapLlmFailed,
+        SummaryFailure(error: SummaryError.llmFailed) => l10n.dayRecapLlmFailed,
         SummaryFailure(error: SummaryError.cancelled) => l10n.dayRecapCancelled,
       };
       messenger.showSnackBar(SnackBar(content: Text(message)));
@@ -110,85 +111,149 @@ class _SidebarState extends State<Sidebar> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
+    final title = switch (_tab) {
+      SidebarTab.snippets => l10n.tabSnippets,
+      SidebarTab.activity => l10n.tabActivity,
+      SidebarTab.timeline => l10n.tabTimeline,
+    };
     return Container(
-      width: 320,
+      width: widget.width,
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest,
+        color: colors.surface,
         border: Border(right: BorderSide(color: colors.outline)),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
+          Container(
+            width: 68,
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: Column(
               children: [
-                Expanded(
-                  child: SegmentedButton<SidebarTab>(
-                    segments: [
-                      ButtonSegment(
-                          value: SidebarTab.snippets, label: Text(l10n.tabSnippets)),
-                      ButtonSegment(
-                          value: SidebarTab.activity, label: Text(l10n.tabActivity)),
-                      ButtonSegment(
-                          value: SidebarTab.timeline, label: Text(l10n.tabTimeline)),
-                    ],
-                    selected: {_tab},
-                    onSelectionChanged: (selection) =>
-                        setState(() => _tab = selection.first),
-                    showSelectedIcon: false,
+                const SizedBox(height: 16),
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  child: Text(
+                    'K',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: colors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                 ),
-                if (_tab == SidebarTab.snippets) ...[
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    onPressed: widget.onCreateSnippet,
-                    icon: const Icon(Icons.add),
-                    tooltip: l10n.newSnippet,
-                  ),
-                ],
-                if (_tab == SidebarTab.timeline) ...[
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    onPressed: _generatingRecap
-                        ? () => _recapCancelToken?.cancel()
-                        : _generateDayRecap,
-                    icon: Icon(
-                        _generatingRecap ? Icons.stop : Icons.auto_awesome),
-                    tooltip: _generatingRecap
-                        ? l10n.stopGenerating
-                        : l10n.generateDayRecap,
-                  ),
-                ],
+                const SizedBox(height: 26),
+                _SidebarRailButton(
+                  icon: Icons.data_object,
+                  label: l10n.tabSnippets,
+                  selected: _tab == SidebarTab.snippets,
+                  onTap: () => setState(() => _tab = SidebarTab.snippets),
+                ),
+                const SizedBox(height: 8),
+                _SidebarRailButton(
+                  icon: Icons.monitor_heart_outlined,
+                  label: l10n.tabActivity,
+                  selected: _tab == SidebarTab.activity,
+                  onTap: () => setState(() => _tab = SidebarTab.activity),
+                ),
+                const SizedBox(height: 8),
+                _SidebarRailButton(
+                  icon: Icons.route_outlined,
+                  label: l10n.tabTimeline,
+                  selected: _tab == SidebarTab.timeline,
+                  onTap: () => setState(() => _tab = SidebarTab.timeline),
+                ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: Icon(Icons.lock_outline,
+                      size: 18, color: colors.onSurfaceVariant),
+                ),
               ],
             ),
           ),
-          if (_tab == SidebarTab.snippets)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: TextField(
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: _semantic
-                      ? l10n.filterSnippetsSemantic
-                      : l10n.filterSnippets,
-                  prefixIcon: IconButton(
-                    icon: Icon(_semantic ? Icons.auto_awesome : Icons.search,
-                        size: 18),
-                    tooltip: _semantic
-                        ? l10n.switchToKeywordSearch
-                        : l10n.switchToSemanticSearch,
-                    onPressed: _toggleSemantic,
+          VerticalDivider(width: 1, color: colors.outlineVariant),
+          Expanded(
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 78,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 10, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(l10n.personalArchive,
+                                  style:
+                                      Theme.of(context).textTheme.labelSmall),
+                              const SizedBox(height: 4),
+                              Text(title,
+                                  style:
+                                      Theme.of(context).textTheme.titleLarge),
+                            ],
+                          ),
+                        ),
+                        if (_tab == SidebarTab.snippets)
+                          IconButton(
+                            onPressed: widget.onCreateSnippet,
+                            icon: const Icon(Icons.add),
+                            tooltip: l10n.newSnippet,
+                          ),
+                        if (_tab == SidebarTab.timeline)
+                          IconButton(
+                            onPressed: _generatingRecap
+                                ? () => _recapCancelToken?.cancel()
+                                : _generateDayRecap,
+                            icon: Icon(_generatingRecap
+                                ? Icons.stop
+                                : Icons.auto_awesome),
+                            tooltip: _generatingRecap
+                                ? l10n.stopGenerating
+                                : l10n.generateDayRecap,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-                onChanged: _onQueryChanged,
-              ),
+                if (_tab == SidebarTab.snippets)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: _semantic
+                            ? l10n.filterSnippetsSemantic
+                            : l10n.filterSnippets,
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                              _semantic
+                                  ? Icons.auto_awesome
+                                  : Icons.text_fields,
+                              size: 17),
+                          tooltip: _semantic
+                              ? l10n.switchToKeywordSearch
+                              : l10n.switchToSemanticSearch,
+                          onPressed: _toggleSemantic,
+                        ),
+                      ),
+                      onChanged: _onQueryChanged,
+                    ),
+                  ),
+                Divider(color: colors.outlineVariant),
+                Expanded(
+                  child: switch (_tab) {
+                    SidebarTab.snippets => _buildSnippets(context),
+                    SidebarTab.activity => _buildActivity(context),
+                    SidebarTab.timeline => _buildTimeline(context),
+                  },
+                ),
+              ],
             ),
-          Expanded(
-            child: switch (_tab) {
-              SidebarTab.snippets => _buildSnippets(context),
-              SidebarTab.activity => _buildActivity(context),
-              SidebarTab.timeline => _buildTimeline(context),
-            },
           ),
         ],
       ),
@@ -200,7 +265,7 @@ class _SidebarState extends State<Sidebar> {
     final search = _search;
     if (search == null) {
       return StreamBuilder<List<Snippet>>(
-        stream: widget.database.watchAllSnippets(),
+        stream: widget.snippets.watchAll(),
         builder: (context, snapshot) => _SnippetList(
           snippets: snapshot.data,
           onTap: widget.onSelectSnippet,
@@ -228,7 +293,7 @@ class _SidebarState extends State<Sidebar> {
   Widget _buildActivity(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return StreamBuilder<List<Activity>>(
-      stream: widget.database.watchRecentActivities(),
+      stream: widget.memory.watchRecentActivities(),
       builder: (context, snapshot) {
         final activities = snapshot.data;
         if (activities == null) {
@@ -281,22 +346,22 @@ class _SidebarState extends State<Sidebar> {
       BuildContext context, Activity activity) async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    await widget.database.deleteActivity(activity.id);
+    await widget.memory.deleteActivity(activity.id);
 
     messenger.showSnackBar(SnackBar(
       content: Text(l10n.activityDeleted),
       action: SnackBarAction(
         label: l10n.commonUndo,
-        onPressed: () => widget.database.logActivity(
-          ActivitiesCompanion.insert(
+        onPressed: () => widget.memory.record(
+          NewActivity(
             appName: activity.appName,
             windowTitle: activity.windowTitle,
-            capturedText: Value(activity.capturedText),
-            capturedUrl: Value(activity.capturedUrl),
-            capturedClipboard: Value(activity.capturedClipboard),
-            capturedScreenText: Value(activity.capturedScreenText),
-            capturedAudioText: Value(activity.capturedAudioText),
-            capturedAt: Value(activity.capturedAt),
+            capturedText: activity.capturedText,
+            capturedUrl: activity.capturedUrl,
+            capturedClipboard: activity.capturedClipboard,
+            capturedScreenText: activity.capturedScreenText,
+            capturedAudioText: activity.capturedAudioText,
+            capturedAt: activity.capturedAt,
           ),
         ),
       ),
@@ -306,7 +371,7 @@ class _SidebarState extends State<Sidebar> {
   Widget _buildTimeline(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return StreamBuilder<List<ActivitySummary>>(
-      stream: widget.database.watchRecentSummaries(),
+      stream: widget.memory.watchRecentSummaries(),
       builder: (context, snapshot) {
         final summaries = snapshot.data;
         if (summaries == null) {
@@ -326,6 +391,50 @@ class _SidebarState extends State<Sidebar> {
           },
         );
       },
+    );
+  }
+}
+
+class _SidebarRailButton extends StatelessWidget {
+  const _SidebarRailButton({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: Material(
+          color: selected ? colors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 42,
+              height: 42,
+              child: Icon(
+                icon,
+                size: 20,
+                color: selected ? colors.onPrimary : colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -361,12 +470,21 @@ class _SummaryTile extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context);
     final label = switch (summary.kind) {
-      SummaryKind.periodic => l10n.summaryAutoRecap,
-      SummaryKind.dayRecap => l10n.summaryDayRecap,
-      SummaryKind.manual => l10n.summaryMemory,
+      SummaryKind.periodic || SummaryKind.session => l10n.summaryAutoRecap,
+      SummaryKind.dayRecap ||
+      SummaryKind.daily ||
+      SummaryKind.weekly =>
+        l10n.summaryDayRecap,
+      SummaryKind.manual || SummaryKind.durable => l10n.summaryMemory,
     };
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom:
+              BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -396,10 +514,21 @@ class _SidebarMessage extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 28,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ),
       ),
     );
@@ -423,46 +552,58 @@ class _SnippetList extends StatelessWidget {
     }
     final textTheme = Theme.of(context).textTheme;
     return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 12),
       itemCount: snippets!.length,
       itemBuilder: (context, index) {
         final snippet = snippets![index];
-        return InkWell(
-          onTap: () => onTap(snippet),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        snippet.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.bodyLarge
-                            ?.copyWith(fontWeight: FontWeight.w600),
+        final colors = Theme.of(context).colorScheme;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => onTap(snippet),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(18, 14, 10, 14),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: colors.outlineVariant),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          snippet.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
                       ),
-                    ),
-                    CopyIconButton(text: snippet.content),
-                  ],
-                ),
-                if (snippet.language != null && snippet.language!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(snippet.language!, style: textTheme.labelSmall),
+                      CopyIconButton(text: snippet.content),
+                    ],
                   ),
-                const SizedBox(height: 4),
-                Text(
-                  snippet.content,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodySmall,
-                ),
-                const SizedBox(height: 4),
-                Text(formatRelativeTime(l10n, snippet.updatedAt),
-                    style: textTheme.labelSmall),
-              ],
+                  if (snippet.language != null && snippet.language!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(snippet.language!.toUpperCase(),
+                          style: textTheme.labelSmall
+                              ?.copyWith(color: colors.primary)),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    snippet.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(formatRelativeTime(l10n, snippet.updatedAt),
+                      style: textTheme.labelSmall),
+                ],
+              ),
             ),
           ),
         );

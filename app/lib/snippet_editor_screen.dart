@@ -1,6 +1,3 @@
-import 'dart:async';
-
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
@@ -14,8 +11,7 @@ import 'settings_repository.dart';
 class SnippetEditorScreen extends StatefulWidget {
   const SnippetEditorScreen({
     super.key,
-    required this.database,
-    required this.semanticSearch,
+    required this.snippets,
     required this.settingsRepository,
     required this.onDone,
     this.snippet,
@@ -24,8 +20,7 @@ class SnippetEditorScreen extends StatefulWidget {
     this.onDirtyChanged,
   });
 
-  final KangoosDatabase database;
-  final SemanticSearch semanticSearch;
+  final SnippetService snippets;
   final SettingsRepository settingsRepository;
   final VoidCallback onDone;
   final Snippet? snippet;
@@ -116,27 +111,31 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
         .where((tag) => tag.isNotEmpty)
         .toList();
 
-    late final Snippet saved;
+    final SnippetMutationResult result;
     if (_isEditing) {
-      saved = widget.snippet!.copyWith(
-        title: title,
-        content: content,
-        language: Value(language.isEmpty ? null : language),
-        tags: tags,
-        updatedAt: DateTime.now(),
-      );
-      await widget.database.updateSnippet(saved);
+      result = (await widget.snippets.update(
+          widget.snippet!.id,
+          SnippetUpdate(
+            title: title,
+            content: content,
+            language: language.isEmpty ? null : language,
+            languageProvided: true,
+            tags: tags,
+            updatedAt: DateTime.now(),
+          )))!;
     } else {
-      final id = await widget.database.createSnippet(SnippetsCompanion.insert(
+      result = await widget.snippets.create(NewSnippet(
         title: title,
         content: content,
-        language: Value(language.isEmpty ? null : language),
-        tags: Value(tags),
+        language: language.isEmpty ? null : language,
+        tags: tags,
       ));
-      saved = (await widget.database.getSnippetById(id))!;
     }
-
-    unawaited(widget.semanticSearch.indexSnippet(saved).catchError((_) {}));
+    if (result.indexingError != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.semanticSearchFailed('${result.indexingError}')),
+      ));
+    }
 
     _markClean();
     if (mounted) widget.onDone();
@@ -171,14 +170,11 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
     try {
       final settings = await widget.settingsRepository.load();
       if (settings.model.isEmpty) {
-        messenger.showSnackBar(SnackBar(
-            content: Text(l10n.setModelFirst)));
+        messenger.showSnackBar(SnackBar(content: Text(l10n.setModelFirst)));
         return;
       }
-      if (settings.provider != LlmProviderKind.ollama &&
-          settings.apiKey.isEmpty) {
-        messenger.showSnackBar(SnackBar(
-            content: Text(l10n.setApiKeyFirst)));
+      if (settings.requiresApiKey && settings.apiKey.isEmpty) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.setApiKeyFirst)));
         return;
       }
 
@@ -193,8 +189,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
 
       if (cancelToken.isCancelled) return;
       if (tags.isEmpty) {
-        messenger
-            .showSnackBar(SnackBar(content: Text(l10n.noTagsSuggested)));
+        messenger.showSnackBar(SnackBar(content: Text(l10n.noTagsSuggested)));
         return;
       }
       setState(() => _tagsController.text = tags.join(', '));
@@ -220,7 +215,7 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
     );
     if (!confirmed) return;
 
-    await widget.database.deleteSnippet(widget.snippet!.id);
+    await widget.snippets.delete(widget.snippet!.id);
     _markClean();
     if (mounted) widget.onDone();
   }
@@ -250,66 +245,70 @@ class _SnippetEditorScreenState extends State<SnippetEditorScreen> {
               tooltip: l10n.commonDelete,
             ),
           IconButton(
-              onPressed: _save, icon: const Icon(Icons.check), tooltip: l10n.commonSave),
+              onPressed: _save,
+              icon: const Icon(Icons.check),
+              tooltip: l10n.commonSave),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                labelText: l10n.snippetTitle,
-                errorText: _titleError,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _languageController,
-                    decoration:
-                        InputDecoration(labelText: l10n.snippetLanguage),
-                  ),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: 960,
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: l10n.snippetTitle,
+                  errorText: _titleError,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _tagsController,
-                    decoration: InputDecoration(
-                      labelText: l10n.snippetTags,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                            _suggestingTags
-                                ? Icons.stop
-                                : Icons.auto_awesome,
-                            size: 20),
-                        tooltip: _suggestingTags
-                            ? l10n.stopGenerating
-                            : l10n.suggestTagsViaLlm,
-                        onPressed: _suggestingTags
-                            ? () => _tagCancelToken?.cancel()
-                            : _suggestTags,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _languageController,
+                      decoration:
+                          InputDecoration(labelText: l10n.snippetLanguage),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _tagsController,
+                      decoration: InputDecoration(
+                        labelText: l10n.snippetTags,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                              _suggestingTags ? Icons.stop : Icons.auto_awesome,
+                              size: 20),
+                          tooltip: _suggestingTags
+                              ? l10n.stopGenerating
+                              : l10n.suggestTagsViaLlm,
+                          onPressed: _suggestingTags
+                              ? () => _tagCancelToken?.cancel()
+                              : _suggestTags,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _contentController,
-              decoration: InputDecoration(
-                labelText: l10n.snippetCode,
-                alignLabelWithHint: true,
-                errorText: _contentError,
+                ],
               ),
-              maxLines: 14,
-              style: codeTextStyle(context),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _contentController,
+                decoration: InputDecoration(
+                  labelText: l10n.snippetCode,
+                  alignLabelWithHint: true,
+                  errorText: _contentError,
+                ),
+                maxLines: 14,
+                style: codeTextStyle(context),
+              ),
+            ],
+          ),
         ),
       ),
     );

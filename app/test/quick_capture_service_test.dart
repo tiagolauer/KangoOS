@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 
 import 'package:kangoos_app/capture/window_capture_service.dart';
 import 'package:kangoos_app/quick_capture_service.dart';
+
+import 'test_services.dart';
 
 class _FakeEmbeddingProvider implements EmbeddingProvider {
   @override
@@ -14,8 +17,15 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
 
 void main() {
   late KangoosDatabase database;
+  late TestServices services;
 
-  setUp(() => database = KangoosDatabase.memory());
+  setUp(() {
+    database = KangoosDatabase.memory();
+    services = TestServices(
+      database,
+      embeddingProvider: _FakeEmbeddingProvider(),
+    );
+  });
   tearDown(() => database.close());
 
   QuickCaptureService service({
@@ -23,9 +33,7 @@ void main() {
     String appName = 'code.exe',
   }) =>
       QuickCaptureService(
-        database: database,
-        semanticSearch: SemanticSearch(
-            database: database, embeddingProvider: _FakeEmbeddingProvider()),
+        snippets: services.snippets,
         readClipboard: () async => clipboard,
         readWindow: () =>
             WindowSnapshot(appName: appName, windowTitle: 'main.dart'),

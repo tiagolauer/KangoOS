@@ -53,57 +53,57 @@ class _SummaryAction {
 }
 
 List<_SummaryAction> _summaryActionsFor(AppLocalizations l10n) => [
-  _SummaryAction(
-    icon: Icons.wb_sunny_outlined,
-    title: l10n.actionDayRecapTitle,
-    description: l10n.actionDayRecapDescription,
-    prompt: l10n.actionDayRecapPrompt,
-    accent: _AccentRole.primary,
-  ),
-  _SummaryAction(
-    icon: Icons.forum_outlined,
-    title: l10n.actionStandupTitle,
-    description: l10n.actionStandupDescription,
-    prompt: l10n.actionStandupPrompt,
-    accent: _AccentRole.later,
-  ),
-  _SummaryAction(
-    icon: Icons.code_outlined,
-    title: l10n.actionRecentSnippetsTitle,
-    description: l10n.actionRecentSnippetsDescription,
-    prompt: l10n.actionRecentSnippetsPrompt,
-    accent: _AccentRole.done,
-  ),
-  _SummaryAction(
-    icon: Icons.sell_outlined,
-    title: l10n.actionMissingTagsTitle,
-    description: l10n.actionMissingTagsDescription,
-    prompt: l10n.actionMissingTagsPrompt,
-    accent: _AccentRole.next,
-  ),
-  _SummaryAction(
-    icon: Icons.insights_outlined,
-    title: l10n.actionTopOfMindTitle,
-    description: l10n.actionTopOfMindDescription,
-    prompt: l10n.actionTopOfMindPrompt,
-    accent: _AccentRole.done,
-  ),
-  _SummaryAction(
-    icon: Icons.schedule_outlined,
-    title: l10n.actionTimeBreakdownTitle,
-    description: l10n.actionTimeBreakdownDescription,
-    prompt: l10n.actionTimeBreakdownPrompt,
-    accent: _AccentRole.primary,
-  ),
-];
+      _SummaryAction(
+        icon: Icons.wb_sunny_outlined,
+        title: l10n.actionDayRecapTitle,
+        description: l10n.actionDayRecapDescription,
+        prompt: l10n.actionDayRecapPrompt,
+        accent: _AccentRole.primary,
+      ),
+      _SummaryAction(
+        icon: Icons.forum_outlined,
+        title: l10n.actionStandupTitle,
+        description: l10n.actionStandupDescription,
+        prompt: l10n.actionStandupPrompt,
+        accent: _AccentRole.later,
+      ),
+      _SummaryAction(
+        icon: Icons.code_outlined,
+        title: l10n.actionRecentSnippetsTitle,
+        description: l10n.actionRecentSnippetsDescription,
+        prompt: l10n.actionRecentSnippetsPrompt,
+        accent: _AccentRole.done,
+      ),
+      _SummaryAction(
+        icon: Icons.sell_outlined,
+        title: l10n.actionMissingTagsTitle,
+        description: l10n.actionMissingTagsDescription,
+        prompt: l10n.actionMissingTagsPrompt,
+        accent: _AccentRole.next,
+      ),
+      _SummaryAction(
+        icon: Icons.insights_outlined,
+        title: l10n.actionTopOfMindTitle,
+        description: l10n.actionTopOfMindDescription,
+        prompt: l10n.actionTopOfMindPrompt,
+        accent: _AccentRole.done,
+      ),
+      _SummaryAction(
+        icon: Icons.schedule_outlined,
+        title: l10n.actionTimeBreakdownTitle,
+        description: l10n.actionTimeBreakdownDescription,
+        prompt: l10n.actionTimeBreakdownPrompt,
+        accent: _AccentRole.primary,
+      ),
+    ];
 
 List<String> _freeformPoolFor(AppLocalizations l10n) => [
-  l10n.freeform1,
-  l10n.freeform2,
-  l10n.freeform3,
-  l10n.freeform4,
-  l10n.freeform5,
-];
+      l10n.freeform1,
+      l10n.freeform2,
+      l10n.freeform3,
+      l10n.freeform4,
+      l10n.freeform5,
+    ];
 
 String? _osUserName() {
   final env = Platform.environment;
@@ -114,17 +114,23 @@ String? _osUserName() {
 class ChatHomePanel extends StatefulWidget {
   const ChatHomePanel({
     super.key,
-    required this.database,
-    required this.semanticSearch,
+    required this.snippetRepository,
+    required this.snippets,
+    required this.memory,
+    required this.conversations,
     required this.settingsRepository,
     required this.captureSettingsRepository,
     this.providerBuilder,
+    this.onOpenNavigation,
   });
 
-  final KangoosDatabase database;
-  final SemanticSearch semanticSearch;
+  final SnippetRepository snippetRepository;
+  final SnippetService snippets;
+  final MemoryService memory;
+  final ConversationRepository conversations;
   final SettingsRepository settingsRepository;
   final CaptureSettingsRepository captureSettingsRepository;
+  final VoidCallback? onOpenNavigation;
 
   /// Overridable for tests; defaults to [LlmSettings.buildProvider].
   final LlmProvider Function(LlmSettings settings)? providerBuilder;
@@ -135,8 +141,13 @@ class ChatHomePanel extends StatefulWidget {
 
 class _ChatHomePanelState extends State<ChatHomePanel> {
   late final _ragChat = RagChat(
-    database: widget.database,
-    semanticSearch: widget.semanticSearch,
+    snippets: widget.snippets,
+    memory: widget.memory,
+    agent: MemoryAgent(
+      memory: widget.memory,
+      snippets: widget.snippets,
+      conversations: widget.conversations,
+    ),
     onSemanticSearchError: (_) {
       if (mounted) setState(() => _semanticDegraded = true);
     },
@@ -151,6 +162,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   var _sending = false;
   var _capturing = true;
   var _semanticDegraded = false;
+  var _deepStudy = false;
   CancelToken? _replyCancelToken;
   int? _conversationId;
   String? _error;
@@ -180,16 +192,16 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   }
 
   Future<void> _loadConversation() async {
-    final id = await widget.database.latestConversationId();
+    final id = await widget.conversations.latestId();
     if (id == null || !mounted) return;
-    final messages = await widget.database.messagesForConversation(id);
+    final messages = await widget.conversations.messages(id);
     if (!mounted) return;
     setState(() {
       _conversationId = id;
       _history
         ..clear()
-        ..addAll(messages
-            .map((m) => LlmMessage(role: m.role, content: m.content)));
+        ..addAll(
+            messages.map((m) => LlmMessage(role: m.role, content: m.content)));
     });
   }
 
@@ -202,7 +214,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   }
 
   Future<void> _loadConversationById(int id) async {
-    final messages = await widget.database.messagesForConversation(id);
+    final messages = await widget.conversations.messages(id);
     if (!mounted) return;
     setState(() {
       _conversationId = id;
@@ -220,14 +232,13 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       context: context,
       showDragHandle: true,
       builder: (context) => ConversationHistorySheet(
-        database: widget.database,
+        conversations: widget.conversations,
         currentConversationId: _conversationId,
       ),
     );
     if (selectedId != null) await _loadConversationById(selectedId);
     if (_conversationId != null &&
-        (await widget.database.messagesForConversation(_conversationId!))
-            .isEmpty &&
+        (await widget.conversations.messages(_conversationId!)).isEmpty &&
         mounted) {
       _startNewChat();
     }
@@ -243,18 +254,29 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final count = await widget.semanticSearch.indexMissing();
-      messenger
-          .showSnackBar(SnackBar(content: Text(l10n.indexedSnippets(count))));
+      final report = await widget.snippets.indexPending();
+      if (report.failures.isNotEmpty) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(l10n
+              .indexingFailed(l10n.failedSnippetCount(report.failures.length))),
+        ));
+        return;
+      }
+      messenger.showSnackBar(
+          SnackBar(content: Text(l10n.indexedSnippets(report.indexed))));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.indexingFailed('$e'))));
+      messenger
+          .showSnackBar(SnackBar(content: Text(l10n.indexingFailed('$e'))));
     }
   }
 
   Future<void> _exportSnippets() async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final exchange = SnippetExchange(database: widget.database);
+    final exchange = SnippetExchange(
+      repository: widget.snippetRepository,
+      snippets: widget.snippets,
+    );
     try {
       final location = await getSaveLocation(
         suggestedName: 'kangoos-snippets.json',
@@ -268,8 +290,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
         utf8.encode(json),
         mimeType: 'application/json',
       ).saveTo(location.path);
-      messenger.showSnackBar(
-          SnackBar(content: Text(l10n.snippetsExported)));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.snippetsExported)));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.exportFailed('$e'))));
     }
@@ -279,8 +300,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final exchange = SnippetExchange(
-      database: widget.database,
-      semanticSearch: widget.semanticSearch,
+      repository: widget.snippetRepository,
+      snippets: widget.snippets,
     );
     try {
       final file = await openFile(
@@ -290,8 +311,15 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       );
       if (file == null) return;
       final result = await exchange.importJson(await file.readAsString());
+      if (result.indexingFailures.isNotEmpty) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(l10n.indexingFailed(
+              l10n.failedSnippetCount(result.indexingFailures.length))),
+        ));
+      }
       messenger.showSnackBar(SnackBar(
-          content: Text(l10n.importSucceeded(result.imported, result.skipped))));
+          content:
+              Text(l10n.importSucceeded(result.imported, result.skipped))));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.importFailed('$e'))));
     }
@@ -308,15 +336,14 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       setState(() => _error = l10n.setModelFirst);
       return;
     }
-    if (settings.provider != LlmProviderKind.ollama &&
-        settings.apiKey.isEmpty) {
+    if (settings.requiresApiKey && settings.apiKey.isEmpty) {
       setState(() => _error = l10n.setApiKeyFirst);
       return;
     }
 
     final priorHistory = List<LlmMessage>.of(_history);
-    _conversationId ??= await widget.database.createConversation();
-    final userMessageId = await widget.database
+    _conversationId ??= await widget.conversations.create();
+    final userMessageId = await widget.conversations
         .appendMessage(_conversationId!, LlmRole.user, trimmed);
 
     final cancelToken = CancelToken();
@@ -340,6 +367,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           provider: provider,
           history: priorHistory,
           userMessage: trimmed,
+          deepStudy: _deepStudy,
         ),
         cancelToken: cancelToken,
         onPartial: (partial) {
@@ -354,7 +382,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       );
     } catch (e) {
       if (mounted) {
-        setState(() => _error = l10n.chatRequestFailed(describeLlmError(l10n, e)));
+        setState(
+            () => _error = l10n.chatRequestFailed(describeLlmError(l10n, e)));
       }
     } finally {
       await _persistReply(userMessageId, reply, trimmed);
@@ -372,12 +401,12 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   Future<void> _persistReply(
       int userMessageId, String reply, String userMessage) async {
     if (reply.isNotEmpty) {
-      await widget.database
+      await widget.conversations
           .appendMessage(_conversationId!, LlmRole.assistant, reply);
       return;
     }
 
-    await widget.database.deleteMessage(userMessageId);
+    await widget.conversations.deleteMessage(userMessageId);
     if (!mounted) return;
     setState(() {
       _history.removeLast();
@@ -403,7 +432,9 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     return Column(
       children: [
         _Header(
+          capturing: _capturing,
           showNewChat: _started,
+          onOpenNavigation: widget.onOpenNavigation,
           onNewChat: _startNewChat,
           onOpenHistory: _openHistory,
           onIndexMissing: _indexMissing,
@@ -411,7 +442,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             await Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => CaptureSettingsScreen(
                 repository: widget.captureSettingsRepository,
-                database: widget.database,
+                memory: widget.memory,
               ),
             ));
             _loadCaptureState();
@@ -420,11 +451,12 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             builder: (_) =>
                 SettingsScreen(repository: widget.settingsRepository),
           )),
-          onOpenSyncSettings: () => Navigator.of(context).push(MaterialPageRoute(
+          onOpenSyncSettings: () =>
+              Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => SyncSettingsScreen(
               repository: _syncSettingsRepository,
-              database: widget.database,
-              semanticSearch: widget.semanticSearch,
+              snippetRepository: widget.snippetRepository,
+              snippets: widget.snippets,
             ),
           )),
           onExportSnippets: _exportSnippets,
@@ -456,9 +488,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
                   child: Text(
                     l10n.semanticSearchUnavailable,
                     style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onTertiaryContainer),
+                        color:
+                            Theme.of(context).colorScheme.onTertiaryContainer),
                   ),
                 ),
               ],
@@ -472,6 +503,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           controller: _inputController,
           focusNode: _inputFocusNode,
           sending: _sending,
+          deepStudy: _deepStudy,
+          onDeepStudyChanged: (value) => setState(() => _deepStudy = value),
           onSubmit: _send,
           onStop: _stopReply,
         ),
@@ -481,119 +514,241 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
 
   Widget _buildGreeting(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
     final summaryActions = _summaryActionsFor(l10n);
     final suggestions =
         _freeformSuggestions ?? _freeformPoolFor(l10n).take(2).toList();
     final userName = _osUserName();
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 8),
+    final intro = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.memoryReady,
+            style: textTheme.labelSmall?.copyWith(color: colors.primary)),
+        const SizedBox(height: 18),
+        Text(
+          userName == null ? l10n.greeting : l10n.greetingNamed(userName),
+          style: textTheme.headlineLarge,
+        ),
+        const SizedBox(height: 14),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Text(l10n.homeSubtitle,
+              style: textTheme.bodyLarge
+                  ?.copyWith(color: colors.onSurfaceVariant)),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Icon(Icons.lock_outline, size: 15, color: colors.primary),
+            const SizedBox(width: 7),
+            Text(l10n.localMemory, style: textTheme.labelMedium),
+            const SizedBox(width: 16),
+            Container(width: 1, height: 16, color: colors.outline),
+            const SizedBox(width: 16),
+            Flexible(
+              child: Text(l10n.memorySources, style: textTheme.labelSmall),
+            ),
+          ],
+        ),
+      ],
+    );
+    final activityPanel = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+      color: colors.primary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            userName == null ? l10n.greeting : l10n.greetingNamed(userName),
-            style: textTheme.headlineLarge,
-          ),
-          const SizedBox(height: 24),
-          Text(l10n.sectionSingleClickSummaries, style: textTheme.labelSmall),
-          const SizedBox(height: 8),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth > 700 ? 3 : 2;
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  mainAxisExtent: 132,
-                ),
-                itemCount: summaryActions.length,
-                itemBuilder: (context, index) => _SummaryActionCard(
-                    action: summaryActions[index], onTap: _send),
-              );
-            },
-          ),
-          const SizedBox(height: 28),
+          Text(l10n.nowLabel,
+              style: textTheme.labelSmall?.copyWith(color: colors.onPrimary)),
+          const SizedBox(height: 22),
           Row(
             children: [
-              Text(l10n.sectionFreeformChat, style: textTheme.labelSmall),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 18),
-                tooltip: l10n.shuffleSuggestions,
-                onPressed: _shuffleFreeformSuggestions,
-                visualDensity: VisualDensity.compact,
+              Container(
+                width: 9,
+                height: 9,
+                color: _capturing ? colors.secondary : colors.onPrimary,
+              ),
+              const SizedBox(width: 9),
+              Text(
+                _capturing
+                    ? l10n.captureActiveStatus
+                    : l10n.capturePausedStatus,
+                style: textTheme.titleMedium?.copyWith(color: colors.onPrimary),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          StreamBuilder<List<Snippet>>(
-            stream: widget.database.watchAllSnippets(),
-            builder: (context, snapshot) {
-              final snippets = snapshot.data;
-              final mostRecent = (snippets != null && snippets.isNotEmpty)
-                  ? snippets.first
-                  : null;
-              final chips = [
-                if (mostRecent != null) l10n.explainSnippet(mostRecent.title),
-                ...suggestions,
-              ];
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final suggestion in chips)
-                    _FreeformChip(
-                        text: suggestion, onTap: () => _send(suggestion)),
-                  _StartNewChatChip(
-                      onTap: () => _inputFocusNode.requestFocus()),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 28),
-          Text("TODAY'S ACTIVITY", style: textTheme.labelSmall),
-          const SizedBox(height: 8),
+          const SizedBox(height: 30),
+          Text(l10n.todayActivity,
+              style: textTheme.labelSmall
+                  ?.copyWith(color: colors.onPrimary.withValues(alpha: 0.72))),
+          const SizedBox(height: 12),
           Builder(builder: (context) {
             final now = DateTime.now();
             final startOfDay = DateTime(now.year, now.month, now.day);
             return StreamBuilder<List<Activity>>(
-              stream: widget.database.watchActivitiesBetween(
+              stream: widget.memory.watchBetween(
                   startOfDay, startOfDay.add(const Duration(days: 1))),
               builder: (context, snapshot) {
                 final hourly =
                     bucketActivityMinutesByHour(snapshot.data ?? const []);
                 return ActivitySparkline(
-                    hourlyMinutes: hourly, isCapturing: _capturing);
+                  hourlyMinutes: hourly,
+                  isCapturing: _capturing,
+                  foregroundColor: colors.onPrimary,
+                  backgroundColor: colors.primary,
+                );
               },
             );
           }),
+          const SizedBox(height: 18),
+          Text(l10n.ptBrStatus,
+              style: textTheme.labelSmall?.copyWith(color: colors.onPrimary)),
         ],
       ),
+    );
+    final quickQuestions = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(l10n.sectionFreeformChat, style: textTheme.labelSmall),
+            const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 18),
+              tooltip: l10n.shuffleSuggestions,
+              onPressed: _shuffleFreeformSuggestions,
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        StreamBuilder<List<Snippet>>(
+          stream: widget.snippets.watchAll(),
+          builder: (context, snapshot) {
+            final snippets = snapshot.data;
+            final mostRecent = (snippets != null && snippets.isNotEmpty)
+                ? snippets.first
+                : null;
+            final prompts = [
+              if (mostRecent != null) l10n.explainSnippet(mostRecent.title),
+              ...suggestions,
+            ];
+            return Column(
+              children: [
+                for (final prompt in prompts)
+                  _FreeformChip(text: prompt, onTap: () => _send(prompt)),
+                _StartNewChatChip(onTap: () => _inputFocusNode.requestFocus()),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 820;
+        final pagePadding = compact ? 20.0 : 42.0;
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(pagePadding, 36, pagePadding, 30),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: compact
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        intro,
+                        const SizedBox(height: 38),
+                        activityPanel,
+                        const SizedBox(height: 36),
+                        Text(l10n.quickActions, style: textTheme.labelSmall),
+                        const SizedBox(height: 8),
+                        for (final action in summaryActions)
+                          _SummaryActionCard(action: action, onTap: _send),
+                        const SizedBox(height: 34),
+                        quickQuestions,
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              intro,
+                              const SizedBox(height: 48),
+                              Text(l10n.quickActions,
+                                  style: textTheme.labelSmall),
+                              const SizedBox(height: 8),
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 0,
+                                  crossAxisSpacing: 24,
+                                  mainAxisExtent: 98,
+                                ),
+                                itemCount: summaryActions.length,
+                                itemBuilder: (context, index) =>
+                                    _SummaryActionCard(
+                                  action: summaryActions[index],
+                                  onTap: _send,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 44),
+                        SizedBox(
+                          width: 300,
+                          child: Column(
+                            children: [
+                              activityPanel,
+                              const SizedBox(height: 28),
+                              quickQuestions,
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildConversation(BuildContext context) {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
       itemCount: _history.length,
-      itemBuilder: (context, index) => _ChatBubble(
-        message: _history[index],
-        pending: _sending &&
-            index == _history.length - 1 &&
-            _history[index].content.isEmpty,
+      itemBuilder: (context, index) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 920),
+          child: _ChatBubble(
+            message: _history[index],
+            pending: _sending &&
+                index == _history.length - 1 &&
+                _history[index].content.isEmpty,
+          ),
+        ),
       ),
     );
   }
 }
 
+enum _HeaderAction { indexSnippets, capture, sync, llm, export, import }
+
 class _Header extends StatelessWidget {
   const _Header({
+    required this.capturing,
     required this.showNewChat,
     required this.onNewChat,
     required this.onOpenHistory,
@@ -603,9 +758,12 @@ class _Header extends StatelessWidget {
     required this.onOpenSyncSettings,
     required this.onExportSnippets,
     required this.onImportSnippets,
+    this.onOpenNavigation,
   });
 
+  final bool capturing;
   final bool showNewChat;
+  final VoidCallback? onOpenNavigation;
   final VoidCallback onNewChat;
   final VoidCallback onOpenHistory;
   final VoidCallback onIndexMissing;
@@ -620,81 +778,140 @@ class _Header extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: colors.outline))),
-      child: Row(
-        children: [
-          Icon(Icons.circle, size: 8, color: colors.primary),
-          const SizedBox(width: 8),
-          Text(l10n.appTitle, style: Theme.of(context).textTheme.titleMedium),
-          const Spacer(),
-          if (showNewChat)
-            IconButton(
-              icon: const Icon(Icons.add_comment_outlined),
-              tooltip: l10n.newChat,
-              onPressed: onNewChat,
-            ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: l10n.chatHistory,
-            onPressed: onOpenHistory,
-          ),
-          IconButton(
-            icon: const Icon(Icons.auto_awesome_outlined),
-            tooltip: l10n.indexSnippets,
-            onPressed: onIndexMissing,
-          ),
-          IconButton(
-            icon: const Icon(Icons.privacy_tip_outlined),
-            tooltip: l10n.captureSettings,
-            onPressed: onOpenCaptureSettings,
-          ),
-          IconButton(
-            icon: const Icon(Icons.sync_outlined),
-            tooltip: l10n.serverSync,
-            onPressed: onOpenSyncSettings,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: l10n.llmSettings,
-            onPressed: onOpenLlmSettings,
-          ),
-          PopupMenuButton<void>(
-            tooltip: l10n.more,
-            itemBuilder: (context) => [
-              PopupMenuItem<void>(
-                onTap: onExportSnippets,
-                child: ListTile(
-                  leading: Icon(Icons.upload_file_outlined),
-                  title: Text(l10n.exportSnippets),
-                  contentPadding: EdgeInsets.zero,
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(bottom: BorderSide(color: colors.outlineVariant)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 820;
+          return Row(
+            children: [
+              if (onOpenNavigation != null) ...[
+                IconButton(
+                  onPressed: onOpenNavigation,
+                  icon: const Icon(Icons.menu),
+                  tooltip:
+                      MaterialLocalizations.of(context).openAppDrawerTooltip,
                 ),
+                const SizedBox(width: 6),
+              ],
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.appTitle,
+                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(l10n.workspaceSubtitle,
+                      style: Theme.of(context).textTheme.labelSmall),
+                ],
               ),
-              PopupMenuItem<void>(
-                onTap: onImportSnippets,
-                child: ListTile(
-                  leading: Icon(Icons.download_outlined),
-                  title: Text(l10n.importSnippets),
-                  contentPadding: EdgeInsets.zero,
+              const Spacer(),
+              if (wide) ...[
+                Container(
+                  width: 7,
+                  height: 7,
+                  color: capturing ? colors.secondary : colors.onSurfaceVariant,
                 ),
+                const SizedBox(width: 8),
+                Text(
+                  capturing
+                      ? l10n.captureActiveStatus
+                      : l10n.capturePausedStatus,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+                const SizedBox(width: 20),
+              ],
+              IconButton(
+                icon: const Icon(Icons.history),
+                tooltip: l10n.chatHistory,
+                onPressed: onOpenHistory,
+              ),
+              if (showNewChat) ...[
+                const SizedBox(width: 4),
+                wide
+                    ? FilledButton.icon(
+                        onPressed: onNewChat,
+                        icon: const Icon(Icons.add_comment_outlined, size: 18),
+                        label: Text(l10n.newChat),
+                      )
+                    : IconButton(
+                        onPressed: onNewChat,
+                        icon: const Icon(Icons.add_comment_outlined),
+                        tooltip: l10n.newChat,
+                      ),
+              ],
+              const SizedBox(width: 4),
+              PopupMenuButton<_HeaderAction>(
+                tooltip: l10n.more,
+                onSelected: _runAction,
+                itemBuilder: (context) => [
+                  _menuItem(_HeaderAction.indexSnippets,
+                      Icons.auto_awesome_outlined, l10n.indexSnippets),
+                  _menuItem(_HeaderAction.capture, Icons.privacy_tip_outlined,
+                      l10n.captureSettings),
+                  _menuItem(
+                      _HeaderAction.sync, Icons.sync_outlined, l10n.serverSync),
+                  _menuItem(_HeaderAction.llm, Icons.tune, l10n.llmSettings),
+                  _menuItem(_HeaderAction.export, Icons.upload_file_outlined,
+                      l10n.exportSnippets),
+                  _menuItem(_HeaderAction.import, Icons.download_outlined,
+                      l10n.importSnippets),
+                ],
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
+  }
+
+  PopupMenuItem<_HeaderAction> _menuItem(
+      _HeaderAction value, IconData icon, String label) {
+    return PopupMenuItem<_HeaderAction>(
+      value: value,
+      child: ListTile(
+        leading: Icon(icon, size: 20),
+        title: Text(label),
+        contentPadding: EdgeInsets.zero,
+      ),
+    );
+  }
+
+  void _runAction(_HeaderAction action) {
+    switch (action) {
+      case _HeaderAction.indexSnippets:
+        onIndexMissing();
+        break;
+      case _HeaderAction.capture:
+        onOpenCaptureSettings();
+        break;
+      case _HeaderAction.sync:
+        onOpenSyncSettings();
+        break;
+      case _HeaderAction.llm:
+        onOpenLlmSettings();
+        break;
+      case _HeaderAction.export:
+        onExportSnippets();
+        break;
+      case _HeaderAction.import:
+        onImportSnippets();
+        break;
+    }
   }
 }
 
 class ConversationHistorySheet extends StatelessWidget {
   const ConversationHistorySheet({
     super.key,
-    required this.database,
+    required this.conversations,
     required this.currentConversationId,
   });
 
-  final KangoosDatabase database;
+  final ConversationRepository conversations;
   final int? currentConversationId;
 
   @override
@@ -703,10 +920,10 @@ class ConversationHistorySheet extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.6),
+        constraints:
+            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
         child: StreamBuilder<List<ConversationSummary>>(
-          stream: database.watchConversationSummaries(),
+          stream: conversations.watchSummaries(),
           builder: (context, snapshot) {
             final conversations = snapshot.data;
             if (conversations == null) {
@@ -752,7 +969,7 @@ class ConversationHistorySheet extends StatelessWidget {
                                 : conversation.preview),
                       );
                       if (confirmed) {
-                        await database.deleteConversation(conversation.id);
+                        await this.conversations.delete(conversation.id);
                       }
                     },
                   ),
@@ -781,41 +998,50 @@ class _SummaryActionCard extends StatelessWidget {
     final accent = _accentColor(action.accent, colors, status);
 
     return Material(
-      color: colors.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
         onTap: () => onTap(action.prompt),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: colors.outlineVariant),
+            ),
+          ),
+          child: Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(9),
+              SizedBox(
+                width: 38,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Icon(action.icon, color: accent, size: 20),
                 ),
-                child: Icon(action.icon, color: accent, size: 18),
               ),
-              const SizedBox(height: 10),
-              Text(
-                action.title,
-                style:
-                    textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      action.title,
+                      style: textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      action.description,
+                      style: textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                action.description,
-                style: textTheme.bodySmall,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              const SizedBox(width: 10),
+              Icon(Icons.arrow_forward,
+                  color: colors.onSurfaceVariant, size: 17),
             ],
           ),
         ),
@@ -834,28 +1060,28 @@ class _FreeformChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Material(
-      color: colors.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(20),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 320),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: colors.outlineVariant),
+            ),
+          ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.auto_awesome, size: 15, color: colors.primary),
-              const SizedBox(width: 8),
-              Flexible(
+              Icon(Icons.north_east, size: 15, color: colors.primary),
+              const SizedBox(width: 10),
+              Expanded(
                 child: Text(
                   text,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: colors.onSurface),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurface, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -875,24 +1101,19 @@ class _StartNewChatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Material(
-      color: colors.primaryContainer,
-      borderRadius: BorderRadius.circular(20),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 13),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.chat_bubble_outline,
-                  size: 15, color: colors.onPrimaryContainer),
-              const SizedBox(width: 8),
+              Icon(Icons.add, size: 17, color: colors.secondary),
+              const SizedBox(width: 9),
               Text(
-                'Start new chat',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onPrimaryContainer,
-                    fontWeight: FontWeight.w600),
+                AppLocalizations.of(context).newChat,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colors.secondary, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -907,6 +1128,8 @@ class _Composer extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.sending,
+    required this.deepStudy,
+    required this.onDeepStudyChanged,
     required this.onSubmit,
     required this.onStop,
   });
@@ -914,32 +1137,71 @@ class _Composer extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool sending;
+  final bool deepStudy;
+  final ValueChanged<bool> onDeepStudyChanged;
   final void Function(String text) onSubmit;
   final VoidCallback onStop;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final colors = Theme.of(context).colorScheme;
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                decoration: InputDecoration(hintText: l10n.askAboutSnippets),
-                onSubmitted: onSubmit,
-              ),
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          border: Border(top: BorderSide(color: colors.outlineVariant)),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 980),
+            child: Row(
+              children: [
+                Tooltip(
+                  message: deepStudy
+                      ? l10n.deepStudyEnabled
+                      : l10n.deepStudyDisabled,
+                  child: IconButton.filledTonal(
+                    isSelected: deepStudy,
+                    selectedIcon: const Icon(Icons.manage_search),
+                    icon: const Icon(Icons.search),
+                    onPressed:
+                        sending ? null : () => onDeepStudyChanged(!deepStudy),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: colors.outlineVariant),
+                    ),
+                    child: TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: InputDecoration(
+                        hintText: l10n.askAboutSnippets,
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                      ),
+                      onSubmitted: onSubmit,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton.filled(
+                  onPressed: sending ? onStop : () => onSubmit(controller.text),
+                  tooltip: sending ? l10n.stopGenerating : null,
+                  icon: Icon(sending ? Icons.stop : Icons.arrow_upward),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: sending ? onStop : () => onSubmit(controller.text),
-              tooltip: sending ? l10n.stopGenerating : null,
-              icon: Icon(sending ? Icons.stop : Icons.arrow_upward),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -956,21 +1218,42 @@ class _ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUser = message.role == LlmRole.user;
     final colors = Theme.of(context).colorScheme;
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    if (!isUser) {
+      return Container(
+        constraints: const BoxConstraints(maxWidth: 780),
+        margin: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.fromLTRB(18, 4, 8, 4),
         decoration: BoxDecoration(
-          color:
-              isUser ? colors.primaryContainer : colors.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
+          border: Border(left: BorderSide(color: colors.primary, width: 3)),
         ),
-        child: isUser
-            ? SelectableText(message.content)
-            : _AssistantContent(content: message.content, pending: pending),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppLocalizations.of(context).appTitle.toUpperCase(),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: colors.primary),
+            ),
+            const SizedBox(height: 8),
+            _AssistantContent(content: message.content, pending: pending),
+          ],
+        ),
+      );
+    }
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 640),
+        margin: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colors.outlineVariant),
+        ),
+        child: SelectableText(message.content),
       ),
     );
   }

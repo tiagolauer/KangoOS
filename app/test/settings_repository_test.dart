@@ -127,4 +127,23 @@ void main() {
     expect(provider.baseUrl, defaultOllamaBaseUrl);
     expect(provider.model, defaultEmbeddingModel);
   });
+
+  test('LM Studio settings build an OpenAI-compatible embedding provider',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository =
+        SettingsRepository(secureStore: _FakeSecureCredentialStore());
+    await repository.save(const LlmSettings(
+      provider: LlmProviderKind.openAi,
+      model: 'qwen/qwen3-8b',
+      baseUrl: 'http://127.0.0.1:1234/v1',
+      embeddingModel: 'text-embedding-nomic-embed-text-v1.5',
+    ));
+
+    final provider = (await repository.loadEmbeddingSettings())
+        .buildEmbeddingProvider() as OpenAiEmbeddingProvider;
+
+    expect(provider.baseUrl, 'http://127.0.0.1:1234/v1');
+    expect(provider.model, 'text-embedding-nomic-embed-text-v1.5');
+  });
 }

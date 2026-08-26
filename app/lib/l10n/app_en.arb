@@ -1,6 +1,16 @@
 {
   "@@locale": "en",
   "appTitle": "KangoOS",
+  "workspaceSubtitle": "Local work memory",
+  "memoryReady": "MEMORY READY",
+  "memorySources": "SNIPPETS + ACTIVITY + LTM",
+  "quickActions": "SHORTCUTS",
+  "nowLabel": "NOW",
+  "personalArchive": "PERSONAL ARCHIVE",
+  "localMemory": "Local memory",
+  "captureActiveStatus": "Capture active",
+  "capturePausedStatus": "Capture paused",
+  "ptBrStatus": "Replies in PT-BR",
   "commonSave": "Save",
   "chatRequestFailed": "Request failed: {error}",
   "@chatRequestFailed": {
@@ -161,7 +171,7 @@
   },
   "activityCapture": "Activity capture",
   "captureConsentBody": "KangoOS can record the app and window title you have focused, to build a timeline of your work.",
-  "captureConsentPrivacy": "Everything stays on this device. You can change this anytime in capture settings.",
+  "captureConsentPrivacy": "Captured data stays on this device by default. Sending activity to a remote model for automatic summaries requires a separate opt-in in capture settings.",
   "launchAtStartup": "Launch KangoOS at startup",
   "launchAtStartupDescription": "Starts KangoOS minimized to the tray when you sign in, so capture runs without opening the window.",
   "captureActiveWindow": "Capture active window",
@@ -171,7 +181,11 @@
   "captureVisibleText": "Capture visible text (experimental)",
   "captureVisibleTextDescription": "Also records the text you were focused on (e.g. what a text field contains), via Windows UI Automation. Runs in a separate helper process so a crash there never affects KangoOS, but it means this may silently capture nothing on some systems.",
   "captureClipboard": "Capture clipboard",
-  "captureClipboardDescription": "Also records whatever you copy. This is the most sensitive capture source — copied passwords or tokens would be stored too. Off by default; excluded apps are still skipped, but the clipboard can outlive the app you copied it from.",
+  "captureClipboardDescription": "Also records whatever you copy. This is the most sensitive capture source. Common credential patterns are redacted before storage, but filtering is not exhaustive. Off by default; excluded apps are still skipped, but the clipboard can outlive the app you copied it from.",
+  "allowRemoteSummaries": "Allow remote automatic summaries",
+  "allowRemoteSummariesDescription": "Sends captured activity to the configured remote LLM every 20 minutes. Off by default. Loopback Ollama remains local and does not require this permission.",
+  "redactCapturedPii": "Redact personal data",
+  "redactCapturedPiiDescription": "Best-effort redaction of email addresses, Brazilian phone and CPF numbers, and payment-card patterns before capture is stored. Off by default.",
   "keepHistoryFor": "Keep history for",
   "keepHistoryDescription": "Older activity is purged automatically.",
   "retentionForever": "Forever",
@@ -185,6 +199,7 @@
   },
   "excludedApps": "Excluded apps",
   "excludedAppsDescription": "Never captured, e.g. a password manager or banking app.",
+  "excludedAppHint": "process name, e.g. keepass.exe",
   "clearAllActivity": "Clear all captured activity",
   "clearAllActivityTitle": "Clear all captured activity?",
   "clearAllActivityBody": "This permanently deletes every recorded window/app entry and recap summary. This cannot be undone.",
@@ -250,6 +265,22 @@
       }
     }
   },
+  "failedSnippetCount": "{count, plural, =1{1 snippet failed} other{{count} snippets failed}}",
+  "@failedSnippetCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "failedItemCount": "{count, plural, =1{1 item failed} other{{count} items failed}}",
+  "@failedItemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "semanticSearchUnavailable": "Semantic search unavailable — using keyword search. Check that Ollama is running.",
   "noSavedConversations": "No saved conversations yet.",
   "untitledChat": "Untitled chat",
@@ -308,8 +339,12 @@
       }
     }
   },
-  "sectionSingleClickSummaries": "SINGLE-CLICK SUMMARIES",
-  "sectionFreeformChat": "FREEFORM CHAT",
+  "homeSubtitle": "Ask, recover context, and connect what you did without taking data off this device.",
+  "sectionSingleClickSummaries": "MEMORY ACTIONS",
+  "sectionFreeformChat": "QUICK QUESTIONS",
+  "todayActivity": "TODAY'S ACTIVITY",
+  "activityEmptyHint": "Your activity timeline appears here while you work.",
+  "deepStudyLabel": "Deep investigation",
   "shuffleSuggestions": "Shuffle suggestions",
   "actionDayRecapTitle": "Day recap",
   "actionDayRecapDescription": "Summary of today's captured activity",
@@ -364,6 +399,8 @@
       }
     }
   },
+  "deepStudyEnabled": "DeepStudy enabled: investigate across memories with evidence trails",
+  "deepStudyDisabled": "Enable DeepStudy for a deeper evidence-based investigation",
   "whisperModelDownloadFailed": "Model download failed: {error}",
   "@whisperModelDownloadFailed": {
     "placeholders": {

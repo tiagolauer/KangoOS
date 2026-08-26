@@ -1,6 +1,16 @@
 {
   "@@locale": "pt",
   "appTitle": "KangoOS",
+  "workspaceSubtitle": "Memória de trabalho local",
+  "memoryReady": "MEMÓRIA PRONTA",
+  "memorySources": "SNIPPETS + ATIVIDADE + LTM",
+  "quickActions": "ATALHOS",
+  "nowLabel": "AGORA",
+  "personalArchive": "ARQUIVO PESSOAL",
+  "localMemory": "Memória local",
+  "captureActiveStatus": "Captura ativa",
+  "capturePausedStatus": "Captura pausada",
+  "ptBrStatus": "Respostas em PT-BR",
   "commonSave": "Salvar",
   "chatRequestFailed": "Falha na requisição: {error}",
   "@chatRequestFailed": {
@@ -108,7 +118,7 @@
   "embeddingModel": "Modelo de embedding",
   "embeddingModelHint": "Usado na busca semântica. Roda no servidor Ollama acima; o modelo precisa estar baixado lá.",
   "llmReasoningMode": "Modo de raciocínio",
-  "llmReasoningHint": "Só tem efeito em modelos com suporte a raciocínio.",
+  "llmReasoningHint": "Só tem efeito em modelos com suporte a raciocínio, como as séries o/gpt-5, Claude com thinking e Gemini 2.5.",
   "providerOllama": "Ollama (local)",
   "providerAnthropic": "Anthropic",
   "providerOpenAi": "OpenAI",
@@ -161,7 +171,7 @@
   },
   "activityCapture": "Captura de atividade",
   "captureConsentBody": "O KangoOS pode registrar o app e o título da janela em foco, para montar uma linha do tempo do seu trabalho.",
-  "captureConsentPrivacy": "Tudo fica neste dispositivo. Você pode mudar isso quando quiser nas configurações de captura.",
+  "captureConsentPrivacy": "Os dados capturados ficam neste dispositivo por padrão. Enviar atividade a um modelo remoto para resumos automáticos exige uma permissão separada nas configurações de captura.",
   "launchAtStartup": "Iniciar o KangoOS junto com o sistema",
   "launchAtStartupDescription": "Inicia o KangoOS minimizado na bandeja quando você faz login, para a captura rodar sem abrir a janela.",
   "captureActiveWindow": "Capturar janela ativa",
@@ -171,7 +181,11 @@
   "captureVisibleText": "Capturar texto visível (experimental)",
   "captureVisibleTextDescription": "Também registra o texto em foco (por exemplo, o conteúdo de um campo de texto), via Windows UI Automation. Roda em um processo auxiliar separado, então uma falha nele nunca afeta o KangoOS — mas isso significa que pode capturar nada silenciosamente em alguns sistemas.",
   "captureClipboard": "Capturar área de transferência",
-  "captureClipboardDescription": "Também registra tudo que você copia. Esta é a fonte de captura mais sensível — senhas ou tokens copiados também seriam armazenados. Desativada por padrão; apps excluídos continuam sendo ignorados, mas a área de transferência pode sobreviver ao app de onde você copiou.",
+  "captureClipboardDescription": "Também registra tudo que você copia. Esta é a fonte de captura mais sensível. Padrões comuns de credenciais são ocultados antes do armazenamento, mas o filtro não é completo. Desativada por padrão; apps excluídos continuam sendo ignorados, mas a área de transferência pode sobreviver ao app de onde você copiou.",
+  "allowRemoteSummaries": "Permitir resumos automáticos remotos",
+  "allowRemoteSummariesDescription": "Envia a atividade capturada ao LLM remoto configurado a cada 20 minutos. Desativado por padrão. Ollama no próprio dispositivo continua local e não exige esta permissão.",
+  "redactCapturedPii": "Ocultar dados pessoais",
+  "redactCapturedPiiDescription": "Ocultação best effort de e-mails, telefones e CPFs brasileiros e padrões de cartões antes de armazenar a captura. Desativada por padrão.",
   "keepHistoryFor": "Manter histórico por",
   "keepHistoryDescription": "Atividade mais antiga é removida automaticamente.",
   "retentionForever": "Para sempre",
@@ -185,6 +199,7 @@
   },
   "excludedApps": "Apps excluídos",
   "excludedAppsDescription": "Nunca capturados, por exemplo um gerenciador de senhas ou app de banco.",
+  "excludedAppHint": "nome do processo, ex.: keepass.exe",
   "clearAllActivity": "Apagar toda a atividade capturada",
   "clearAllActivityTitle": "Apagar toda a atividade capturada?",
   "clearAllActivityBody": "Isso exclui permanentemente cada registro de janela/app e cada resumo. Não é possível desfazer.",
@@ -234,7 +249,7 @@
       }
     }
   },
-  "indexedSnippets": "{count} snippet(s) indexado(s).",
+  "indexedSnippets": "{count, plural, =0{Nenhum snippet indexado.} =1{1 snippet indexado.} other{{count} snippets indexados.}}",
   "@indexedSnippets": {
     "placeholders": {
       "count": {
@@ -247,6 +262,22 @@
     "placeholders": {
       "error": {
         "type": "String"
+      }
+    }
+  },
+  "failedSnippetCount": "{count, plural, =1{1 snippet falhou} other{{count} snippets falharam}}",
+  "@failedSnippetCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "failedItemCount": "{count, plural, =1{1 item falhou} other{{count} itens falharam}}",
+  "@failedItemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
     }
   },
@@ -299,8 +330,8 @@
   },
   "dayToday": "Hoje",
   "dayYesterday": "Ontem",
-  "greeting": "Como posso ajudar hoje?",
-  "greetingNamed": "Como posso ajudar hoje, {name}?",
+  "greeting": "O que vamos recuperar hoje?",
+  "greetingNamed": "O que vamos recuperar hoje, {name}?",
   "@greetingNamed": {
     "placeholders": {
       "name": {
@@ -308,8 +339,12 @@
       }
     }
   },
-  "sectionSingleClickSummaries": "RESUMOS DE UM CLIQUE",
-  "sectionFreeformChat": "CONVERSA LIVRE",
+  "homeSubtitle": "Pergunte, recupere contexto e conecte o que você fez sem tirar os dados deste dispositivo.",
+  "sectionSingleClickSummaries": "AÇÕES DE MEMÓRIA",
+  "sectionFreeformChat": "PERGUNTAS RÁPIDAS",
+  "todayActivity": "ATIVIDADE DE HOJE",
+  "activityEmptyHint": "Sua linha de atividade aparece aqui enquanto você trabalha.",
+  "deepStudyLabel": "Investigação profunda",
   "shuffleSuggestions": "Embaralhar sugestões",
   "actionDayRecapTitle": "Resumo do dia",
   "actionDayRecapDescription": "Resumo da atividade capturada hoje",
@@ -364,6 +399,8 @@
       }
     }
   },
+  "deepStudyEnabled": "DeepStudy ativado: investigar memórias com trilha de evidências",
+  "deepStudyDisabled": "Ativar DeepStudy para uma investigação mais profunda com evidências",
   "whisperModelDownloadFailed": "Falha ao baixar o modelo: {error}",
   "@whisperModelDownloadFailed": {
     "placeholders": {

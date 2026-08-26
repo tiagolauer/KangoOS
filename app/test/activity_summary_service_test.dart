@@ -1,12 +1,16 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kangoos_app/capture/activity_summary_service.dart';
+import 'package:kangoos_app/capture/capture_settings_repository.dart';
 import 'package:kangoos_app/capture/summary_watermark_repository.dart';
 import 'package:kangoos_app/secure_credential_store.dart';
 import 'package:kangoos_app/settings_repository.dart';
+
+import 'test_services.dart';
 
 class _FakeSecureCredentialStore implements SecureCredentialStore {
   final _values = <String, String>{};
@@ -59,17 +63,22 @@ class _RecordingLlmProvider implements LlmProvider {
 
 void main() {
   late KangoosDatabase database;
+  late TestServices services;
   late SecureCredentialStore secureStore;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     database = KangoosDatabase.memory();
+    services = TestServices(database);
     secureStore = _FakeSecureCredentialStore();
   });
   tearDown(() => database.close());
 
   SettingsRepository settingsRepository() =>
       SettingsRepository(secureStore: secureStore);
+
+  CaptureSettingsRepository captureSettingsRepository() =>
+      CaptureSettingsRepository();
 
   Future<void> configureLlm() => settingsRepository().save(
       const LlmSettings(provider: LlmProviderKind.ollama, model: 'llama3'));
@@ -78,8 +87,9 @@ void main() {
       () async {
     await configureLlm();
     final service = ActivitySummaryService(
-      database: database,
+      memory: services.memory,
       settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
       providerBuilder: (_) => _FakeLlmProvider(const ['unused']),
     )..start();
 
@@ -95,8 +105,9 @@ void main() {
     await configureLlm();
     var clock = DateTime.utc(2026, 1, 1, 10);
     final service = ActivitySummaryService(
-      database: database,
+      memory: services.memory,
       settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
       providerBuilder: (_) => _FakeLlmProvider(const ['Worked on KangoOS.']),
       now: () => clock,
     )..start();
@@ -122,8 +133,9 @@ void main() {
     await configureLlm();
     var clock = DateTime.utc(2026, 1, 1, 10);
     final service = ActivitySummaryService(
-      database: database,
+      memory: services.memory,
       settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
       providerBuilder: (_) => _FailingLlmProvider(),
       now: () => clock,
     );
@@ -143,8 +155,9 @@ void main() {
 
     final retryPrompts = <String>[];
     final retrying = ActivitySummaryService(
-      database: database,
+      memory: services.memory,
       settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
       providerBuilder: (_) => _RecordingLlmProvider(retryPrompts),
       now: () => clock,
     );
@@ -161,8 +174,9 @@ void main() {
     var clock = DateTime.utc(2026, 1, 1, 10);
     final watermarkRepository = SummaryWatermarkRepository();
     final service = ActivitySummaryService(
-      database: database,
+      memory: services.memory,
       settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
       watermarkRepository: watermarkRepository,
       providerBuilder: (_) => _FakeLlmProvider(const ['unused']),
       now: () => clock,
@@ -183,14 +197,14 @@ void main() {
 
   test('a stale stored watermark is clamped to the catch-up window', () async {
     final clock = DateTime.utc(2026, 1, 2, 10);
-    await SummaryWatermarkRepository()
-        .save(DateTime.utc(2026, 1, 1, 8));
+    await SummaryWatermarkRepository().save(DateTime.utc(2026, 1, 1, 8));
     await configureLlm();
 
     final prompts = <String>[];
     final service = ActivitySummaryService(
-      database: database,
+      memory: services.memory,
       settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
       providerBuilder: (_) => _RecordingLlmProvider(prompts),
       now: () => clock,
     );
@@ -213,10 +227,71 @@ void main() {
     expect(prompts.single, isNot(contains('yesterday')));
   });
 
+  test('remote automatic summaries require explicit consent', () async {
+    await settingsRepository().save(const LlmSettings(
+      provider: LlmProviderKind.openAi,
+      model: 'gpt-4o',
+      apiKey: 'test-key',
+    ));
+    var clock = DateTime.utc(2026, 1, 1, 10);
+    final prompts = <String>[];
+    final service = ActivitySummaryService(
+      memory: services.memory,
+      settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
+      providerBuilder: (_) => _RecordingLlmProvider(prompts),
+      now: () => clock,
+    );
+    await service.start();
+    clock = clock.add(const Duration(minutes: 5));
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'code.exe',
+      windowTitle: 'private work',
+      capturedAt: Value(clock),
+    ));
+    clock = clock.add(const Duration(minutes: 15));
+
+    expect(await service.tick(), isNull);
+    expect(prompts, isEmpty);
+    expect(await database.allSummaries(), isEmpty);
+  });
+
+  test('remote automatic summaries run after explicit consent', () async {
+    await settingsRepository().save(const LlmSettings(
+      provider: LlmProviderKind.openAi,
+      model: 'gpt-4o',
+      apiKey: 'test-key',
+    ));
+    await captureSettingsRepository().save(
+      const CaptureSettings(allowRemoteSummaries: true),
+    );
+    var clock = DateTime.utc(2026, 1, 1, 10);
+    final prompts = <String>[];
+    final service = ActivitySummaryService(
+      memory: services.memory,
+      settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
+      providerBuilder: (_) => _RecordingLlmProvider(prompts),
+      now: () => clock,
+    );
+    await service.start();
+    clock = clock.add(const Duration(minutes: 5));
+    await database.logActivity(ActivitiesCompanion.insert(
+      appName: 'code.exe',
+      windowTitle: 'approved work',
+      capturedAt: Value(clock),
+    ));
+    clock = clock.add(const Duration(minutes: 15));
+
+    expect(await service.tick(), isA<SummarySuccess>());
+    expect(prompts.single, contains('approved work'));
+  });
+
   test('tick skips summarizing when no LLM model is configured', () async {
     final service = ActivitySummaryService(
-      database: database,
+      memory: services.memory,
       settingsRepository: settingsRepository(),
+      captureSettingsRepository: captureSettingsRepository(),
       providerBuilder: (_) => _FakeLlmProvider(const ['unused']),
     )..start();
 

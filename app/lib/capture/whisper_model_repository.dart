@@ -76,7 +76,7 @@ class WhisperModelRepository {
 
       if (partial.lengthSync() < _minimumPlausibleModelBytes) {
         partial.deleteSync();
-        return const ModelDownloadFailure('downloaded file is too small');
+        return const ModelDownloadFailure('o arquivo baixado é pequeno demais');
       }
 
       if (target.existsSync()) target.deleteSync();

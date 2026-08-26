@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 
 import 'package:kangoos_app/home/chat_home_panel.dart';
 
+import 'test_services.dart';
+
 void main() {
   late KangoosDatabase database;
+  late TestServices services;
 
-  setUp(() => database = KangoosDatabase.memory());
+  setUp(() {
+    database = KangoosDatabase.memory();
+    services = TestServices(database);
+  });
   tearDown(() => database.close());
 
   Future<int?> pumpSheetAndOpen(WidgetTester tester) async {
@@ -16,7 +23,6 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
       home: Scaffold(
         body: Builder(
           builder: (context) => ElevatedButton(
@@ -24,7 +30,7 @@ void main() {
               popped = await showModalBottomSheet<int>(
                 context: context,
                 builder: (_) => ConversationHistorySheet(
-                  database: database,
+                  conversations: services.conversations,
                   currentConversationId: null,
                 ),
               );
@@ -58,7 +64,8 @@ void main() {
     await drainStreams(tester);
   });
 
-  testWidgets('deleting a conversation removes it from the list', (tester) async {
+  testWidgets('deleting a conversation removes it from the list',
+      (tester) async {
     final id = await database.createConversation();
     await database.appendMessage(id, LlmRole.user, 'delete me');
 
@@ -87,7 +94,6 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
       home: Scaffold(
         body: Builder(
           builder: (context) => ElevatedButton(
@@ -95,7 +101,7 @@ void main() {
               popped = await showModalBottomSheet<int>(
                 context: context,
                 builder: (_) => ConversationHistorySheet(
-                  database: database,
+                  conversations: services.conversations,
                   currentConversationId: null,
                 ),
               );

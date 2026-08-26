@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kangoos_app/capture/capture_settings_repository.dart';
@@ -12,6 +13,8 @@ import 'package:kangoos_app/home/chat_home_panel.dart';
 import 'package:kangoos_app/secure_credential_store.dart';
 import 'package:kangoos_app/settings_repository.dart';
 import 'package:kangoos_app/theme/kangoos_theme.dart';
+
+import 'test_services.dart';
 
 class _FakeSecureCredentialStore implements SecureCredentialStore {
   final _values = <String, String>{};
@@ -75,13 +78,31 @@ class _FixedLlmProvider implements LlmProvider {
   Stream<String> chat(List<LlmMessage> messages) => Stream.value(reply);
 }
 
+class _RecordingLlmProvider implements LlmProvider {
+  List<LlmMessage> messages = const [];
+
+  @override
+  String get id => 'recording';
+
+  @override
+  Stream<String> chat(List<LlmMessage> messages) {
+    this.messages = messages;
+    return Stream.value('studied');
+  }
+}
+
 void main() {
   late KangoosDatabase database;
+  late TestServices services;
   late SettingsRepository settingsRepository;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     database = KangoosDatabase.memory();
+    services = TestServices(
+      database,
+      embeddingProvider: _FakeEmbeddingProvider(),
+    );
     settingsRepository =
         SettingsRepository(secureStore: _FakeSecureCredentialStore());
     await settingsRepository.save(
@@ -96,9 +117,10 @@ void main() {
       theme: KangoosTheme.light,
       home: Scaffold(
           body: ChatHomePanel(
-        database: database,
-        semanticSearch: SemanticSearch(
-            database: database, embeddingProvider: _FakeEmbeddingProvider()),
+        snippetRepository: services.snippetRepository,
+        snippets: services.snippets,
+        memory: services.memory,
+        conversations: services.conversations,
         settingsRepository: settingsRepository,
         captureSettingsRepository: CaptureSettingsRepository(),
         providerBuilder: (_) => provider,
@@ -186,6 +208,27 @@ void main() {
       tester.widget<TextField>(find.byType(TextField).last).controller!.text,
       'anyone home?',
     );
+
+    await drainStreams(tester);
+  });
+
+  testWidgets('DeepStudy injects an evidence report into the request',
+      (tester) async {
+    final provider = _RecordingLlmProvider();
+    await services.snippets.create(const NewSnippet(
+      title: 'Kango architecture',
+      content: 'Kango architecture evidence',
+    ));
+    await pumpPanel(tester, provider);
+
+    await tester.tap(find.byTooltip(
+        'Enable DeepStudy for a deeper evidence-based investigation'));
+    await tester.pump();
+    await send(tester, 'Kango architecture');
+
+    expect(provider.messages.first.content,
+        contains('# DeepStudy: Kango architecture'));
+    expect(provider.messages.first.content, contains('Evidence trail'));
 
     await drainStreams(tester);
   });

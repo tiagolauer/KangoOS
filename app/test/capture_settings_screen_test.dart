@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kangoos_app/capture/capture_settings_repository.dart';
 import 'package:kangoos_app/capture/capture_settings_screen.dart';
 
+import 'test_services.dart';
+
 void main() {
   late KangoosDatabase database;
+  late TestServices services;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     database = KangoosDatabase.memory();
+    services = TestServices(database);
   });
   tearDown(() => database.close());
 
   void bumpViewport(WidgetTester tester) {
-    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.physicalSize = const Size(800, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
   }
@@ -30,8 +34,10 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
-      home: CaptureSettingsScreen(repository: repository, database: database),
+      home: CaptureSettingsScreen(
+        repository: repository,
+        memory: services.memory,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -57,15 +63,18 @@ void main() {
     expect((await repository.load()).excludedApps, isEmpty);
   });
 
-  testWidgets('toggling browser URL capture persists', (tester) async {
+  testWidgets('toggling optional capture and redaction settings persists',
+      (tester) async {
     final repository = CaptureSettingsRepository();
     bumpViewport(tester);
 
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
-      home: CaptureSettingsScreen(repository: repository, database: database),
+      home: CaptureSettingsScreen(
+        repository: repository,
+        memory: services.memory,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -76,6 +85,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect((await repository.load()).captureBrowserUrls, isTrue);
+
+    await tester.ensureVisible(
+      find.widgetWithText(SwitchListTile, 'Redact personal data'),
+    );
+    await tester.tap(
+      find.widgetWithText(SwitchListTile, 'Redact personal data'),
+    );
+    await tester.pumpAndSettle();
+
+    expect((await repository.load()).redactPii, isTrue);
   });
 
   testWidgets('changing retention persists', (tester) async {
@@ -85,8 +104,10 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
-      home: CaptureSettingsScreen(repository: repository, database: database),
+      home: CaptureSettingsScreen(
+        repository: repository,
+        memory: services.memory,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -107,8 +128,10 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
-      home: CaptureSettingsScreen(repository: repository, database: database),
+      home: CaptureSettingsScreen(
+        repository: repository,
+        memory: services.memory,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -139,8 +162,10 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
-      home: CaptureSettingsScreen(repository: repository, database: database),
+      home: CaptureSettingsScreen(
+        repository: repository,
+        memory: services.memory,
+      ),
     ));
     await tester.pumpAndSettle();
 

@@ -12,14 +12,18 @@ import 'sidebar.dart';
 class AppShell extends StatefulWidget {
   const AppShell({
     super.key,
-    required this.database,
-    required this.semanticSearch,
+    required this.snippetRepository,
+    required this.snippets,
+    required this.memory,
+    required this.conversations,
     required this.captureSettingsRepository,
     this.needsCaptureConsent = false,
   });
 
-  final KangoosDatabase database;
-  final SemanticSearch semanticSearch;
+  final SnippetRepository snippetRepository;
+  final SnippetService snippets;
+  final MemoryService memory;
+  final ConversationRepository conversations;
   final CaptureSettingsRepository captureSettingsRepository;
   final bool needsCaptureConsent;
 
@@ -28,8 +32,14 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  static const _desktopBreakpoint = 980.0;
+
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _settingsRepository = SettingsRepository();
-  late final _summarizer = ActivitySummarizer(database: widget.database);
+  late final _summarizer = ActivitySummarizer(
+    activities: widget.memory.activities,
+    summaries: widget.memory.summaries,
+  );
   Snippet? _editingSnippet;
   var _editing = false;
   var _editorDirty = false;
@@ -115,36 +125,75 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          Sidebar(
-            database: widget.database,
-            semanticSearch: widget.semanticSearch,
-            onSelectSnippet: _openEditor,
-            onCreateSnippet: () => _openEditor(),
-            onGenerateDayRecap: _generateDayRecap,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = constraints.maxWidth >= _desktopBreakpoint;
+        if (desktop) {
+          return Scaffold(
+            body: Row(
+              children: [
+                _buildSidebar(width: 352),
+                Expanded(child: _buildContent()),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          key: _scaffoldKey,
+          drawer: Drawer(
+            width: 352,
+            child: SafeArea(child: _buildSidebar(closeAfterSelection: true)),
           ),
-          Expanded(
-            child: _editing
-                ? SnippetEditorScreen(
-                    key: ValueKey(_editingSnippet?.id ?? 'new'),
-                    database: widget.database,
-                    semanticSearch: widget.semanticSearch,
-                    settingsRepository: _settingsRepository,
-                    snippet: _editingSnippet,
-                    onDone: _closeEditor,
-                    onDirtyChanged: (dirty) => _editorDirty = dirty,
-                  )
-                : ChatHomePanel(
-                    database: widget.database,
-                    semanticSearch: widget.semanticSearch,
-                    settingsRepository: _settingsRepository,
-                    captureSettingsRepository: widget.captureSettingsRepository,
-                  ),
+          body: _buildContent(
+            onOpenNavigation: () => _scaffoldKey.currentState?.openDrawer(),
           ),
-        ],
-      ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSidebar({double? width, bool closeAfterSelection = false}) {
+    void closeDrawer() {
+      if (closeAfterSelection) _scaffoldKey.currentState?.closeDrawer();
+    }
+
+    return Sidebar(
+      width: width,
+      snippets: widget.snippets,
+      memory: widget.memory,
+      onSelectSnippet: (snippet) {
+        closeDrawer();
+        _openEditor(snippet);
+      },
+      onCreateSnippet: () {
+        closeDrawer();
+        _openEditor();
+      },
+      onGenerateDayRecap: _generateDayRecap,
+    );
+  }
+
+  Widget _buildContent({VoidCallback? onOpenNavigation}) {
+    if (_editing) {
+      return SnippetEditorScreen(
+        key: ValueKey(_editingSnippet?.id ?? 'new'),
+        snippets: widget.snippets,
+        settingsRepository: _settingsRepository,
+        snippet: _editingSnippet,
+        onDone: _closeEditor,
+        onDirtyChanged: (dirty) => _editorDirty = dirty,
+      );
+    }
+
+    return ChatHomePanel(
+      snippetRepository: widget.snippetRepository,
+      snippets: widget.snippets,
+      memory: widget.memory,
+      conversations: widget.conversations,
+      settingsRepository: _settingsRepository,
+      captureSettingsRepository: widget.captureSettingsRepository,
+      onOpenNavigation: onOpenNavigation,
     );
   }
 }

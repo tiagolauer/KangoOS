@@ -12,11 +12,11 @@ class CaptureSettingsScreen extends StatefulWidget {
   const CaptureSettingsScreen({
     super.key,
     required this.repository,
-    required this.database,
+    required this.memory,
   });
 
   final CaptureSettingsRepository repository;
-  final KangoosDatabase database;
+  final MemoryService memory;
 
   @override
   State<CaptureSettingsScreen> createState() => _CaptureSettingsScreenState();
@@ -132,12 +132,11 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    final activityCount = await widget.database.clearAllActivity();
-    final summaryCount = await widget.database.clearAllSummaries();
+    final cleared = await widget.memory.clear();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content:
-            Text(l10n.clearedEntries(activityCount, summaryCount))));
+        content: Text(l10n.clearedEntries(
+            cleared.activities, cleared.summaries + cleared.episodes))));
   }
 
   @override
@@ -149,154 +148,177 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.activityCapture)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (AutostartService.isSupported)
-            SwitchListTile(
-              title: Text(l10n.launchAtStartup),
-              subtitle: Text(l10n.launchAtStartupDescription),
-              value: _autostartEnabled,
-              onChanged: _setAutostart,
-            ),
-          SwitchListTile(
-            title: Text(l10n.captureActiveWindow),
-            subtitle: Text(
-              l10n.captureActiveWindowDescription,
-            ),
-            value: !_settings.paused,
-            onChanged: (enabled) =>
-                _apply(_settings.copyWith(paused: !enabled)),
-          ),
-          SwitchListTile(
-            title: Text(l10n.captureBrowserUrls),
-            subtitle: Text(l10n.captureBrowserUrlsDescription),
-            value: _settings.captureBrowserUrls,
-            onChanged: (enabled) =>
-                _apply(_settings.copyWith(captureBrowserUrls: enabled)),
-          ),
-          SwitchListTile(
-            title: Text(l10n.captureVisibleText),
-            subtitle: Text(l10n.captureVisibleTextDescription),
-            value: _settings.captureVisibleText,
-            onChanged: (enabled) =>
-                _apply(_settings.copyWith(captureVisibleText: enabled)),
-          ),
-          SwitchListTile(
-            title: Text(l10n.captureScreenText),
-            subtitle: Text(l10n.captureScreenTextDescription),
-            value: _settings.captureScreenText,
-            onChanged: (enabled) =>
-                _apply(_settings.copyWith(captureScreenText: enabled)),
-          ),
-          if (AudioCaptureService.isSupported) ...[
-            SwitchListTile(
-              title: Text(l10n.captureAudio),
-              subtitle: Text(l10n.captureAudioDescription(audioClipSeconds)),
-              value: _settings.captureAudio,
-              onChanged: _modelReady
-                  ? (enabled) =>
-                      _apply(_settings.copyWith(captureAudio: enabled))
-                  : null,
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 8),
-              child: Row(
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: 820,
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              if (AutostartService.isSupported)
+                SwitchListTile(
+                  title: Text(l10n.launchAtStartup),
+                  subtitle: Text(l10n.launchAtStartupDescription),
+                  value: _autostartEnabled,
+                  onChanged: _setAutostart,
+                ),
+              SwitchListTile(
+                title: Text(l10n.captureActiveWindow),
+                subtitle: Text(
+                  l10n.captureActiveWindowDescription,
+                ),
+                value: !_settings.paused,
+                onChanged: (enabled) =>
+                    _apply(_settings.copyWith(paused: !enabled)),
+              ),
+              SwitchListTile(
+                title: Text(l10n.captureBrowserUrls),
+                subtitle: Text(l10n.captureBrowserUrlsDescription),
+                value: _settings.captureBrowserUrls,
+                onChanged: (enabled) =>
+                    _apply(_settings.copyWith(captureBrowserUrls: enabled)),
+              ),
+              SwitchListTile(
+                title: Text(l10n.captureVisibleText),
+                subtitle: Text(l10n.captureVisibleTextDescription),
+                value: _settings.captureVisibleText,
+                onChanged: (enabled) =>
+                    _apply(_settings.copyWith(captureVisibleText: enabled)),
+              ),
+              SwitchListTile(
+                title: Text(l10n.captureScreenText),
+                subtitle: Text(l10n.captureScreenTextDescription),
+                value: _settings.captureScreenText,
+                onChanged: (enabled) =>
+                    _apply(_settings.copyWith(captureScreenText: enabled)),
+              ),
+              if (AudioCaptureService.isSupported) ...[
+                SwitchListTile(
+                  title: Text(l10n.captureAudio),
+                  subtitle:
+                      Text(l10n.captureAudioDescription(audioClipSeconds)),
+                  value: _settings.captureAudio,
+                  onChanged: _modelReady
+                      ? (enabled) =>
+                          _apply(_settings.copyWith(captureAudio: enabled))
+                      : null,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _modelError != null
+                              ? l10n.whisperModelDownloadFailed(_modelError!)
+                              : _modelDownloadPercent != null
+                                  ? l10n.downloadingWhisperModel(
+                                      _modelDownloadPercent!)
+                                  : _modelReady
+                                      ? l10n.whisperModelReady
+                                      : l10n.whisperModelMissing,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      if (!_modelReady)
+                        TextButton(
+                          onPressed: _modelDownloadPercent == null
+                              ? _downloadWhisperModel
+                              : null,
+                          child: Text(l10n.downloadWhisperModel),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+              SwitchListTile(
+                title: Text(l10n.captureClipboard),
+                subtitle: Text(l10n.captureClipboardDescription),
+                value: _settings.captureClipboard,
+                onChanged: (enabled) =>
+                    _apply(_settings.copyWith(captureClipboard: enabled)),
+              ),
+              SwitchListTile(
+                title: Text(l10n.allowRemoteSummaries),
+                subtitle: Text(l10n.allowRemoteSummariesDescription),
+                value: _settings.allowRemoteSummaries,
+                onChanged: (enabled) =>
+                    _apply(_settings.copyWith(allowRemoteSummaries: enabled)),
+              ),
+              SwitchListTile(
+                title: Text(l10n.redactCapturedPii),
+                subtitle: Text(l10n.redactCapturedPiiDescription),
+                value: _settings.redactPii,
+                onChanged: (enabled) =>
+                    _apply(_settings.copyWith(redactPii: enabled)),
+              ),
+              const SizedBox(height: 16),
+              Text(l10n.keepHistoryFor,
+                  style: Theme.of(context).textTheme.titleMedium),
+              Text(l10n.keepHistoryDescription),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<int>(
+                value: _settings.retentionDays,
+                decoration: const InputDecoration(
+                    border: OutlineInputBorder(), isDense: true),
+                items: [
+                  for (final days in const [7, 30, 90])
+                    DropdownMenuItem(
+                        value: days, child: Text(l10n.retentionDays(days))),
+                  DropdownMenuItem(
+                      value: 0, child: Text(l10n.retentionForever)),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    _apply(_settings.copyWith(retentionDays: value));
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              Text(l10n.excludedApps,
+                  style: Theme.of(context).textTheme.titleMedium),
+              Text(l10n.excludedAppsDescription),
+              const SizedBox(height: 8),
+              Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      _modelError != null
-                          ? l10n.whisperModelDownloadFailed(_modelError!)
-                          : _modelDownloadPercent != null
-                              ? l10n.downloadingWhisperModel(
-                                  _modelDownloadPercent!)
-                              : _modelReady
-                                  ? l10n.whisperModelReady
-                                  : l10n.whisperModelMissing,
-                      style: Theme.of(context).textTheme.bodySmall,
+                    child: TextField(
+                      controller: _excludeController,
+                      decoration: InputDecoration(
+                        hintText: l10n.excludedAppHint,
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onSubmitted: (_) => _addExcludedApp(),
                     ),
                   ),
-                  if (!_modelReady)
-                    TextButton(
-                      onPressed: _modelDownloadPercent == null
-                          ? _downloadWhisperModel
-                          : null,
-                      child: Text(l10n.downloadWhisperModel),
-                    ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                      onPressed: _addExcludedApp, icon: const Icon(Icons.add)),
                 ],
               ),
-            ),
-          ],
-          SwitchListTile(
-            title: Text(l10n.captureClipboard),
-            subtitle: Text(l10n.captureClipboardDescription),
-            value: _settings.captureClipboard,
-            onChanged: (enabled) =>
-                _apply(_settings.copyWith(captureClipboard: enabled)),
-          ),
-          const SizedBox(height: 16),
-          Text(l10n.keepHistoryFor,
-              style: Theme.of(context).textTheme.titleMedium),
-          Text(l10n.keepHistoryDescription),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            value: _settings.retentionDays,
-            decoration: const InputDecoration(
-                border: OutlineInputBorder(), isDense: true),
-            items: [
-              for (final days in const [7, 30, 90])
-                DropdownMenuItem(
-                    value: days, child: Text(l10n.retentionDays(days))),
-              DropdownMenuItem(value: 0, child: Text(l10n.retentionForever)),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                _apply(_settings.copyWith(retentionDays: value));
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          Text(l10n.excludedApps, style: Theme.of(context).textTheme.titleMedium),
-          Text(l10n.excludedAppsDescription),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _excludeController,
-                  decoration: const InputDecoration(
-                    hintText: 'process name, e.g. keepass.exe',
-                    border: OutlineInputBorder(),
-                    isDense: true,
+              const SizedBox(height: 8),
+              for (final app in _settings.excludedApps)
+                ListTile(
+                  dense: true,
+                  title: Text(app),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => _removeExcludedApp(app),
                   ),
-                  onSubmitted: (_) => _addExcludedApp(),
+                ),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: _clearAllActivity,
+                icon: const Icon(Icons.delete_forever_outlined),
+                label: Text(l10n.clearAllActivity),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                  onPressed: _addExcludedApp, icon: const Icon(Icons.add)),
             ],
           ),
-          const SizedBox(height: 8),
-          for (final app in _settings.excludedApps)
-            ListTile(
-              dense: true,
-              title: Text(app),
-              trailing: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => _removeExcludedApp(app),
-              ),
-            ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: _clearAllActivity,
-            icon: const Icon(Icons.delete_forever_outlined),
-            label: Text(l10n.clearAllActivity),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

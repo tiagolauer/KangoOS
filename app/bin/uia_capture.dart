@@ -12,52 +12,80 @@ void main() {
   final hr = CoInitializeEx(nullptr, coinitApartmentThreaded);
   if (FAILED(hr) && hr != S_FALSE) exit(1);
 
+  var exitCode = 1;
   try {
     final text = _focusedElementText();
-    if (text == null || text.isEmpty) exit(1);
-    stdout.write(
-      text.length > maxCapturedTextLength
-          ? text.substring(0, maxCapturedTextLength)
-          : text,
-    );
-    exit(0);
-  } catch (_) {
-    exit(1);
+    if (text != null && text.isNotEmpty) {
+      stdout.write(
+        text.length > maxCapturedTextLength
+            ? text.substring(0, maxCapturedTextLength)
+            : text,
+      );
+      exitCode = 0;
+    }
+  } catch (error, stackTrace) {
+    stderr.writeln('UI Automation capture failed: $error\n$stackTrace');
   } finally {
     CoUninitialize();
   }
+  exit(exitCode);
 }
 
 String? _focusedElementText() {
-  final automation =
-      IUIAutomation(COMObject.createFromID(CLSID_CUIAutomation, IID_IUIAutomation));
+  final automation = IUIAutomation(
+      COMObject.createFromID(CLSID_CUIAutomation, IID_IUIAutomation));
 
-  final elementPtrPtr = calloc<Pointer<COMObject>>();
+  final elementPtr = calloc<COMObject>();
+  IUIAutomationElement? element;
   try {
-    final hr = automation.getFocusedElement(elementPtrPtr);
-    if (FAILED(hr) || elementPtrPtr.value == nullptr) return null;
+    final hr = automation.getFocusedElement(elementPtr.cast());
+    if (FAILED(hr) || elementPtr.ref.isNull) return null;
 
-    final element = IUIAutomationElement(elementPtrPtr.value);
+    element = IUIAutomationElement(elementPtr);
 
     final valueText = _valuePatternText(element);
     if (valueText != null && valueText.isNotEmpty) return valueText;
 
-    return element.currentName.toDartString();
+    return _readAndFreeBstr(element.currentName);
   } finally {
-    free(elementPtrPtr);
+    if (element == null) {
+      free(elementPtr);
+    } else {
+      _disposeComObject(element);
+    }
+    _disposeComObject(automation);
   }
 }
 
 String? _valuePatternText(IUIAutomationElement element) {
-  final patternPtrPtr = calloc<Pointer<COMObject>>();
+  final patternPtr = calloc<COMObject>();
+  IUIAutomationValuePattern? pattern;
   try {
-    final hr = element.getCurrentPattern(uiaValuePatternId, patternPtrPtr);
-    if (FAILED(hr) || patternPtrPtr.value == nullptr) return null;
+    final hr = element.getCurrentPattern(uiaValuePatternId, patternPtr.cast());
+    if (FAILED(hr) || patternPtr.ref.isNull) return null;
 
-    return IUIAutomationValuePattern(patternPtrPtr.value)
-        .currentValue
-        .toDartString();
+    pattern = IUIAutomationValuePattern(patternPtr);
+    return _readAndFreeBstr(pattern.currentValue);
   } finally {
-    free(patternPtrPtr);
+    if (pattern == null) {
+      free(patternPtr);
+    } else {
+      _disposeComObject(pattern);
+    }
   }
+}
+
+String? _readAndFreeBstr(Pointer<Utf16> value) {
+  if (value == nullptr) return null;
+  try {
+    return value.toDartString();
+  } finally {
+    SysFreeString(value);
+  }
+}
+
+void _disposeComObject(IUnknown object) {
+  object.detach();
+  object.release();
+  free(object.ptr);
 }

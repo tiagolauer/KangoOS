@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/services.dart' show Clipboard;
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:path/path.dart' as p;
@@ -15,6 +14,7 @@ import 'window_reader_linux.dart';
 import 'window_reader_macos.dart';
 import 'window_reader_windows.dart';
 import 'window_snapshot.dart';
+import '../runtime/runtime_service.dart';
 
 export 'window_snapshot.dart';
 
@@ -22,9 +22,9 @@ const uiaHelperTimeout = Duration(seconds: 3);
 const screenOcrTimeout = Duration(seconds: 15);
 const maxCapturedClipboardLength = 2000;
 
-class WindowCaptureService {
+class WindowCaptureService implements RuntimeService {
   WindowCaptureService({
-    required this.database,
+    required this.memory,
     required this.settingsRepository,
     this.pollInterval = const Duration(seconds: 5),
     WindowSnapshot? Function()? readWindow,
@@ -35,13 +35,12 @@ class WindowCaptureService {
     void Function(Object error, StackTrace stackTrace)? onError,
   })  : onError = onError ?? _reportError,
         readWindow = readWindow ?? defaultWindowReader(),
-        captureVisibleText =
-            captureVisibleText ?? _captureVisibleTextViaHelper,
+        captureVisibleText = captureVisibleText ?? _captureVisibleTextViaHelper,
         captureScreenText = captureScreenText ?? _captureScreenTextViaHelper,
         browserUrlReader = browserUrlReader ?? defaultBrowserUrlReader(),
         clipboardReader = clipboardReader ?? _readClipboard;
 
-  final KangoosDatabase database;
+  final MemoryService memory;
   final CaptureSettingsRepository settingsRepository;
   final Duration pollInterval;
 
@@ -85,7 +84,8 @@ class WindowCaptureService {
     return (_) async => null;
   }
 
-  void start() {
+  @override
+  Future<void> start() async {
     if (!isSupported || _timer != null) return;
     _timer = Timer.periodic(pollInterval, (_) => tickSafely());
   }
@@ -102,7 +102,8 @@ class WindowCaptureService {
     }
   }
 
-  void stop() {
+  @override
+  Future<void> stop() async {
     _timer?.cancel();
     _timer = null;
   }
@@ -110,7 +111,7 @@ class WindowCaptureService {
   Future<void> tick() async {
     final settings = await settingsRepository.load();
     if (settings.retentionDays > 0) {
-      await database.purgeActivitiesOlderThan(
+      await memory.purgeOlderThan(
         DateTime.now().subtract(Duration(days: settings.retentionDays)),
       );
     }
@@ -134,13 +135,13 @@ class WindowCaptureService {
     final clipboard =
         settings.captureClipboard ? await clipboardReader() : null;
 
-    await database.logActivity(ActivitiesCompanion.insert(
+    await memory.record(NewActivity(
       appName: snapshot.appName,
       windowTitle: snapshot.windowTitle,
-      capturedText: Value(visibleText),
-      capturedUrl: Value(url),
-      capturedClipboard: Value(clipboard),
-      capturedScreenText: Value(screenText),
+      capturedText: visibleText,
+      capturedUrl: url,
+      capturedClipboard: clipboard,
+      capturedScreenText: screenText,
     ));
   }
 
@@ -201,8 +202,7 @@ class WindowCaptureService {
 
   static String? _resolveCompiledHelperPath(String executable) {
     if (!Platform.isWindows) return null;
-    final helper =
-        p.join(p.dirname(Platform.resolvedExecutable), executable);
+    final helper = p.join(p.dirname(Platform.resolvedExecutable), executable);
     return File(helper).existsSync() ? helper : null;
   }
 }

@@ -5,8 +5,10 @@ import 'package:kangoos_app/capture/audio_capture_service.dart';
 import 'package:kangoos_app/capture/capture_settings_repository.dart';
 import 'package:kangoos_app/capture/whisper_model_repository.dart';
 import 'package:kangoos_app/capture/window_capture_service.dart';
-import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'test_services.dart';
 
 class _FakeModelRepository implements WhisperModelRepository {
   _FakeModelRepository({this.present = true});
@@ -35,27 +37,32 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late KangoosDatabase database;
+  late TestServices services;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     database = KangoosDatabase.memory();
+    services = TestServices(database);
   });
   tearDown(() => database.close());
 
   Future<AudioCaptureService> build({
     required CaptureSettings settings,
     bool modelPresent = true,
+    DateTime Function()? now,
     Future<String?> Function(String, int)? transcribe,
   }) async {
     final repository = CaptureSettingsRepository();
     await repository.save(settings);
     return AudioCaptureService(
-      database: database,
+      memory: services.memory,
       settingsRepository: repository,
       modelRepository: _FakeModelRepository(present: modelPresent),
       readWindow: () =>
           const WindowSnapshot(appName: 'teams.exe', windowTitle: 'Standup'),
-      recordAndTranscribe: transcribe ?? (_, __) async => 'discussed the roadmap',
+      now: now,
+      recordAndTranscribe:
+          transcribe ?? (_, __) async => 'discussed the roadmap',
     );
   }
 
@@ -136,6 +143,52 @@ void main() {
     final hits = await database.searchActivities('migration');
     expect(hits, hasLength(1));
     expect(hits.single.capturedAudioText, contains('migration'));
+  });
+
+  test('groups timestamped chunks into a meeting session memory', () async {
+    var current = DateTime.utc(2026, 8, 25, 10);
+    var transcript = 'first decision';
+    final service = await build(
+      settings: const CaptureSettings(paused: false, captureAudio: true),
+      now: () => current,
+      transcribe: (_, __) async => transcript,
+    );
+    await service.tick();
+    current = current.add(const Duration(minutes: 10));
+    transcript = 'second decision';
+    await service.tick();
+
+    await service.stop();
+
+    final summaries = await database.recentSummaries();
+    expect(summaries.single.kind, SummaryKind.session);
+    expect(summaries.single.periodStart,
+        DateTime.utc(2026, 8, 25, 9, 59, 30).toLocal());
+    expect(summaries.single.periodEnd,
+        DateTime.utc(2026, 8, 25, 10, 10).toLocal());
+    expect(summaries.single.content, contains('Sessão de Reunião'));
+    expect(summaries.single.content, contains('first decision'));
+    expect(summaries.single.content, contains('second decision'));
+  });
+
+  test('capture failures remain observable', () async {
+    final failure = StateError('microphone unavailable');
+    Object? reported;
+    final repository = CaptureSettingsRepository();
+    await repository
+        .save(const CaptureSettings(paused: false, captureAudio: true));
+    final service = AudioCaptureService(
+      memory: services.memory,
+      settingsRepository: repository,
+      modelRepository: _FakeModelRepository(),
+      readWindow: () => null,
+      recordAndTranscribe: (_, __) async => throw failure,
+      onError: (error, _) => reported = error,
+    );
+
+    expect(await service.tick(), AudioCaptureOutcome.failed);
+    expect(service.lastError, same(failure));
+    expect(reported, same(failure));
   });
 
   group('WhisperModelRepository', () {

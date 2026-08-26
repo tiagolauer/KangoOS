@@ -71,88 +71,98 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final needsApiKey = _settings.provider != LlmProviderKind.ollama;
+    final needsApiKey = _settings.requiresApiKey;
     final isOllama = _settings.provider == LlmProviderKind.ollama;
+    final supportsBaseUrl =
+        isOllama || _settings.provider == LlmProviderKind.openAi;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.llmSettings),
         actions: [
           IconButton(
-              onPressed: _save, icon: const Icon(Icons.check), tooltip: l10n.commonSave),
+              onPressed: _save,
+              icon: const Icon(Icons.check),
+              tooltip: l10n.commonSave),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            DropdownButtonFormField<LlmProviderKind>(
-              value: _settings.provider,
-              decoration: InputDecoration(labelText: l10n.llmProvider),
-              items: LlmProviderKind.values
-                  .map((kind) =>
-                      DropdownMenuItem(value: kind, child: Text(_label(l10n, kind))))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _settings = _settings.copyWith(provider: value));
-              },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _modelController,
-              decoration: InputDecoration(labelText: l10n.llmModel),
-            ),
-            if (needsApiKey) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _apiKeyController,
-                decoration: InputDecoration(labelText: l10n.llmApiKey),
-                obscureText: true,
-              ),
-            ],
-            if (isOllama) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _baseUrlController,
-                decoration: InputDecoration(
-                  labelText: l10n.llmBaseUrl,
-                  hintText: defaultOllamaBaseUrl,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _embeddingModelController,
-              decoration: InputDecoration(
-                labelText: l10n.embeddingModel,
-                hintText: defaultEmbeddingModel,
-                helperText: l10n.embeddingModelHint,
-                helperMaxLines: 2,
-              ),
-            ),
-            if (!isOllama) ...[
-              const SizedBox(height: 12),
-              DropdownButtonFormField<ReasoningEffort>(
-                value: _settings.reasoningEffort,
-                decoration: InputDecoration(
-                  labelText: l10n.llmReasoningMode,
-                  helperText: 'Only takes effect on reasoning-capable models '
-                      '(e.g. o-series/gpt-5, Claude with thinking, Gemini 2.5).',
-                  helperMaxLines: 2,
-                ),
-                items: ReasoningEffort.values
-                    .map((effort) => DropdownMenuItem(
-                        value: effort, child: Text(_effortLabel(l10n, effort))))
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: 760,
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              DropdownButtonFormField<LlmProviderKind>(
+                value: _settings.provider,
+                decoration: InputDecoration(labelText: l10n.llmProvider),
+                items: LlmProviderKind.values
+                    .map((kind) => DropdownMenuItem(
+                        value: kind, child: Text(_label(l10n, kind))))
                     .toList(),
                 onChanged: (value) {
                   if (value == null) return;
-                  setState(() =>
-                      _settings = _settings.copyWith(reasoningEffort: value));
+                  setState(
+                      () => _settings = _settings.copyWith(provider: value));
                 },
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _modelController,
+                decoration: InputDecoration(labelText: l10n.llmModel),
+              ),
+              if (needsApiKey) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _apiKeyController,
+                  decoration: InputDecoration(labelText: l10n.llmApiKey),
+                  obscureText: true,
+                ),
+              ],
+              if (supportsBaseUrl) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _baseUrlController,
+                  decoration: InputDecoration(
+                    labelText: l10n.llmBaseUrl,
+                    hintText:
+                        isOllama ? defaultOllamaBaseUrl : defaultOpenAiBaseUrl,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _embeddingModelController,
+                decoration: InputDecoration(
+                  labelText: l10n.embeddingModel,
+                  hintText: defaultEmbeddingModel,
+                  helperText: l10n.embeddingModelHint,
+                  helperMaxLines: 2,
+                ),
+              ),
+              if (!isOllama) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<ReasoningEffort>(
+                  value: _settings.reasoningEffort,
+                  decoration: InputDecoration(
+                    labelText: l10n.llmReasoningMode,
+                    helperText: l10n.llmReasoningHint,
+                    helperMaxLines: 2,
+                  ),
+                  items: ReasoningEffort.values
+                      .map((effort) => DropdownMenuItem(
+                          value: effort,
+                          child: Text(_effortLabel(l10n, effort))))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() =>
+                        _settings = _settings.copyWith(reasoningEffort: value));
+                  },
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
