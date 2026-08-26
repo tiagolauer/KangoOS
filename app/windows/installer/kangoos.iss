@@ -1,9 +1,15 @@
 #define AppName "KangoOS"
-#define AppVersion "1.1.0"
-#define AppBuildVersion "1.1.0.2"
 #define AppPublisher "KangoOS"
 #define AppExecutable "kangoos_app.exe"
 #define BuildDirectory "..\..\build\windows\x64\runner\Release"
+
+#ifndef AppVersion
+  #error AppVersion must come from app/pubspec.yaml
+#endif
+
+#ifndef AppBuildVersion
+  #error AppBuildVersion must come from app/pubspec.yaml
+#endif
 
 #ifndef VcRedistSource
   #error VcRedistSource must point to vc_redist.x64.exe

@@ -2,9 +2,11 @@ import 'dart:io';
 
 import '../database/database.dart';
 import '../database/tables/activity_summaries_table.dart';
+import '../embedding/embedding_provider.dart';
 import 'activity_repository.dart';
 import 'episode_repository.dart';
 import 'memory_deletion.dart';
+import 'memory_metrics.dart';
 import 'memory_query_engine.dart';
 import 'privacy_filter.dart';
 import 'summary_repository.dart';
@@ -22,6 +24,7 @@ class MemoryService {
     this.queryEngine,
     this.privacyFilter = const PrivacyFilter(),
     this.privacyFilterProvider,
+    this.metrics,
   });
 
   final KangoosDatabase database;
@@ -31,6 +34,7 @@ class MemoryService {
   final MemoryQueryEngine? queryEngine;
   final PrivacyFilter privacyFilter;
   final PrivacyFilterProvider? privacyFilterProvider;
+  final LocalMemoryMetrics? metrics;
 
   Future<int> record(NewActivity activity) async =>
       activities.create((await _privacyFilter()).filterActivity(activity));
@@ -167,6 +171,16 @@ class MemoryService {
       database.createBackup(destination);
 
   Future<File> stageRestore(File backup) => database.stageRestore(backup);
+
+  Future<MemoryDiagnosticsSnapshot> diagnostics() async {
+    final provider = queryEngine?.embeddingProvider;
+    final providerId =
+        provider == null ? null : await embeddingProviderFingerprint(provider);
+    return MemoryDiagnosticsService(
+      database: database,
+      metrics: metrics,
+    ).snapshot(providerId: providerId);
+  }
 
   Future<PrivacyFilter> _privacyFilter() async =>
       await privacyFilterProvider?.call() ?? privacyFilter;

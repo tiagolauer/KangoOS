@@ -8,6 +8,7 @@ import '../snippets/snippet_repository.dart';
 import 'activity_repository.dart';
 import 'episode_repository.dart';
 import 'memory_deletion.dart';
+import 'memory_metrics.dart';
 import 'summary_repository.dart';
 
 const reciprocalRankFusionOffset = 60;
@@ -159,6 +160,7 @@ class MemoryQueryEngine {
     this.vectorIndex = const BruteForceVectorIndex(),
     this.minSemanticSimilarity = defaultMemorySemanticMinSimilarity,
     this.vectorCacheTtl = defaultMemoryVectorCacheTtl,
+    this.metrics,
   });
 
   final EpisodeRepository episodes;
@@ -171,6 +173,7 @@ class MemoryQueryEngine {
   final VectorIndex<String> vectorIndex;
   final double minSemanticSimilarity;
   final Duration vectorCacheTtl;
+  final LocalMemoryMetrics? metrics;
 
   String? _cachedVectorProviderId;
   DateTime? _vectorsCachedAt;
@@ -253,6 +256,32 @@ class MemoryQueryEngine {
   }
 
   Future<MemorySearchResult> search(
+    String query, {
+    DateTime? reference,
+    int limit = 10,
+    MemorySearchMode mode = MemorySearchMode.hybrid,
+    MemorySearchFilters filters = const MemorySearchFilters(),
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    var failed = false;
+    try {
+      return await _search(
+        query,
+        reference: reference,
+        limit: limit,
+        mode: mode,
+        filters: filters,
+      );
+    } catch (_) {
+      failed = true;
+      rethrow;
+    } finally {
+      stopwatch.stop();
+      metrics?.recordSearch(stopwatch.elapsed, failed: failed);
+    }
+  }
+
+  Future<MemorySearchResult> _search(
     String query, {
     DateTime? reference,
     int limit = 10,

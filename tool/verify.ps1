@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
   [switch]$BuildInstaller,
+  [switch]$M8,
+  [ValidateRange(1, 86400)] [int]$SoakSeconds = 5,
   [string]$InnoCompiler,
   [string]$VcRedistSource,
   [string]$OpenSslRoot
@@ -12,6 +14,12 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $expectedFlutterVersion =
   (Get-Content -Raw (Join-Path $repoRoot '.fvmrc') | ConvertFrom-Json).flutter
+$pubspec = Get-Content -Raw (Join-Path $repoRoot 'app\pubspec.yaml')
+if ($pubspec -notmatch '(?m)^version:\s*(?<name>\d+\.\d+\.\d+)\+(?<build>\d+)\s*$') {
+  throw 'app/pubspec.yaml must contain a semantic version and numeric build.'
+}
+$appVersion = $Matches.name
+$appBuildVersion = "$appVersion.$($Matches.build)"
 
 function Invoke-Native {
   param(
@@ -64,6 +72,47 @@ Invoke-PackageVerification 'core' (Join-Path $repoRoot 'core') 'dart'
 Invoke-PackageVerification 'server' (Join-Path $repoRoot 'server') 'dart'
 Invoke-PackageVerification 'mcp' (Join-Path $repoRoot 'mcp') 'dart'
 Invoke-PackageVerification 'app' (Join-Path $repoRoot 'app') 'flutter'
+
+if ($M8) {
+  Write-Host "`n==> M8 hardening gates"
+  Push-Location (Join-Path $repoRoot 'core')
+  try {
+    Invoke-Native 'dart' @(
+      'test',
+      'test/m8_quality_gate_test.dart',
+      'test/memory_metrics_test.dart',
+      'test/memory_deletion_test.dart',
+      '--reporter',
+      'expanded'
+    )
+    Invoke-Native 'dart' @('run', 'benchmark/m4_benchmark.dart')
+    $previousSoakSeconds = $env:KANGOOS_M8_SOAK_SECONDS
+    $env:KANGOOS_M8_SOAK_SECONDS = "$SoakSeconds"
+    try {
+      Invoke-Native 'dart' @('run', 'benchmark/m8_soak.dart')
+    } finally {
+      [Environment]::SetEnvironmentVariable(
+        'KANGOOS_M8_SOAK_SECONDS', $previousSoakSeconds, 'Process'
+      )
+    }
+  } finally {
+    Pop-Location
+  }
+
+  if ($IsWindows) {
+    Push-Location (Join-Path $repoRoot 'app')
+    try {
+      Invoke-Native 'flutter' @(
+        'test',
+        'integration_test/m8_windows_capture_test.dart',
+        '-d',
+        'windows'
+      )
+    } finally {
+      Pop-Location
+    }
+  }
+}
 
 if ($BuildInstaller) {
   if (-not $IsWindows) {
@@ -170,9 +219,21 @@ if ($BuildInstaller) {
 
   $installerScript = Join-Path $repoRoot 'app\windows\installer\kangoos.iss'
   Invoke-Native $InnoCompiler @(
+    "/DAppVersion=$appVersion",
+    "/DAppBuildVersion=$appBuildVersion",
     "/DVcRedistSource=$((Resolve-Path -LiteralPath $VcRedistSource).Path)",
     $installerScript
   )
+  $installer = Join-Path $repoRoot (
+    "app\dist\KangoOS-$appVersion-windows-x64-setup.exe"
+  )
+  if (-not (Test-Path -LiteralPath $installer)) {
+    throw "The expected versioned installer was not produced: $installer"
+  }
+  $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLower()
+  [System.IO.File]::WriteAllText("$installer.sha256", "$hash  $([IO.Path]::GetFileName($installer))`n")
+  Write-Host "Installer: $installer"
+  Write-Host "SHA256: $hash"
 }
 
 Write-Host "`nKangoOS verification passed."

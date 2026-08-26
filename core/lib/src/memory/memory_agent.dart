@@ -7,6 +7,7 @@ import '../database/database.dart';
 import '../llm/llm_provider.dart';
 import '../llm/llm_stream.dart';
 import 'memory_query_engine.dart';
+import 'memory_metrics.dart';
 import 'memory_service.dart';
 
 const maxMemoryEvidenceContentLength = 2000;
@@ -14,6 +15,7 @@ const defaultMemoryAgentMaxSteps = 8;
 const defaultMemoryAgentTimeout = Duration(seconds: 90);
 const defaultMemoryAgentContextBudgetTokens = 12000;
 const maxMemoryAgentToolResults = 20;
+const maxMemoryContradictionConfidencePenalty = 0.2;
 const _insufficientEvidenceAnswer =
     'Não encontrei evidências suficientes na memória para responder com segurança.';
 
@@ -262,6 +264,8 @@ class MemoryAgent {
     this.maxSteps = defaultMemoryAgentMaxSteps,
     this.timeout = defaultMemoryAgentTimeout,
     this.contextBudgetTokens = defaultMemoryAgentContextBudgetTokens,
+    this.metrics,
+    this.referenceTime,
   }) : assert(maxSteps > 0),
        assert(contextBudgetTokens > 0);
 
@@ -271,6 +275,8 @@ class MemoryAgent {
   final int maxSteps;
   final Duration timeout;
   final int contextBudgetTokens;
+  final LocalMemoryMetrics? metrics;
+  final DateTime? referenceTime;
 
   static const memoryToolDefinitions = <LlmToolDefinition>[
     LlmToolDefinition(
@@ -434,6 +440,39 @@ class MemoryAgent {
     MemorySearchFilters filters = const MemorySearchFilters(),
     String? untrustedContext,
   }) async {
+    final result = await _run(
+      provider: provider,
+      query: query,
+      history: history,
+      depth: depth,
+      cancelToken: cancelToken,
+      surface: surface,
+      conversationId: conversationId,
+      connectorPermissionChecker: connectorPermissionChecker,
+      connectorApprovalRequester: connectorApprovalRequester,
+      filters: filters,
+      untrustedContext: untrustedContext,
+    );
+    (metrics ?? memory.metrics)?.recordAgent(
+      steps: result.stepCount,
+      stopReason: result.stopReason.name,
+    );
+    return result;
+  }
+
+  Future<MemoryAgentRun> _run({
+    required LlmProvider provider,
+    required String query,
+    List<LlmMessage> history = const [],
+    MemoryInvestigationDepth depth = MemoryInvestigationDepth.standard,
+    CancelToken? cancelToken,
+    ConnectorSurface surface = ConnectorSurface.desktop,
+    int? conversationId,
+    ConnectorPermissionChecker? connectorPermissionChecker,
+    ConnectorApprovalRequester? connectorApprovalRequester,
+    MemorySearchFilters filters = const MemorySearchFilters(),
+    String? untrustedContext,
+  }) async {
     final normalized = query.trim();
     if (normalized.isEmpty) throw ArgumentError.value(query, 'query');
     final evidence = <String, MemoryEvidence>{};
@@ -441,6 +480,7 @@ class MemoryAgent {
     final issues = <String>[];
     final seenCalls = <String>{};
     MemoryReflection? reflected;
+    var fallbackPerformed = false;
     String? persona;
     try {
       persona = await personaProvider?.call();
@@ -551,6 +591,51 @@ class MemoryAgent {
         ),
       );
       if (response.toolCalls.isEmpty) {
+        final searched = steps.any((item) => item.tool != 'reflect_memory');
+        final currentReflection =
+            reflected ??
+            _reflect(evidence.values.toList(), depth, query: normalized);
+        if (!fallbackPerformed &&
+            searched &&
+            !currentReflection.sufficient &&
+            step < maxSteps) {
+          fallbackPerformed = true;
+          reflected = null;
+          final call = LlmToolCall(
+            id: 'automatic-search-$step',
+            name: 'search_memory',
+            arguments: {
+              'query': normalized,
+              'mode': MemorySearchMode.hybrid.name,
+              'limit': maxMemoryAgentToolResults,
+            },
+          );
+          final outcome = await _searchTool(
+            call,
+            normalized,
+            MemorySearchMode.hybrid,
+            filters,
+            evidence,
+            steps,
+            issues,
+          );
+          if (evidence.isNotEmpty) {
+            messages[messages.length - 1] = LlmMessage(
+              role: LlmRole.assistant,
+              content: '',
+              toolCalls: [call],
+            );
+            messages.add(
+              LlmMessage(
+                role: LlmRole.tool,
+                content: outcome.content,
+                toolCallId: call.id,
+                name: call.name,
+              ),
+            );
+            continue;
+          }
+        }
         if (reflected == null && evidence.isNotEmpty && step < maxSteps) {
           reflected = _reflect(
             evidence.values.toList(),
@@ -602,7 +687,7 @@ class MemoryAgent {
         final answer = _groundedAnswer(
           response.content,
           investigation,
-          searched: steps.any((item) => item.tool != 'reflect_memory'),
+          searched: searched,
         );
         return MemoryAgentRun(
           answer: answer,
@@ -991,6 +1076,7 @@ class MemoryAgent {
   ) async {
     final result = await memory.searchMemory(
       query,
+      reference: referenceTime,
       limit: _limit(call.arguments),
       mode: mode,
       filters: filters,
@@ -1004,6 +1090,7 @@ class MemoryAgent {
       for (final term in _searchTerms(query).take(6)) {
         final fallback = await memory.searchMemory(
           term,
+          reference: referenceTime,
           limit: _limit(call.arguments),
           mode: fallbackMode,
           filters: filters,
@@ -1088,6 +1175,7 @@ class MemoryAgent {
     if (episode == null) throw StateError('episode #$id not found');
     final visible = await memory.searchMemory(
       episode.title,
+      reference: referenceTime,
       limit: 50,
       mode: MemorySearchMode.lexical,
       filters: filters.copyWith(sources: const {MemoryEvidenceSource.episode}),
@@ -1144,13 +1232,14 @@ class MemoryAgent {
     );
     final effectiveEnd = _earlier(
       filters.end,
-      end ?? DateTime.now().add(const Duration(minutes: 1)),
+      end ?? (referenceTime ?? DateTime.now()).add(const Duration(minutes: 1)),
     );
     if (!effectiveStart.isBefore(effectiveEnd)) {
       return _emptyToolOutcome(call, '$effectiveStart/$effectiveEnd', steps);
     }
     final result = await memory.searchMemory(
       '',
+      reference: referenceTime,
       limit: limit,
       mode: MemorySearchMode.temporal,
       filters: filters.copyWith(
@@ -1254,11 +1343,20 @@ class MemoryAgent {
     Map<String, MemoryEvidence> evidence,
     List<MemorySearchStep> steps,
   ) {
-    final relevant =
+    final deterministic = _reflect(
+      evidence.values.toList(),
+      depth,
+      query: query,
+    );
+    final suppliedRelevant =
         _strings(
           call.arguments['relevantEvidenceIds'],
         ).where(evidence.containsKey).toSet().toList();
-    final contradictions = <MemoryContradiction>[];
+    final relevant =
+        suppliedRelevant.isEmpty
+            ? deterministic.relevantEvidenceIds
+            : suppliedRelevant;
+    final suppliedContradictions = <MemoryContradiction>[];
     for (final raw in call.arguments['contradictions'] as List? ?? const []) {
       if (raw is! Map) continue;
       final item = raw.cast<String, Object?>();
@@ -1268,16 +1366,21 @@ class MemoryAgent {
           ).where(evidence.containsKey).toSet().toList();
       final description = item['description'] as String? ?? '';
       if (description.trim().isEmpty || ids.isEmpty) continue;
-      contradictions.add(
+      suppliedContradictions.add(
         MemoryContradiction(description: description.trim(), evidenceIds: ids),
       );
     }
+    final contradictions =
+        suppliedContradictions.isEmpty
+            ? deterministic.contradictions
+            : suppliedContradictions;
     final gaps = _strings(call.arguments['gaps']);
     final target = depth == MemoryInvestigationDepth.deep ? 8 : 4;
     final coverage = math.min(1, relevant.length / target).toDouble();
     final sufficient =
-        call.arguments['sufficient'] == true && relevant.isNotEmpty;
-    final confidence =
+        (call.arguments['sufficient'] == true && relevant.isNotEmpty) ||
+        deterministic.sufficient;
+    final calculatedConfidence =
         math
             .max(
               0,
@@ -1285,10 +1388,17 @@ class MemoryAgent {
                 1,
                 coverage * 0.7 +
                     (sufficient ? 0.3 : 0) -
-                    contradictions.length * 0.1,
+                    math.min(
+                      maxMemoryContradictionConfidencePenalty,
+                      contradictions.length * 0.1,
+                    ),
               ),
             )
             .toDouble();
+    final confidence =
+        sufficient
+            ? math.max(calculatedConfidence, deterministic.confidence)
+            : calculatedConfidence;
     final reflection = MemoryReflection(
       evidenceCoverage: coverage,
       confidence: confidence,
@@ -1573,21 +1683,45 @@ class MemoryAgent {
   ) async {
     final result = await memory.searchMemory(
       query,
+      reference: referenceTime,
       limit: limit,
       mode: mode,
       filters: filters,
     );
+    final found = <String, MemorySearchEvidence>{
+      for (final item in result.evidence) item.id: item,
+    };
+    if (found.isEmpty && mode != MemorySearchMode.temporal) {
+      final fallbackMode =
+          mode == MemorySearchMode.semantic ? MemorySearchMode.lexical : mode;
+      for (final term in _searchTerms(query).take(6)) {
+        final fallback = await memory.searchMemory(
+          term,
+          reference: referenceTime,
+          limit: limit,
+          mode: fallbackMode,
+          filters: filters,
+        );
+        for (final item in fallback.evidence) {
+          found[item.id] = item;
+        }
+        if (fallback.semanticError != null) {
+          issues.add('semantic search: ${fallback.semanticError}');
+        }
+        if (found.length >= limit) break;
+      }
+    }
     steps.add(
       MemorySearchStep(
         tool: 'search_memory_${mode.name}',
         query: query,
-        resultCount: result.evidence.length,
+        resultCount: found.length,
       ),
     );
     if (result.semanticError != null) {
       issues.add('semantic search: ${result.semanticError}');
     }
-    for (final item in result.evidence) {
+    for (final item in found.values.take(limit)) {
       evidence[item.id] = _fromSearchEvidence(item);
     }
   }
@@ -1632,16 +1766,6 @@ class MemoryAgent {
     final coverage = math.min(1, relevant.length / target);
     final relevance = evidence.isEmpty ? 0 : relevant.length / evidence.length;
     final kinds = relevant.map((item) => item.kind).toSet();
-    final hasDirectSource = relevant.any(
-      (item) => switch (item.kind) {
-        MemoryEvidenceKind.file ||
-        MemoryEvidenceKind.browser ||
-        MemoryEvidenceKind.calendar ||
-        MemoryEvidenceKind.web ||
-        MemoryEvidenceKind.persona => true,
-        _ => false,
-      },
-    );
     final diversity = math.min(1, kinds.length / 3);
     final contradictions = _contradictions(relevant);
     final confidence = math.max(
@@ -1651,7 +1775,10 @@ class MemoryAgent {
         coverage * 0.45 +
             relevance * 0.35 +
             diversity * 0.2 -
-            contradictions.length * 0.1,
+            math.min(
+              maxMemoryContradictionConfidencePenalty,
+              contradictions.length * 0.1,
+            ),
       ),
     );
     final missing = <String>[
@@ -1664,10 +1791,7 @@ class MemoryAgent {
       evidenceCoverage: coverage.toDouble(),
       confidence: confidence.toDouble(),
       missingEvidence: missing,
-      sufficient:
-          relevant.isNotEmpty &&
-          (hasDirectSource || kinds.length >= 2) &&
-          confidence >= 0.5,
+      sufficient: relevant.isNotEmpty && confidence >= 0.5,
       relevantEvidenceIds: relevant.map((item) => item.id).toList(),
       contradictions: contradictions,
     );

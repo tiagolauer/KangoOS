@@ -97,6 +97,7 @@ Future<void> _startKangoos() async {
   final captureSettingsRepository = CaptureSettingsRepository();
   final captureSourceRegistry = CaptureSourceRegistry();
   final captureStatus = CaptureStatusController();
+  final memoryMetrics = LocalMemoryMetrics();
   final memoryQueryEngine = MemoryQueryEngine(
     episodes: episodeRepository,
     summaries: summaryRepository,
@@ -104,6 +105,7 @@ Future<void> _startKangoos() async {
     snippets: snippetRepository,
     activities: activityRepository,
     embeddingProvider: embeddingProvider,
+    metrics: memoryMetrics,
   );
   final memory = MemoryService(
     database: database,
@@ -111,6 +113,7 @@ Future<void> _startKangoos() async {
     summaries: summaryRepository,
     episodes: episodeRepository,
     queryEngine: memoryQueryEngine,
+    metrics: memoryMetrics,
     privacyFilterProvider:
         () async => PrivacyFilter(
           redactPii: (await captureSettingsRepository.load()).redactPii,

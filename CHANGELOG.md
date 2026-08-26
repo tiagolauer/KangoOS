@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.2.0
+
 ### Added
 - Unified Timeline for events, episodes, summaries, manual memories,
   conversations and DeepStudy reports, with lexical/semantic search, filters,
@@ -10,6 +12,10 @@
   evidence, retry controls and explicit Reflection/DeepStudy modes.
 - Timed capture pause, LTM settings and granular deletion in the Windows tray
   panel.
+- Seven-day canonical LTM corpus, privacy-safe health metrics, LM Studio and
+  Windows-native release gates, 50k scale benchmark and configurable soak test.
+- Versioned Windows installer CI with SHA-256 output and separate macOS/Linux
+  compilation gates.
 
 ## 1.1.0
 

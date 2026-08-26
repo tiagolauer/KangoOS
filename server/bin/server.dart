@@ -28,19 +28,23 @@ Future<void> main() async {
   final summaries = SqliteSummaryRepository(database);
   final episodes = SqliteEpisodeRepository(database);
   final conversations = SqliteConversationRepository(database);
+  final memoryMetrics = LocalMemoryMetrics();
+  final memoryQueryEngine = MemoryQueryEngine(
+    episodes: episodes,
+    summaries: summaries,
+    conversations: conversations,
+    snippets: snippetRepository,
+    activities: activities,
+    embeddingProvider: semanticSearch.embeddingProvider,
+    metrics: memoryMetrics,
+  );
   final memory = MemoryService(
     database: database,
     activities: activities,
     summaries: summaries,
     episodes: episodes,
-    queryEngine: MemoryQueryEngine(
-      episodes: episodes,
-      summaries: summaries,
-      conversations: conversations,
-      snippets: snippetRepository,
-      activities: activities,
-      embeddingProvider: semanticSearch.embeddingProvider,
-    ),
+    queryEngine: memoryQueryEngine,
+    metrics: memoryMetrics,
   );
   final ragChat = RagChat(
     snippets: snippets,

@@ -232,6 +232,12 @@ class KangoMcpServer {
       inputSchema: memorySearchSchema,
       handler: _searchMemoriesByTime,
     );
+    _tools['get_memory_diagnostics'] = _McpTool(
+      description:
+          'Read local aggregate LTM health metrics without memory content.',
+      inputSchema: const {'type': 'object', 'properties': {}},
+      handler: (_) async => _toolJson((await memory.diagnostics()).toJson()),
+    );
 
     _tools['get_memory_episode'] = _McpTool(
       description: 'Get one structured memory episode by id.',

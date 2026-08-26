@@ -11,6 +11,7 @@ import '../infrastructure/sqlite/sqlite_snippet_repository.dart';
 import '../infrastructure/sqlite/sqlite_summary_repository.dart';
 import '../llm/llm_settings.dart';
 import '../memory/memory_agent.dart';
+import '../memory/memory_metrics.dart';
 import '../memory/memory_query_engine.dart';
 import '../memory/memory_service.dart';
 import '../search/semantic_search.dart';
@@ -57,19 +58,23 @@ class KangoMcpApplication {
       final conversations = SqliteConversationRepository(database);
       final activities = SqliteActivityRepository(database);
       final llmProvider = _llmSettings(environment).buildProvider();
+      final memoryMetrics = LocalMemoryMetrics();
+      final memoryQueryEngine = MemoryQueryEngine(
+        episodes: episodes,
+        summaries: summaries,
+        conversations: conversations,
+        snippets: snippetRepository,
+        activities: activities,
+        embeddingProvider: embedding,
+        metrics: memoryMetrics,
+      );
       final memory = MemoryService(
         database: database,
         activities: activities,
         summaries: summaries,
         episodes: episodes,
-        queryEngine: MemoryQueryEngine(
-          episodes: episodes,
-          summaries: summaries,
-          conversations: conversations,
-          snippets: snippetRepository,
-          activities: activities,
-          embeddingProvider: embedding,
-        ),
+        queryEngine: memoryQueryEngine,
+        metrics: memoryMetrics,
       );
       return KangoMcpApplication(
         database: database,

@@ -42,6 +42,7 @@ export 'src/memory/memory_service.dart';
 export 'src/memory/memory_formation_service.dart';
 export 'src/memory/memory_enricher.dart';
 export 'src/memory/memory_hierarchy_service.dart';
+export 'src/memory/memory_metrics.dart';
 export 'src/memory/memory_agent.dart';
 export 'src/memory/memory_deletion.dart';
 export 'src/memory/memory_query_engine.dart';

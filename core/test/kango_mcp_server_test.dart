@@ -151,6 +151,7 @@ void main() {
       'search_memories',
       'search_memories_semantic',
       'search_memories_by_time',
+      'get_memory_diagnostics',
       'get_memory_episode',
       'list_recent_memories',
       'find_related_memories',

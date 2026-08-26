@@ -8,7 +8,7 @@ A developer snippet manager with long-term memory and contextual LLM chat — ru
 
 [![CI](https://github.com/tiagolauer/KangoOS/actions/workflows/ci.yml/badge.svg)](https://github.com/tiagolauer/KangoOS/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-1.1.0-brightgreen.svg)](CHANGELOG.md)
+[![Release](https://img.shields.io/badge/release-1.2.0-brightgreen.svg)](CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/platform-Windows-informational.svg)](#platform-support)
 [![Built with Flutter](https://img.shields.io/badge/built%20with-Flutter%20%2B%20Dart-02569B.svg)](https://flutter.dev)
 
@@ -22,9 +22,11 @@ A developer snippet manager with long-term memory and contextual LLM chat — ru
 - [Feature highlights](#feature-highlights)
 - [Platform support](#platform-support)
 - [Getting started](#getting-started)
+- [LM Studio](#lm-studio)
 - [Architecture](#architecture)
 - [Long-term memory and capture](#long-term-memory-and-capture)
 - [Privacy and security](#privacy-and-security)
+- [Backup and restore](#backup-and-restore)
 - [Command-line interface](#command-line-interface)
 - [MCP server](#mcp-server)
 - [Self-hosted server](#self-hosted-server)
@@ -91,9 +93,9 @@ KangoOS stores the code you keep re-writing, remembers what you were working on,
 
 | Platform | Status | Notes |
 |---|---|---|
-| **Windows** | ✅ Supported | The only platform built, run and verified end to end. The CI `windows-build` job produces the released binary. |
-| **Linux** | ⚠️ Experimental | Code is written for it, but it is not packaged, not CI-built and not verified. Requires `libayatana-appindicator3-dev`, `libssl-dev` and libsecret at build time, plus an X11 (or XWayland) session for activity capture. |
-| **macOS** | ⚠️ Experimental | Code is written for it, but it is not packaged, not CI-built and not verified. Requires granting Accessibility permission so window titles can be read. |
+| **Windows** | ✅ Supported | The only platform built, run and verified end to end. The CI `windows-installer` job produces the released binary. |
+| **Linux** | ⚠️ Experimental | Compiled separately in CI, but native capture is not runtime-verified. Requires `libayatana-appindicator3-dev`, `libssl-dev` and libsecret at build time, plus an X11 (or XWayland) session for activity capture. |
+| **macOS** | ⚠️ Experimental | Compiled separately in CI, but native capture is not runtime-verified. Requires granting Accessibility permission so window titles can be read. |
 
 Treat anything other than Windows as build-it-yourself until a later release.
 
@@ -120,6 +122,10 @@ cd ../app && flutter pub get && flutter run -d windows
 ```
 
 There is no account to create and no configuration required to start: the app opens an encrypted local database and works offline. Point it at a different LLM provider from Settings whenever you want.
+
+## LM Studio
+
+Start LM Studio's local server, load an instruction model, then open **Settings → LLM settings** in KangoOS and select **OpenAI-compatible**. Use `http://127.0.0.1:1234/v1` as the base URL, the exact model id shown by LM Studio, and leave the API key empty. The M8 release gate is fixed to `qwen/qwen3-8b`; changing the model means creating a new measured baseline rather than silently changing the evaluation.
 
 ## Architecture
 
@@ -200,6 +206,10 @@ Each time the focused window changes, a bundled `screen_ocr.exe` helper captures
 > [!IMPORTANT]
 > Because the database key lives in the OS keychain rather than in the database file, **wiping the keychain entry — or moving the `.db` to another machine — makes the data unrecoverable.** Export your snippets first (More menu → Export snippets) if that is a risk. Note that export covers snippets only; captured activity and chat history are not included.
 
+## Backup and restore
+
+Use **Settings → Capture and privacy → Create encrypted backup** for a complete SQLCipher snapshot of snippets, captured activity, episodes, summaries and conversations. Keep the OS keychain entry with the backup; the `.db` file alone cannot be opened on another installation. **Restore backup** validates and stages the snapshot, then applies it on restart. KangoOS also creates an encrypted pre-migration snapshot before a schema upgrade.
+
 ## Command-line interface
 
 `kango` embeds the core engine directly — no server, no running app.
@@ -276,6 +286,7 @@ Plain Dart binaries on Linux require `libsqlite3-dev` so the native SQLite libra
 | `forget_memory` | Delete a memory episode. |
 | `get_daily_summary` / `get_weekly_summary` | Read stored summaries. |
 | `remember` | Alias for manually storing a memory. |
+| `get_memory_diagnostics` | Read aggregate pending/failed formation, stale embeddings, search latency and agent-step counters; never returns captured content. |
 
 The repository is pinned to Flutter 3.29.3 (Dart 3.7.2), while standalone Dart jobs use 3.7.3. The legacy `core/bin/kango_mcp.dart` tools-only transport remains available, and both entrypoints share the same tool registry and composition root.
 
@@ -309,9 +320,9 @@ An approximate-nearest-neighbour index was considered and rejected on these numb
 .\tool\verify.ps1
 ```
 
-The command resolves dependencies, analyzes and tests `core`, `server`, `mcp` and `app`. Add `-BuildInstaller` on Windows to build the release bundle, verify an encrypted database upgrade against its SQLCipher library and compile the installer. See the [M0 verification baseline](docs/m0-verification-baseline.md).
+The command resolves dependencies, analyzes and tests `core`, `server`, `mcp` and `app`. Add `-M8` for the canonical corpus, 50k benchmark, configurable soak smoke and Windows-native capture E2E. Add `-BuildInstaller` on Windows to verify an encrypted database upgrade, compile the version from `app/pubspec.yaml` and emit the installer plus SHA-256. See the [M0 verification baseline](docs/m0-verification-baseline.md) and [M8 release gate](docs/m8-release-gate.md).
 
-CI runs `analyze` and `test` for `core`, `server`, `mcp` and `app` on Ubuntu, repeats the Dart suites on Windows, builds and smoke-tests the authenticated Docker server, and produces a real `flutter build windows --release` artifact.
+CI runs `analyze` and `test` for `core`, `server`, `mcp` and `app`, compiles experimental macOS/Linux builds separately, builds and smoke-tests the authenticated Docker server, and produces a versioned Windows installer with SHA-256.
 
 ### Native requirements
 
