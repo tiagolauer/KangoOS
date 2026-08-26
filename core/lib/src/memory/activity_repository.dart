@@ -33,13 +33,11 @@ abstract interface class ActivityRepository {
 
   Future<List<Activity>> all();
 
+  Future<List<Activity>> byIds(List<int> ids);
+
   Future<int> purgeOlderThan(DateTime cutoff);
 
-  Future<List<Activity>> between(
-    DateTime start,
-    DateTime end, {
-    int? limit,
-  });
+  Future<List<Activity>> between(DateTime start, DateTime end, {int? limit});
 
   Stream<List<Activity>> watchBetween(DateTime start, DateTime end);
 

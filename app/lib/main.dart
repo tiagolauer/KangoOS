@@ -38,8 +38,9 @@ Future<void> main() async {
 
 Future<void> _startKangoos() async {
   final supportDir = await getApplicationSupportDirectory();
-  final environmentKey =
-      databaseEncryptionKeyFromEnvironment(Platform.environment);
+  final environmentKey = databaseEncryptionKeyFromEnvironment(
+    Platform.environment,
+  );
   final encryptionKey =
       environmentKey ?? await DatabaseEncryptionKeyProvider().getOrCreateKey();
   final databaseFile = File(
@@ -55,8 +56,10 @@ Future<void> _startKangoos() async {
       KangoosDatabase.encryptPlaintextDatabase(databaseFile, encryptionKey);
     }
     await KangoosDatabase.backupBeforeMigration(databaseFile, encryptionKey);
-    database =
-        KangoosDatabase.native(databaseFile, encryptionKey: encryptionKey);
+    database = KangoosDatabase.native(
+      databaseFile,
+      encryptionKey: encryptionKey,
+    );
     await database.allSnippets();
   } catch (e) {
     runApp(DatabaseErrorApp(error: e, databasePath: databaseFile.path));
@@ -65,8 +68,9 @@ Future<void> _startKangoos() async {
 
   final settingsRepository = SettingsRepository();
   final snippetRepository = SqliteSnippetRepository(database);
-  final embeddingProvider =
-      SettingsEmbeddingProvider(repository: settingsRepository);
+  final embeddingProvider = SettingsEmbeddingProvider(
+    repository: settingsRepository,
+  );
   final semanticSearch = SemanticSearch(
     repository: snippetRepository,
     embeddingProvider: embeddingProvider,
@@ -84,6 +88,10 @@ Future<void> _startKangoos() async {
   final captureStatus = CaptureStatusController();
   final memoryQueryEngine = MemoryQueryEngine(
     episodes: episodeRepository,
+    summaries: summaryRepository,
+    conversations: conversationRepository,
+    snippets: snippetRepository,
+    activities: activityRepository,
     embeddingProvider: embeddingProvider,
   );
   final memory = MemoryService(
@@ -92,9 +100,10 @@ Future<void> _startKangoos() async {
     summaries: summaryRepository,
     episodes: episodeRepository,
     queryEngine: memoryQueryEngine,
-    privacyFilterProvider: () async => PrivacyFilter(
-      redactPii: (await captureSettingsRepository.load()).redactPii,
-    ),
+    privacyFilterProvider:
+        () async => PrivacyFilter(
+          redactPii: (await captureSettingsRepository.load()).redactPii,
+        ),
   );
   final memoryFormation = MemoryFormationService(
     activities: activityRepository,
@@ -125,6 +134,7 @@ Future<void> _startKangoos() async {
     formation: memoryFormation,
     settingsRepository: settingsRepository,
     captureSettingsRepository: captureSettingsRepository,
+    queryEngine: memoryQueryEngine,
   );
   final audioCapture = AudioCaptureService(
     memory: memory,
@@ -134,9 +144,7 @@ Future<void> _startKangoos() async {
     captureStatus: captureStatus,
   );
   final memoryCompaction = MemoryCompactionService(hierarchy: hierarchy);
-  final quickCapture = QuickCaptureService(
-    snippets: snippetService,
-  );
+  final quickCapture = QuickCaptureService(snippets: snippetService);
   late final KangoRuntime runtime;
   final tray = TrayService(
     captureSettingsRepository: captureSettingsRepository,
@@ -166,17 +174,19 @@ Future<void> _startKangoos() async {
     exit(0);
   }
 
-  runApp(KangoosApp(
-    snippetRepository: snippetRepository,
-    snippets: snippetService,
-    memory: memory,
-    conversations: conversationRepository,
-    captureSettingsRepository: captureSettingsRepository,
-    captureStatus: captureStatus,
-    needsCaptureConsent: needsCaptureConsent,
-    trayService: tray,
-    onRestoreStaged: restartAfterRestore,
-  ));
+  runApp(
+    KangoosApp(
+      snippetRepository: snippetRepository,
+      snippets: snippetService,
+      memory: memory,
+      conversations: conversationRepository,
+      captureSettingsRepository: captureSettingsRepository,
+      captureStatus: captureStatus,
+      needsCaptureConsent: needsCaptureConsent,
+      trayService: tray,
+      onRestoreStaged: restartAfterRestore,
+    ),
+  );
 }
 
 class StartupErrorApp extends StatelessWidget {
@@ -194,32 +204,38 @@ class StartupErrorApp extends StatelessWidget {
       theme: KangoosTheme.light,
       darkTheme: KangoosTheme.dark,
       themeMode: ThemeMode.system,
-      home: Builder(builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Scaffold(
-          body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.startupErrorTitle,
-                        style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 12),
-                    Text(l10n.startupErrorBody),
-                    const SizedBox(height: 12),
-                    SelectableText('$error',
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ],
+      home: Builder(
+        builder: (context) {
+          final l10n = AppLocalizations.of(context);
+          return Scaffold(
+            body: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.startupErrorTitle,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(l10n.startupErrorBody),
+                      const SizedBox(height: 12),
+                      SelectableText(
+                        '$error',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }
@@ -244,34 +260,40 @@ class DatabaseErrorApp extends StatelessWidget {
       theme: KangoosTheme.light,
       darkTheme: KangoosTheme.dark,
       themeMode: ThemeMode.system,
-      home: Builder(builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Scaffold(
-          body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.databaseErrorTitle,
-                        style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 12),
-                    Text(l10n.databaseErrorBody),
-                    const SizedBox(height: 12),
-                    SelectableText(l10n.databaseErrorPath(databasePath)),
-                    const SizedBox(height: 12),
-                    SelectableText('$error',
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ],
+      home: Builder(
+        builder: (context) {
+          final l10n = AppLocalizations.of(context);
+          return Scaffold(
+            body: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.databaseErrorTitle,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(l10n.databaseErrorBody),
+                      const SizedBox(height: 12),
+                      SelectableText(l10n.databaseErrorPath(databasePath)),
+                      const SizedBox(height: 12),
+                      SelectableText(
+                        '$error',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }

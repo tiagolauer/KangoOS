@@ -15,10 +15,11 @@ export 'src/database/database.dart'
         Snippet;
 export 'src/database/snippet_json.dart';
 export 'src/database/tables/activity_summaries_table.dart'
-    show SummaryKind, automaticDurableMemoryPrefix;
+    show ActivitySummaryVector, SummaryKind, automaticDurableMemoryPrefix;
 export 'src/database/tables/memory_episodes_table.dart'
     show MemoryFormationStatus;
-export 'src/database/tables/conversations_table.dart' show ConversationSummary;
+export 'src/database/tables/conversations_table.dart'
+    show ConversationMessageVector, ConversationSummary;
 export 'src/database/tables/snippets_table.dart' show SnippetVector;
 export 'src/embedding/embedding_provider.dart';
 export 'src/exchange/snippet_exchange.dart';

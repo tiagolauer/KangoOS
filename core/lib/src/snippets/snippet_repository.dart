@@ -58,19 +58,22 @@ abstract interface class SnippetRepository {
 
   Future<List<Snippet>> all();
 
-  Future<List<Snippet>> searchByKeyword(String query);
+  Future<List<Snippet>> between(DateTime start, DateTime end, {int? limit});
+
+  Future<List<Snippet>> searchByKeyword(
+    String query, {
+    DateTime? start,
+    DateTime? end,
+    int limit = 50,
+  });
 
   Future<List<Snippet>> byIds(List<int> ids);
 
-  Future<List<Snippet>> pendingEmbedding(String providerId);
+  Future<List<Snippet>> pendingEmbedding(String providerId, {int? limit});
 
   Future<List<SnippetVector>> vectors(String providerId);
 
-  Future<void> setEmbedding(
-    int id,
-    List<double> embedding,
-    String providerId,
-  );
+  Future<void> setEmbedding(int id, List<double> embedding, String providerId);
 
   Future<void> recordTombstone(String syncId, {DateTime? deletedAt});
 

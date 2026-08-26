@@ -10,20 +10,21 @@ class SqliteActivityRepository implements ActivityRepository {
 
   @override
   Future<int> create(NewActivity activity) => database.logActivity(
-        ActivitiesCompanion.insert(
-          sourceId: Value(activity.sourceId),
-          appName: activity.appName,
-          windowTitle: activity.windowTitle,
-          capturedText: Value(activity.capturedText),
-          capturedUrl: Value(activity.capturedUrl),
-          capturedClipboard: Value(activity.capturedClipboard),
-          capturedScreenText: Value(activity.capturedScreenText),
-          capturedAudioText: Value(activity.capturedAudioText),
-          capturedAt: activity.capturedAt == null
+    ActivitiesCompanion.insert(
+      sourceId: Value(activity.sourceId),
+      appName: activity.appName,
+      windowTitle: activity.windowTitle,
+      capturedText: Value(activity.capturedText),
+      capturedUrl: Value(activity.capturedUrl),
+      capturedClipboard: Value(activity.capturedClipboard),
+      capturedScreenText: Value(activity.capturedScreenText),
+      capturedAudioText: Value(activity.capturedAudioText),
+      capturedAt:
+          activity.capturedAt == null
               ? const Value.absent()
               : Value(activity.capturedAt!),
-        ),
-      );
+    ),
+  );
 
   @override
   Future<Activity?> last() => database.lastActivity();
@@ -36,15 +37,14 @@ class SqliteActivityRepository implements ActivityRepository {
   Future<List<Activity>> all() => database.allActivities();
 
   @override
+  Future<List<Activity>> byIds(List<int> ids) => database.activitiesByIds(ids);
+
+  @override
   Future<int> purgeOlderThan(DateTime cutoff) =>
       database.purgeActivitiesOlderThan(cutoff);
 
   @override
-  Future<List<Activity>> between(
-    DateTime start,
-    DateTime end, {
-    int? limit,
-  }) =>
+  Future<List<Activity>> between(DateTime start, DateTime end, {int? limit}) =>
       database.activitiesBetween(start, end, limit: limit);
 
   @override
@@ -57,8 +57,7 @@ class SqliteActivityRepository implements ActivityRepository {
     DateTime? start,
     DateTime? end,
     int limit = 50,
-  }) =>
-      database.searchActivities(query, start: start, end: end, limit: limit);
+  }) => database.searchActivities(query, start: start, end: end, limit: limit);
 
   @override
   Future<int> delete(int id) => database.deleteActivity(id);

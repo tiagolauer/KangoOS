@@ -1342,6 +1342,26 @@ class $ActivitySummariesTable extends ActivitySummaries
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<double>?, Uint8List>
+  embedding = GeneratedColumn<Uint8List>(
+    'embedding',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  ).withConverter<List<double>?>($ActivitySummariesTable.$converterembeddingn);
+  static const VerificationMeta _embeddingProviderIdMeta =
+      const VerificationMeta('embeddingProviderId');
+  @override
+  late final GeneratedColumn<String> embeddingProviderId =
+      GeneratedColumn<String>(
+        'embedding_provider_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1361,6 +1381,8 @@ class $ActivitySummariesTable extends ActivitySummaries
     periodStart,
     periodEnd,
     content,
+    embedding,
+    embeddingProviderId,
     createdAt,
   ];
   @override
@@ -1405,6 +1427,15 @@ class $ActivitySummariesTable extends ActivitySummaries
     } else if (isInserting) {
       context.missing(_contentMeta);
     }
+    if (data.containsKey('embedding_provider_id')) {
+      context.handle(
+        _embeddingProviderIdMeta,
+        embeddingProviderId.isAcceptableOrUnknown(
+          data['embedding_provider_id']!,
+          _embeddingProviderIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1446,6 +1477,16 @@ class $ActivitySummariesTable extends ActivitySummaries
             DriftSqlType.string,
             data['${effectivePrefix}content'],
           )!,
+      embedding: $ActivitySummariesTable.$converterembeddingn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.blob,
+          data['${effectivePrefix}embedding'],
+        ),
+      ),
+      embeddingProviderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}embedding_provider_id'],
+      ),
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -1461,6 +1502,10 @@ class $ActivitySummariesTable extends ActivitySummaries
 
   static TypeConverter<SummaryKind, String> $converterkind =
       const SummaryKindConverter();
+  static TypeConverter<List<double>, Uint8List> $converterembedding =
+      const EmbeddingConverter();
+  static TypeConverter<List<double>?, Uint8List?> $converterembeddingn =
+      NullAwareTypeConverter.wrap($converterembedding);
 }
 
 class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
@@ -1469,6 +1514,8 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
   final DateTime periodStart;
   final DateTime periodEnd;
   final String content;
+  final List<double>? embedding;
+  final String? embeddingProviderId;
   final DateTime createdAt;
   const ActivitySummary({
     required this.id,
@@ -1476,6 +1523,8 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
     required this.periodStart,
     required this.periodEnd,
     required this.content,
+    this.embedding,
+    this.embeddingProviderId,
     required this.createdAt,
   });
   @override
@@ -1490,6 +1539,14 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
     map['period_start'] = Variable<DateTime>(periodStart);
     map['period_end'] = Variable<DateTime>(periodEnd);
     map['content'] = Variable<String>(content);
+    if (!nullToAbsent || embedding != null) {
+      map['embedding'] = Variable<Uint8List>(
+        $ActivitySummariesTable.$converterembeddingn.toSql(embedding),
+      );
+    }
+    if (!nullToAbsent || embeddingProviderId != null) {
+      map['embedding_provider_id'] = Variable<String>(embeddingProviderId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -1501,6 +1558,14 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
       periodStart: Value(periodStart),
       periodEnd: Value(periodEnd),
       content: Value(content),
+      embedding:
+          embedding == null && nullToAbsent
+              ? const Value.absent()
+              : Value(embedding),
+      embeddingProviderId:
+          embeddingProviderId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(embeddingProviderId),
       createdAt: Value(createdAt),
     );
   }
@@ -1516,6 +1581,10 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
       periodStart: serializer.fromJson<DateTime>(json['periodStart']),
       periodEnd: serializer.fromJson<DateTime>(json['periodEnd']),
       content: serializer.fromJson<String>(json['content']),
+      embedding: serializer.fromJson<List<double>?>(json['embedding']),
+      embeddingProviderId: serializer.fromJson<String?>(
+        json['embeddingProviderId'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -1528,6 +1597,8 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
       'periodStart': serializer.toJson<DateTime>(periodStart),
       'periodEnd': serializer.toJson<DateTime>(periodEnd),
       'content': serializer.toJson<String>(content),
+      'embedding': serializer.toJson<List<double>?>(embedding),
+      'embeddingProviderId': serializer.toJson<String?>(embeddingProviderId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -1538,6 +1609,8 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
     DateTime? periodStart,
     DateTime? periodEnd,
     String? content,
+    Value<List<double>?> embedding = const Value.absent(),
+    Value<String?> embeddingProviderId = const Value.absent(),
     DateTime? createdAt,
   }) => ActivitySummary(
     id: id ?? this.id,
@@ -1545,6 +1618,11 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
     periodStart: periodStart ?? this.periodStart,
     periodEnd: periodEnd ?? this.periodEnd,
     content: content ?? this.content,
+    embedding: embedding.present ? embedding.value : this.embedding,
+    embeddingProviderId:
+        embeddingProviderId.present
+            ? embeddingProviderId.value
+            : this.embeddingProviderId,
     createdAt: createdAt ?? this.createdAt,
   );
   ActivitySummary copyWithCompanion(ActivitySummariesCompanion data) {
@@ -1555,6 +1633,11 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
           data.periodStart.present ? data.periodStart.value : this.periodStart,
       periodEnd: data.periodEnd.present ? data.periodEnd.value : this.periodEnd,
       content: data.content.present ? data.content.value : this.content,
+      embedding: data.embedding.present ? data.embedding.value : this.embedding,
+      embeddingProviderId:
+          data.embeddingProviderId.present
+              ? data.embeddingProviderId.value
+              : this.embeddingProviderId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -1567,14 +1650,24 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
           ..write('periodStart: $periodStart, ')
           ..write('periodEnd: $periodEnd, ')
           ..write('content: $content, ')
+          ..write('embedding: $embedding, ')
+          ..write('embeddingProviderId: $embeddingProviderId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, kind, periodStart, periodEnd, content, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    kind,
+    periodStart,
+    periodEnd,
+    content,
+    embedding,
+    embeddingProviderId,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1584,6 +1677,8 @@ class ActivitySummary extends DataClass implements Insertable<ActivitySummary> {
           other.periodStart == this.periodStart &&
           other.periodEnd == this.periodEnd &&
           other.content == this.content &&
+          other.embedding == this.embedding &&
+          other.embeddingProviderId == this.embeddingProviderId &&
           other.createdAt == this.createdAt);
 }
 
@@ -1593,6 +1688,8 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
   final Value<DateTime> periodStart;
   final Value<DateTime> periodEnd;
   final Value<String> content;
+  final Value<List<double>?> embedding;
+  final Value<String?> embeddingProviderId;
   final Value<DateTime> createdAt;
   const ActivitySummariesCompanion({
     this.id = const Value.absent(),
@@ -1600,6 +1697,8 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
     this.periodStart = const Value.absent(),
     this.periodEnd = const Value.absent(),
     this.content = const Value.absent(),
+    this.embedding = const Value.absent(),
+    this.embeddingProviderId = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   ActivitySummariesCompanion.insert({
@@ -1608,6 +1707,8 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
     required DateTime periodStart,
     required DateTime periodEnd,
     required String content,
+    this.embedding = const Value.absent(),
+    this.embeddingProviderId = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : kind = Value(kind),
        periodStart = Value(periodStart),
@@ -1619,6 +1720,8 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
     Expression<DateTime>? periodStart,
     Expression<DateTime>? periodEnd,
     Expression<String>? content,
+    Expression<Uint8List>? embedding,
+    Expression<String>? embeddingProviderId,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -1627,6 +1730,9 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
       if (periodStart != null) 'period_start': periodStart,
       if (periodEnd != null) 'period_end': periodEnd,
       if (content != null) 'content': content,
+      if (embedding != null) 'embedding': embedding,
+      if (embeddingProviderId != null)
+        'embedding_provider_id': embeddingProviderId,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -1637,6 +1743,8 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
     Value<DateTime>? periodStart,
     Value<DateTime>? periodEnd,
     Value<String>? content,
+    Value<List<double>?>? embedding,
+    Value<String?>? embeddingProviderId,
     Value<DateTime>? createdAt,
   }) {
     return ActivitySummariesCompanion(
@@ -1645,6 +1753,8 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
       periodStart: periodStart ?? this.periodStart,
       periodEnd: periodEnd ?? this.periodEnd,
       content: content ?? this.content,
+      embedding: embedding ?? this.embedding,
+      embeddingProviderId: embeddingProviderId ?? this.embeddingProviderId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -1669,6 +1779,16 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
     if (content.present) {
       map['content'] = Variable<String>(content.value);
     }
+    if (embedding.present) {
+      map['embedding'] = Variable<Uint8List>(
+        $ActivitySummariesTable.$converterembeddingn.toSql(embedding.value),
+      );
+    }
+    if (embeddingProviderId.present) {
+      map['embedding_provider_id'] = Variable<String>(
+        embeddingProviderId.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1683,6 +1803,8 @@ class ActivitySummariesCompanion extends UpdateCompanion<ActivitySummary> {
           ..write('periodStart: $periodStart, ')
           ..write('periodEnd: $periodEnd, ')
           ..write('content: $content, ')
+          ..write('embedding: $embedding, ')
+          ..write('embeddingProviderId: $embeddingProviderId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -1990,6 +2112,28 @@ class $ConversationMessagesTable extends ConversationMessages
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<double>?, Uint8List>
+  embedding = GeneratedColumn<Uint8List>(
+    'embedding',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  ).withConverter<List<double>?>(
+    $ConversationMessagesTable.$converterembeddingn,
+  );
+  static const VerificationMeta _embeddingProviderIdMeta =
+      const VerificationMeta('embeddingProviderId');
+  @override
+  late final GeneratedColumn<String> embeddingProviderId =
+      GeneratedColumn<String>(
+        'embedding_provider_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2008,6 +2152,8 @@ class $ConversationMessagesTable extends ConversationMessages
     conversationId,
     role,
     content,
+    embedding,
+    embeddingProviderId,
     createdAt,
   ];
   @override
@@ -2043,6 +2189,15 @@ class $ConversationMessagesTable extends ConversationMessages
       );
     } else if (isInserting) {
       context.missing(_contentMeta);
+    }
+    if (data.containsKey('embedding_provider_id')) {
+      context.handle(
+        _embeddingProviderIdMeta,
+        embeddingProviderId.isAcceptableOrUnknown(
+          data['embedding_provider_id']!,
+          _embeddingProviderIdMeta,
+        ),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -2080,6 +2235,16 @@ class $ConversationMessagesTable extends ConversationMessages
             DriftSqlType.string,
             data['${effectivePrefix}content'],
           )!,
+      embedding: $ConversationMessagesTable.$converterembeddingn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.blob,
+          data['${effectivePrefix}embedding'],
+        ),
+      ),
+      embeddingProviderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}embedding_provider_id'],
+      ),
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -2095,6 +2260,10 @@ class $ConversationMessagesTable extends ConversationMessages
 
   static TypeConverter<LlmRole, String> $converterrole =
       const LlmRoleConverter();
+  static TypeConverter<List<double>, Uint8List> $converterembedding =
+      const EmbeddingConverter();
+  static TypeConverter<List<double>?, Uint8List?> $converterembeddingn =
+      NullAwareTypeConverter.wrap($converterembedding);
 }
 
 class ConversationMessage extends DataClass
@@ -2103,12 +2272,16 @@ class ConversationMessage extends DataClass
   final int conversationId;
   final LlmRole role;
   final String content;
+  final List<double>? embedding;
+  final String? embeddingProviderId;
   final DateTime createdAt;
   const ConversationMessage({
     required this.id,
     required this.conversationId,
     required this.role,
     required this.content,
+    this.embedding,
+    this.embeddingProviderId,
     required this.createdAt,
   });
   @override
@@ -2122,6 +2295,14 @@ class ConversationMessage extends DataClass
       );
     }
     map['content'] = Variable<String>(content);
+    if (!nullToAbsent || embedding != null) {
+      map['embedding'] = Variable<Uint8List>(
+        $ConversationMessagesTable.$converterembeddingn.toSql(embedding),
+      );
+    }
+    if (!nullToAbsent || embeddingProviderId != null) {
+      map['embedding_provider_id'] = Variable<String>(embeddingProviderId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -2132,6 +2313,14 @@ class ConversationMessage extends DataClass
       conversationId: Value(conversationId),
       role: Value(role),
       content: Value(content),
+      embedding:
+          embedding == null && nullToAbsent
+              ? const Value.absent()
+              : Value(embedding),
+      embeddingProviderId:
+          embeddingProviderId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(embeddingProviderId),
       createdAt: Value(createdAt),
     );
   }
@@ -2146,6 +2335,10 @@ class ConversationMessage extends DataClass
       conversationId: serializer.fromJson<int>(json['conversationId']),
       role: serializer.fromJson<LlmRole>(json['role']),
       content: serializer.fromJson<String>(json['content']),
+      embedding: serializer.fromJson<List<double>?>(json['embedding']),
+      embeddingProviderId: serializer.fromJson<String?>(
+        json['embeddingProviderId'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -2157,6 +2350,8 @@ class ConversationMessage extends DataClass
       'conversationId': serializer.toJson<int>(conversationId),
       'role': serializer.toJson<LlmRole>(role),
       'content': serializer.toJson<String>(content),
+      'embedding': serializer.toJson<List<double>?>(embedding),
+      'embeddingProviderId': serializer.toJson<String?>(embeddingProviderId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -2166,12 +2361,19 @@ class ConversationMessage extends DataClass
     int? conversationId,
     LlmRole? role,
     String? content,
+    Value<List<double>?> embedding = const Value.absent(),
+    Value<String?> embeddingProviderId = const Value.absent(),
     DateTime? createdAt,
   }) => ConversationMessage(
     id: id ?? this.id,
     conversationId: conversationId ?? this.conversationId,
     role: role ?? this.role,
     content: content ?? this.content,
+    embedding: embedding.present ? embedding.value : this.embedding,
+    embeddingProviderId:
+        embeddingProviderId.present
+            ? embeddingProviderId.value
+            : this.embeddingProviderId,
     createdAt: createdAt ?? this.createdAt,
   );
   ConversationMessage copyWithCompanion(ConversationMessagesCompanion data) {
@@ -2183,6 +2385,11 @@ class ConversationMessage extends DataClass
               : this.conversationId,
       role: data.role.present ? data.role.value : this.role,
       content: data.content.present ? data.content.value : this.content,
+      embedding: data.embedding.present ? data.embedding.value : this.embedding,
+      embeddingProviderId:
+          data.embeddingProviderId.present
+              ? data.embeddingProviderId.value
+              : this.embeddingProviderId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -2194,13 +2401,23 @@ class ConversationMessage extends DataClass
           ..write('conversationId: $conversationId, ')
           ..write('role: $role, ')
           ..write('content: $content, ')
+          ..write('embedding: $embedding, ')
+          ..write('embeddingProviderId: $embeddingProviderId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, conversationId, role, content, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    conversationId,
+    role,
+    content,
+    embedding,
+    embeddingProviderId,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2209,6 +2426,8 @@ class ConversationMessage extends DataClass
           other.conversationId == this.conversationId &&
           other.role == this.role &&
           other.content == this.content &&
+          other.embedding == this.embedding &&
+          other.embeddingProviderId == this.embeddingProviderId &&
           other.createdAt == this.createdAt);
 }
 
@@ -2218,12 +2437,16 @@ class ConversationMessagesCompanion
   final Value<int> conversationId;
   final Value<LlmRole> role;
   final Value<String> content;
+  final Value<List<double>?> embedding;
+  final Value<String?> embeddingProviderId;
   final Value<DateTime> createdAt;
   const ConversationMessagesCompanion({
     this.id = const Value.absent(),
     this.conversationId = const Value.absent(),
     this.role = const Value.absent(),
     this.content = const Value.absent(),
+    this.embedding = const Value.absent(),
+    this.embeddingProviderId = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   ConversationMessagesCompanion.insert({
@@ -2231,6 +2454,8 @@ class ConversationMessagesCompanion
     required int conversationId,
     required LlmRole role,
     required String content,
+    this.embedding = const Value.absent(),
+    this.embeddingProviderId = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : conversationId = Value(conversationId),
        role = Value(role),
@@ -2240,6 +2465,8 @@ class ConversationMessagesCompanion
     Expression<int>? conversationId,
     Expression<String>? role,
     Expression<String>? content,
+    Expression<Uint8List>? embedding,
+    Expression<String>? embeddingProviderId,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -2247,6 +2474,9 @@ class ConversationMessagesCompanion
       if (conversationId != null) 'conversation_id': conversationId,
       if (role != null) 'role': role,
       if (content != null) 'content': content,
+      if (embedding != null) 'embedding': embedding,
+      if (embeddingProviderId != null)
+        'embedding_provider_id': embeddingProviderId,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -2256,6 +2486,8 @@ class ConversationMessagesCompanion
     Value<int>? conversationId,
     Value<LlmRole>? role,
     Value<String>? content,
+    Value<List<double>?>? embedding,
+    Value<String?>? embeddingProviderId,
     Value<DateTime>? createdAt,
   }) {
     return ConversationMessagesCompanion(
@@ -2263,6 +2495,8 @@ class ConversationMessagesCompanion
       conversationId: conversationId ?? this.conversationId,
       role: role ?? this.role,
       content: content ?? this.content,
+      embedding: embedding ?? this.embedding,
+      embeddingProviderId: embeddingProviderId ?? this.embeddingProviderId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -2284,6 +2518,16 @@ class ConversationMessagesCompanion
     if (content.present) {
       map['content'] = Variable<String>(content.value);
     }
+    if (embedding.present) {
+      map['embedding'] = Variable<Uint8List>(
+        $ConversationMessagesTable.$converterembeddingn.toSql(embedding.value),
+      );
+    }
+    if (embeddingProviderId.present) {
+      map['embedding_provider_id'] = Variable<String>(
+        embeddingProviderId.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2297,6 +2541,8 @@ class ConversationMessagesCompanion
           ..write('conversationId: $conversationId, ')
           ..write('role: $role, ')
           ..write('content: $content, ')
+          ..write('embedding: $embedding, ')
+          ..write('embeddingProviderId: $embeddingProviderId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -4437,6 +4683,8 @@ typedef $$ActivitySummariesTableCreateCompanionBuilder =
       required DateTime periodStart,
       required DateTime periodEnd,
       required String content,
+      Value<List<double>?> embedding,
+      Value<String?> embeddingProviderId,
       Value<DateTime> createdAt,
     });
 typedef $$ActivitySummariesTableUpdateCompanionBuilder =
@@ -4446,6 +4694,8 @@ typedef $$ActivitySummariesTableUpdateCompanionBuilder =
       Value<DateTime> periodStart,
       Value<DateTime> periodEnd,
       Value<String> content,
+      Value<List<double>?> embedding,
+      Value<String?> embeddingProviderId,
       Value<DateTime> createdAt,
     });
 
@@ -4481,6 +4731,17 @@ class $$ActivitySummariesTableFilterComposer
 
   ColumnFilters<String> get content => $composableBuilder(
     column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<double>?, List<double>, Uint8List>
+  get embedding => $composableBuilder(
+    column: $table.embedding,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get embeddingProviderId => $composableBuilder(
+    column: $table.embeddingProviderId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4524,6 +4785,16 @@ class $$ActivitySummariesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<Uint8List> get embedding => $composableBuilder(
+    column: $table.embedding,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get embeddingProviderId => $composableBuilder(
+    column: $table.embeddingProviderId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4555,6 +4826,14 @@ class $$ActivitySummariesTableAnnotationComposer
 
   GeneratedColumn<String> get content =>
       $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<double>?, Uint8List> get embedding =>
+      $composableBuilder(column: $table.embedding, builder: (column) => column);
+
+  GeneratedColumn<String> get embeddingProviderId => $composableBuilder(
+    column: $table.embeddingProviderId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4611,6 +4890,8 @@ class $$ActivitySummariesTableTableManager
                 Value<DateTime> periodStart = const Value.absent(),
                 Value<DateTime> periodEnd = const Value.absent(),
                 Value<String> content = const Value.absent(),
+                Value<List<double>?> embedding = const Value.absent(),
+                Value<String?> embeddingProviderId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ActivitySummariesCompanion(
                 id: id,
@@ -4618,6 +4899,8 @@ class $$ActivitySummariesTableTableManager
                 periodStart: periodStart,
                 periodEnd: periodEnd,
                 content: content,
+                embedding: embedding,
+                embeddingProviderId: embeddingProviderId,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -4627,6 +4910,8 @@ class $$ActivitySummariesTableTableManager
                 required DateTime periodStart,
                 required DateTime periodEnd,
                 required String content,
+                Value<List<double>?> embedding = const Value.absent(),
+                Value<String?> embeddingProviderId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ActivitySummariesCompanion.insert(
                 id: id,
@@ -4634,6 +4919,8 @@ class $$ActivitySummariesTableTableManager
                 periodStart: periodStart,
                 periodEnd: periodEnd,
                 content: content,
+                embedding: embedding,
+                embeddingProviderId: embeddingProviderId,
                 createdAt: createdAt,
               ),
           withReferenceMapper:
@@ -4851,6 +5138,8 @@ typedef $$ConversationMessagesTableCreateCompanionBuilder =
       required int conversationId,
       required LlmRole role,
       required String content,
+      Value<List<double>?> embedding,
+      Value<String?> embeddingProviderId,
       Value<DateTime> createdAt,
     });
 typedef $$ConversationMessagesTableUpdateCompanionBuilder =
@@ -4859,6 +5148,8 @@ typedef $$ConversationMessagesTableUpdateCompanionBuilder =
       Value<int> conversationId,
       Value<LlmRole> role,
       Value<String> content,
+      Value<List<double>?> embedding,
+      Value<String?> embeddingProviderId,
       Value<DateTime> createdAt,
     });
 
@@ -4889,6 +5180,17 @@ class $$ConversationMessagesTableFilterComposer
 
   ColumnFilters<String> get content => $composableBuilder(
     column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<double>?, List<double>, Uint8List>
+  get embedding => $composableBuilder(
+    column: $table.embedding,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get embeddingProviderId => $composableBuilder(
+    column: $table.embeddingProviderId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4927,6 +5229,16 @@ class $$ConversationMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<Uint8List> get embedding => $composableBuilder(
+    column: $table.embedding,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get embeddingProviderId => $composableBuilder(
+    column: $table.embeddingProviderId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4955,6 +5267,14 @@ class $$ConversationMessagesTableAnnotationComposer
 
   GeneratedColumn<String> get content =>
       $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<double>?, Uint8List> get embedding =>
+      $composableBuilder(column: $table.embedding, builder: (column) => column);
+
+  GeneratedColumn<String> get embeddingProviderId => $composableBuilder(
+    column: $table.embeddingProviderId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5010,12 +5330,16 @@ class $$ConversationMessagesTableTableManager
                 Value<int> conversationId = const Value.absent(),
                 Value<LlmRole> role = const Value.absent(),
                 Value<String> content = const Value.absent(),
+                Value<List<double>?> embedding = const Value.absent(),
+                Value<String?> embeddingProviderId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ConversationMessagesCompanion(
                 id: id,
                 conversationId: conversationId,
                 role: role,
                 content: content,
+                embedding: embedding,
+                embeddingProviderId: embeddingProviderId,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -5024,12 +5348,16 @@ class $$ConversationMessagesTableTableManager
                 required int conversationId,
                 required LlmRole role,
                 required String content,
+                Value<List<double>?> embedding = const Value.absent(),
+                Value<String?> embeddingProviderId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ConversationMessagesCompanion.insert(
                 id: id,
                 conversationId: conversationId,
                 role: role,
                 content: content,
+                embedding: embedding,
+                embeddingProviderId: embeddingProviderId,
                 createdAt: createdAt,
               ),
           withReferenceMapper:

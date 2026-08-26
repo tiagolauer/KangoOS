@@ -25,8 +25,10 @@ class KangoMcpApplication {
   final KangoMcpServer server;
 
   static Future<KangoMcpApplication> open(
-      Map<String, String> environment) async {
-    final dbPath = environment[databasePathEnvironmentKey] ??
+    Map<String, String> environment,
+  ) async {
+    final dbPath =
+        environment[databasePathEnvironmentKey] ??
         defaultDbPath(environment: environment);
     final dbFile = File(dbPath);
     await dbFile.parent.create(recursive: true);
@@ -50,27 +52,29 @@ class KangoMcpApplication {
         ),
       );
       final episodes = SqliteEpisodeRepository(database);
+      final summaries = SqliteSummaryRepository(database);
+      final conversations = SqliteConversationRepository(database);
+      final activities = SqliteActivityRepository(database);
       final memory = MemoryService(
         database: database,
-        activities: SqliteActivityRepository(database),
-        summaries: SqliteSummaryRepository(database),
+        activities: activities,
+        summaries: summaries,
         episodes: episodes,
         queryEngine: MemoryQueryEngine(
           episodes: episodes,
+          summaries: summaries,
+          conversations: conversations,
+          snippets: snippetRepository,
+          activities: activities,
           embeddingProvider: embedding,
         ),
       );
-      final conversations = SqliteConversationRepository(database);
       return KangoMcpApplication(
         database: database,
         server: KangoMcpServer(
           snippets: snippets,
           memory: memory,
-          agent: MemoryAgent(
-            memory: memory,
-            snippets: snippets,
-            conversations: conversations,
-          ),
+          agent: MemoryAgent(memory: memory),
         ),
       );
     } catch (error) {

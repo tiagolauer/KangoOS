@@ -145,11 +145,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   late final _ragChat = RagChat(
     snippets: widget.snippets,
     memory: widget.memory,
-    agent: MemoryAgent(
-      memory: widget.memory,
-      snippets: widget.snippets,
-      conversations: widget.conversations,
-    ),
+    agent: MemoryAgent(memory: widget.memory),
     onSemanticSearchError: (_) {
       if (mounted) setState(() => _semanticDegraded = true);
     },

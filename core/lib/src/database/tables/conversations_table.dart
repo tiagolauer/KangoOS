@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../llm/llm_provider.dart';
+import 'snippets_table.dart';
 
 class Conversations extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -32,12 +33,23 @@ class LlmRoleConverter extends TypeConverter<LlmRole, String> {
 }
 
 @TableIndex(
-    name: 'conversation_messages_conversation_id_idx',
-    columns: {#conversationId})
+  name: 'conversation_messages_conversation_id_idx',
+  columns: {#conversationId},
+)
 class ConversationMessages extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get conversationId => integer()();
   TextColumn get role => text().map(const LlmRoleConverter())();
   TextColumn get content => text()();
+  BlobColumn get embedding =>
+      blob().map(const EmbeddingConverter()).nullable()();
+  TextColumn get embeddingProviderId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class ConversationMessageVector {
+  const ConversationMessageVector({required this.id, required this.embedding});
+
+  final int id;
+  final List<double> embedding;
 }

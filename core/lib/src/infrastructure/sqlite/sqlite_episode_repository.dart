@@ -94,15 +94,22 @@ class SqliteEpisodeRepository implements EpisodeRepository {
           .get();
 
   @override
-  Future<List<MemoryEpisode>> between(DateTime start, DateTime end) =>
-      (database.select(database.memoryEpisodes)
-            ..where(
-              (row) =>
-                  row.endedAt.isBiggerThanValue(start) &
-                  row.startedAt.isSmallerThanValue(end),
-            )
-            ..orderBy([(row) => OrderingTerm.asc(row.startedAt)]))
-          .get();
+  Future<List<MemoryEpisode>> between(
+    DateTime start,
+    DateTime end, {
+    int? limit,
+  }) {
+    final query =
+        database.select(database.memoryEpisodes)
+          ..where(
+            (row) =>
+                row.endedAt.isBiggerThanValue(start) &
+                row.startedAt.isSmallerThanValue(end),
+          )
+          ..orderBy([(row) => OrderingTerm.desc(row.endedAt)]);
+    if (limit != null) query.limit(limit);
+    return query.get();
+  }
 
   @override
   Future<List<MemoryEpisode>> searchKeyword(
@@ -141,13 +148,22 @@ class SqliteEpisodeRepository implements EpisodeRepository {
   }
 
   @override
-  Future<List<MemoryEpisode>> pendingEmbedding(String providerId) =>
-      (database.select(database.memoryEpisodes)..where(
-        (row) =>
-            row.embedding.isNull() |
-            row.embeddingProviderId.isNull() |
-            row.embeddingProviderId.equals(providerId).not(),
-      )).get();
+  Future<List<MemoryEpisode>> pendingEmbedding(
+    String providerId, {
+    int? limit,
+  }) {
+    final query =
+        database.select(database.memoryEpisodes)
+          ..where(
+            (row) =>
+                row.embedding.isNull() |
+                row.embeddingProviderId.isNull() |
+                row.embeddingProviderId.equals(providerId).not(),
+          )
+          ..orderBy([(row) => OrderingTerm.asc(row.id)]);
+    if (limit != null) query.limit(limit);
+    return query.get();
+  }
 
   @override
   Future<List<EpisodeVector>> vectors(String providerId) async {

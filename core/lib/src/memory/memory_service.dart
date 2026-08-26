@@ -41,11 +41,7 @@ class MemoryService {
   Stream<List<ActivitySummary>> watchRecentSummaries({int limit = 50}) =>
       summaries.watchRecent(limit: limit);
 
-  Future<List<Activity>> between(
-    DateTime start,
-    DateTime end, {
-    int? limit,
-  }) =>
+  Future<List<Activity>> between(DateTime start, DateTime end, {int? limit}) =>
       activities.between(start, end, limit: limit);
 
   Stream<List<Activity>> watchBetween(DateTime start, DateTime end) =>
@@ -56,14 +52,12 @@ class MemoryService {
     DateTime? start,
     DateTime? end,
     int limit = 50,
-  }) =>
-      activities.search(query, start: start, end: end, limit: limit);
+  }) => activities.search(query, start: start, end: end, limit: limit);
 
   Future<List<ActivitySummary>> summariesBetween(
     DateTime start,
     DateTime end,
-  ) =>
-      summaries.between(start, end);
+  ) => summaries.between(start, end);
 
   Future<List<ActivitySummary>> recentSummaries({int limit = 5}) =>
       summaries.recent(limit: limit);
@@ -80,13 +74,15 @@ class MemoryService {
       throw ArgumentError.value(endAt, 'endAt', 'must not be before at');
     }
     final filtered = (await _privacyFilter()).filter(content) ?? content;
-    final id = await summaries.create(NewActivitySummary(
-      kind: kind,
-      periodStart: timestamp,
-      periodEnd: periodEnd,
-      content: filtered,
-      createdAt: timestamp,
-    ));
+    final id = await summaries.create(
+      NewActivitySummary(
+        kind: kind,
+        periodStart: timestamp,
+        periodEnd: periodEnd,
+        content: filtered,
+        createdAt: timestamp,
+      ),
+    );
     final created = await summaries.getById(id);
     if (created == null) {
       throw StateError('Created memory #$id could not be loaded.');
@@ -94,18 +90,17 @@ class MemoryService {
     return created;
   }
 
-  Future<int> deleteActivity(int id) async => (await delete(
-        MemoryDeletionFilter(activityIds: {id}),
-      ))
-          .activities;
+  Future<int> deleteActivity(int id) async =>
+      (await delete(MemoryDeletionFilter(activityIds: {id}))).activities;
 
   Future<List<String>> knownApplications() async {
-    final names = (await activities.all())
-        .map((activity) => activity.appName.trim())
-        .where((name) => name.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final names =
+        (await activities.all())
+            .map((activity) => activity.appName.trim())
+            .where((name) => name.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     return names;
   }
 
@@ -121,14 +116,39 @@ class MemoryService {
     DateTime? reference,
     int limit = 10,
     MemorySearchMode mode = MemorySearchMode.hybrid,
+    MemorySearchFilters filters = const MemorySearchFilters(),
   }) =>
       queryEngine?.search(
         query,
         reference: reference,
         limit: limit,
         mode: mode,
+        filters: MemorySearchFilters(
+          sources: const {MemoryEvidenceSource.episode},
+          applications: filters.applications,
+          modalities: filters.modalities,
+          projects: filters.projects,
+          start: filters.start,
+          end: filters.end,
+        ),
       ) ??
       Future.value(const MemorySearchResult(matches: []));
+
+  Future<MemorySearchResult> searchMemory(
+    String query, {
+    DateTime? reference,
+    int limit = 10,
+    MemorySearchMode mode = MemorySearchMode.hybrid,
+    MemorySearchFilters filters = const MemorySearchFilters(),
+  }) =>
+      queryEngine?.search(
+        query,
+        reference: reference,
+        limit: limit,
+        mode: mode,
+        filters: filters,
+      ) ??
+      Future.value(const MemorySearchResult());
 
   Future<MemoryDeletionPreview> previewDeletion(MemoryDeletionFilter filter) =>
       database.previewMemoryDeletion(filter);

@@ -1,8 +1,17 @@
 import 'package:drift/drift.dart';
 
+import 'snippets_table.dart';
+
 enum SummaryKind { periodic, dayRecap, manual, session, daily, weekly, durable }
 
 const automaticDurableMemoryPrefix = '[auto-durable:';
+
+class ActivitySummaryVector {
+  const ActivitySummaryVector({required this.id, required this.embedding});
+
+  final int id;
+  final List<double> embedding;
+}
 
 class SummaryKindConverter extends TypeConverter<SummaryKind, String> {
   const SummaryKindConverter();
@@ -22,5 +31,8 @@ class ActivitySummaries extends Table {
   DateTimeColumn get periodStart => dateTime()();
   DateTimeColumn get periodEnd => dateTime()();
   TextColumn get content => text()();
+  BlobColumn get embedding =>
+      blob().map(const EmbeddingConverter()).nullable()();
+  TextColumn get embeddingProviderId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

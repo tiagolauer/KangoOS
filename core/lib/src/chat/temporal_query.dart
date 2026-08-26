@@ -6,6 +6,9 @@ class DateRange {
 }
 
 const maxTemporalLookbackDays = 36500;
+const approximateRecentPeriod = Duration(days: 7);
+
+enum TemporalRelation { before, during, lastOccurrence }
 
 class TemporalQuery {
   const TemporalQuery({
@@ -14,6 +17,8 @@ class TemporalQuery {
     required this.fuzzy,
     required this.confidence,
     this.timezoneOffset,
+    this.relation,
+    this.anchor,
   });
 
   final DateTime? start;
@@ -21,6 +26,8 @@ class TemporalQuery {
   final bool fuzzy;
   final double confidence;
   final Duration? timezoneOffset;
+  final TemporalRelation? relation;
+  final String? anchor;
 
   bool get hasRange => start != null && end != null;
 }
@@ -39,9 +46,10 @@ class RuleBasedTemporalParser implements TemporalParser {
   TemporalQuery parseSync(String query, DateTime reference) {
     final lower = _normalize(query);
     final timezoneOffset = _timezoneOffset(lower);
-    final wallReference = timezoneOffset == null
-        ? reference
-        : reference.toUtc().add(timezoneOffset);
+    final wallReference =
+        timezoneOffset == null
+            ? reference
+            : reference.toUtc().add(timezoneOffset);
     final today = DateTime(
       wallReference.year,
       wallReference.month,
@@ -57,6 +65,7 @@ class RuleBasedTemporalParser implements TemporalParser {
     final relativeDays = _relativeDayCount(lower);
     final recentDays = _recentDayCount(lower);
     final month = _month(lower, wallReference);
+    final relation = _relation(lower);
 
     if (explicitDates.length >= 2 && _isRange(lower)) {
       start = explicitDates.first;
@@ -75,8 +84,10 @@ class RuleBasedTemporalParser implements TemporalParser {
       start = today.subtract(Duration(days: recentDays - 1));
       end = wallReference;
       confidence = 0.9;
-    } else if (_containsAny(
-        lower, const ['day before yesterday', 'anteontem'])) {
+    } else if (_containsAny(lower, const [
+      'day before yesterday',
+      'anteontem',
+    ])) {
       start = today.subtract(const Duration(days: 2));
       end = start.add(const Duration(days: 1));
       confidence = 1;
@@ -84,6 +95,23 @@ class RuleBasedTemporalParser implements TemporalParser {
       start = today.subtract(const Duration(days: 1));
       end = today;
       confidence = 1;
+    } else if (_containsAny(lower, const [
+      'recently',
+      'recentemente',
+      'ultimamente',
+    ])) {
+      start = wallReference.subtract(approximateRecentPeriod);
+      end = wallReference;
+      fuzzy = true;
+      confidence = 0.65;
+    } else if (_containsAny(lower, const [
+      'a few weeks ago',
+      'algumas semanas atras',
+    ])) {
+      start = today.subtract(const Duration(days: 28));
+      end = today.subtract(const Duration(days: 14));
+      fuzzy = true;
+      confidence = 0.55;
     } else if (_containsAny(lower, const ['last week', 'semana passada'])) {
       final currentWeek = _startOfWeek(today);
       start = currentWeek.subtract(const Duration(days: 7));
@@ -113,8 +141,12 @@ class RuleBasedTemporalParser implements TemporalParser {
         end = monthEnd;
         fuzzy = true;
         confidence = 0.8;
-      } else if (_containsAny(lower,
-          const ['beginning of', 'start of', 'inicio de', 'comeco de'])) {
+      } else if (_containsAny(lower, const [
+        'beginning of',
+        'start of',
+        'inicio de',
+        'comeco de',
+      ])) {
         start = monthStart;
         end = monthStart.add(const Duration(days: 7));
         fuzzy = true;
@@ -129,16 +161,37 @@ class RuleBasedTemporalParser implements TemporalParser {
       end = start.add(const Duration(days: 1));
       confidence = 1;
     } else if (weekdays.isNotEmpty) {
-      start = _previousOrCurrentWeekday(today, weekdays.first);
+      start =
+          _containsAny(lower, const ['last ', ' passada', ' passado'])
+              ? _previousWeekday(today, weekdays.first)
+              : _previousOrCurrentWeekday(today, weekdays.first);
       end = start.add(const Duration(days: 1));
-      confidence = 0.9;
+      fuzzy = _containsAny(lower, const [
+        'around',
+        'about',
+        'por volta',
+        'aproximadamente',
+      ]);
+      confidence = fuzzy ? 0.75 : 0.9;
+    }
+
+    if (start != null && end != null && _isWeekPhrase(lower)) {
+      final narrowed = _narrowWeek(lower, start, end);
+      start = narrowed.start;
+      end = narrowed.end;
+      fuzzy = narrowed.fuzzy;
+      confidence = narrowed.confidence;
     }
 
     final hour = _hour(lower);
     if (hour != null) {
       final day = start ?? today;
-      start = DateTime(day.year, day.month, day.day, hour)
-          .subtract(const Duration(hours: 1));
+      start = DateTime(
+        day.year,
+        day.month,
+        day.day,
+        hour,
+      ).subtract(const Duration(hours: 1));
       end = start.add(const Duration(hours: 2));
       fuzzy = true;
       confidence = confidence == 0 ? 0.75 : confidence;
@@ -160,12 +213,15 @@ class RuleBasedTemporalParser implements TemporalParser {
       }
     }
 
+    final hasRelation = relation != null;
     return TemporalQuery(
       start: _toInstant(start, timezoneOffset, reference.isUtc),
       end: _toInstant(end, timezoneOffset, reference.isUtc),
-      fuzzy: fuzzy,
-      confidence: confidence,
+      fuzzy: fuzzy || hasRelation,
+      confidence: confidence == 0 && hasRelation ? 0.65 : confidence,
       timezoneOffset: timezoneOffset,
+      relation: relation?.relation,
+      anchor: relation?.anchor,
     );
   }
 }
@@ -173,9 +229,10 @@ class RuleBasedTemporalParser implements TemporalParser {
 DateRange parseTemporalRange(String query, {DateTime? now}) {
   final reference = now ?? DateTime.now();
   final parsed = const RuleBasedTemporalParser().parseSync(query, reference);
-  final today = reference.isUtc
-      ? DateTime.utc(reference.year, reference.month, reference.day)
-      : DateTime(reference.year, reference.month, reference.day);
+  final today =
+      reference.isUtc
+          ? DateTime.utc(reference.year, reference.month, reference.day)
+          : DateTime(reference.year, reference.month, reference.day);
   return DateRange(parsed.start ?? today, parsed.end ?? reference);
 }
 
@@ -191,8 +248,9 @@ DateTime _startOfWeek(DateTime day) =>
 
 List<DateTime> _explicitDates(String query) {
   final matches = <({int index, DateTime date})>[];
-  for (final match
-      in RegExp(r'\b(\d{4})-(\d{2})-(\d{2})\b').allMatches(query)) {
+  for (final match in RegExp(
+    r'\b(\d{4})-(\d{2})-(\d{2})\b',
+  ).allMatches(query)) {
     final date = _validDate(
       int.parse(match.group(1)!),
       int.parse(match.group(2)!),
@@ -200,8 +258,9 @@ List<DateTime> _explicitDates(String query) {
     );
     if (date != null) matches.add((index: match.start, date: date));
   }
-  for (final match
-      in RegExp(r'\b(\d{1,2})/(\d{1,2})/(\d{4})\b').allMatches(query)) {
+  for (final match in RegExp(
+    r'\b(\d{1,2})/(\d{1,2})/(\d{4})\b',
+  ).allMatches(query)) {
     final date = _validDate(
       int.parse(match.group(3)!),
       int.parse(match.group(2)!),
@@ -263,6 +322,73 @@ List<int> _weekdays(String query) {
 DateTime _previousOrCurrentWeekday(DateTime today, int weekday) {
   final daysBack = (today.weekday - weekday) % DateTime.daysPerWeek;
   return today.subtract(Duration(days: daysBack));
+}
+
+DateTime _previousWeekday(DateTime today, int weekday) {
+  final daysBack = (today.weekday - weekday) % DateTime.daysPerWeek;
+  return today.subtract(Duration(days: daysBack == 0 ? 7 : daysBack));
+}
+
+({TemporalRelation relation, String anchor})? _relation(String query) {
+  final patterns = <({TemporalRelation relation, RegExp expression})>[
+    (
+      relation: TemporalRelation.before,
+      expression: RegExp(r'\b(?:before|antes d(?:a|e|o))\s+(.+)$'),
+    ),
+    (
+      relation: TemporalRelation.during,
+      expression: RegExp(r'\b(?:during|durante)\s+(?:a\s+|o\s+|the\s+)?(.+)$'),
+    ),
+    (
+      relation: TemporalRelation.lastOccurrence,
+      expression: RegExp(
+        r'\b(?:last time(?: that)?|ultima vez(?: que)?)\s+(.+)$',
+      ),
+    ),
+  ];
+  for (final pattern in patterns) {
+    final match = pattern.expression.firstMatch(query);
+    final anchor = match?.group(1)?.trim();
+    if (anchor != null && anchor.isNotEmpty) {
+      return (relation: pattern.relation, anchor: anchor);
+    }
+  }
+  return null;
+}
+
+bool _isWeekPhrase(String query) =>
+    _containsAny(query, const ['week', 'semana']);
+
+({DateTime start, DateTime end, bool fuzzy, double confidence}) _narrowWeek(
+  String query,
+  DateTime start,
+  DateTime end,
+) {
+  if (_containsAny(query, const ['beginning', 'start', 'inicio', 'comeco'])) {
+    return (
+      start: start,
+      end: start.add(const Duration(days: 2)),
+      fuzzy: true,
+      confidence: 0.8,
+    );
+  }
+  if (_containsAny(query, const ['middle', 'midweek', 'meio', 'meados'])) {
+    return (
+      start: start.add(const Duration(days: 2)),
+      end: start.add(const Duration(days: 4)),
+      fuzzy: true,
+      confidence: 0.75,
+    );
+  }
+  if (_containsAny(query, const ['end', 'fim', 'final'])) {
+    return (
+      start: end.subtract(const Duration(days: 3)),
+      end: end,
+      fuzzy: true,
+      confidence: 0.8,
+    );
+  }
+  return (start: start, end: end, fuzzy: false, confidence: 1);
 }
 
 int? _relativeDayCount(String query) {
@@ -327,12 +453,16 @@ int? _boundedDayCount(String? value) {
 }
 
 Duration? _timezoneOffset(String query) {
-  if (_containsAny(
-      query, const ['brt', 'brasilia time', 'horario de brasilia'])) {
+  if (_containsAny(query, const [
+    'brt',
+    'brasilia time',
+    'horario de brasilia',
+  ])) {
     return const Duration(hours: -3);
   }
-  final match = RegExp(r'\b(?:utc|gmt)\s*([+-])(\d{1,2})(?::?(\d{2}))?\b')
-      .firstMatch(query);
+  final match = RegExp(
+    r'\b(?:utc|gmt)\s*([+-])(\d{1,2})(?::?(\d{2}))?\b',
+  ).firstMatch(query);
   if (match != null) {
     final sign = match.group(1) == '-' ? -1 : 1;
     final hours = int.parse(match.group(2)!);
@@ -361,13 +491,13 @@ DateTime? _toInstant(DateTime? wall, Duration? offset, bool referenceIsUtc) {
   }
   return referenceIsUtc
       ? DateTime.utc(
-          wall.year,
-          wall.month,
-          wall.day,
-          wall.hour,
-          wall.minute,
-          wall.second,
-        )
+        wall.year,
+        wall.month,
+        wall.day,
+        wall.hour,
+        wall.minute,
+        wall.second,
+      )
       : wall;
 }
 

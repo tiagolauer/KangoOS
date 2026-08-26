@@ -16,18 +16,21 @@ class MemoryFormationBackfillService implements RuntimeService {
     required this.formation,
     required this.settingsRepository,
     required this.captureSettingsRepository,
+    this.queryEngine,
     this.batchSpan = defaultFormationBackfillBatch,
     this.interval = defaultFormationBackfillInterval,
     DateTime Function()? now,
     LlmProvider Function(LlmSettings settings)? providerBuilder,
     void Function(Object error)? onError,
-  })  : now = now ?? DateTime.now,
-        providerBuilder = providerBuilder ?? ((settings) => settings.buildProvider()),
-        onError = onError ?? _reportError;
+  }) : now = now ?? DateTime.now,
+       providerBuilder =
+           providerBuilder ?? ((settings) => settings.buildProvider()),
+       onError = onError ?? _reportError;
 
   final MemoryFormationService formation;
   final SettingsRepository settingsRepository;
   final CaptureSettingsRepository captureSettingsRepository;
+  final MemoryQueryEngine? queryEngine;
   final Duration batchSpan;
   final Duration interval;
   final DateTime Function() now;
@@ -78,41 +81,50 @@ class MemoryFormationBackfillService implements RuntimeService {
       final target = now();
       final captureSettings = await captureSettingsRepository.load();
       final settings = await settingsRepository.load();
-      final configured = settings.model.isNotEmpty &&
+      final configured =
+          settings.model.isNotEmpty &&
           (!settings.requiresApiKey || settings.apiKey.isNotEmpty);
-      final enrichmentAllowed = configured &&
+      final enrichmentAllowed =
+          configured &&
           (settings.isLocalEndpoint || captureSettings.allowRemoteSummaries);
-      final modelId = enrichmentAllowed
-          ? settings.inferenceModelId
-          : 'deterministic';
-      final retentionStart =
-          target.subtract(Duration(days: captureSettings.retentionDays));
+      final modelId =
+          enrichmentAllowed ? settings.inferenceModelId : 'deterministic';
+      final retentionStart = target.subtract(
+        Duration(days: captureSettings.retentionDays),
+      );
       final preferences = await SharedPreferences.getInstance();
       final storedModel = preferences.getString(_modelKey);
       DateTime cursor;
       if (storedModel != modelId) {
         cursor = retentionStart;
         await preferences.setString(_modelKey, modelId);
-        await preferences.setString(_cursorKey, cursor.toUtc().toIso8601String());
+        await preferences.setString(
+          _cursorKey,
+          cursor.toUtc().toIso8601String(),
+        );
       } else {
-        cursor = DateTime.tryParse(preferences.getString(_cursorKey) ?? '')
-                ?.toLocal() ??
+        cursor =
+            DateTime.tryParse(
+              preferences.getString(_cursorKey) ?? '',
+            )?.toLocal() ??
             retentionStart;
         if (cursor.isBefore(retentionStart)) cursor = retentionStart;
       }
-      final enricher = enrichmentAllowed
-          ? MemoryEpisodeEnricher(
-              provider: providerBuilder(settings),
-              modelId: modelId,
-            )
-          : null;
+      final enricher =
+          enrichmentAllowed
+              ? MemoryEpisodeEnricher(
+                provider: providerBuilder(settings),
+                modelId: modelId,
+              )
+              : null;
+      final embeddingAllowed =
+          settings.isLocalEndpoint || captureSettings.allowRemoteSummaries;
       final batch = await formation.backfillBatch(
         start: retentionStart,
         end: target,
         cursor: cursor,
         batchSpan: batchSpan,
-        indexEmbeddings:
-            settings.isLocalEndpoint || captureSettings.allowRemoteSummaries,
+        indexEmbeddings: embeddingAllowed,
         enricher: enricher,
       );
       if (batch.report.enrichmentFailures.isEmpty) {
@@ -120,6 +132,17 @@ class MemoryFormationBackfillService implements RuntimeService {
           _cursorKey,
           batch.cursor.toUtc().toIso8601String(),
         );
+      }
+      final engine = queryEngine;
+      if (engine != null && embeddingAllowed) {
+        try {
+          final report = await engine.indexPending();
+          for (final failure in report.failures.values) {
+            onError(failure);
+          }
+        } catch (error) {
+          onError(error);
+        }
       }
       return batch;
     } finally {

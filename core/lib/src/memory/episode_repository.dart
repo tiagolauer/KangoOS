@@ -106,7 +106,11 @@ abstract interface class EpisodeRepository {
 
   Future<List<MemoryEpisode>> recent({int limit = 50});
 
-  Future<List<MemoryEpisode>> between(DateTime start, DateTime end);
+  Future<List<MemoryEpisode>> between(
+    DateTime start,
+    DateTime end, {
+    int? limit,
+  });
 
   Future<List<MemoryEpisode>> searchKeyword(
     String query, {
@@ -115,7 +119,7 @@ abstract interface class EpisodeRepository {
     int limit = 50,
   });
 
-  Future<List<MemoryEpisode>> pendingEmbedding(String providerId);
+  Future<List<MemoryEpisode>> pendingEmbedding(String providerId, {int? limit});
 
   Future<List<EpisodeVector>> vectors(String providerId);
 

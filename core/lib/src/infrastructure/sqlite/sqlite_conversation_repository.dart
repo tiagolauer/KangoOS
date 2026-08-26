@@ -15,11 +15,7 @@ class SqliteConversationRepository implements ConversationRepository {
   Future<int?> latestId() => database.latestConversationId();
 
   @override
-  Future<int> appendMessage(
-    int conversationId,
-    LlmRole role,
-    String content,
-  ) =>
+  Future<int> appendMessage(int conversationId, LlmRole role, String content) =>
       database.appendMessage(conversationId, role, content);
 
   @override
@@ -30,8 +26,45 @@ class SqliteConversationRepository implements ConversationRepository {
       database.messagesForConversation(conversationId);
 
   @override
-  Future<List<ConversationMessage>> search(String query, {int limit = 20}) =>
-      database.searchConversationMessages(query, limit: limit);
+  Future<List<ConversationMessage>> search(
+    String query, {
+    DateTime? start,
+    DateTime? end,
+    int limit = 20,
+  }) => database.searchConversationMessages(
+    query,
+    start: start,
+    end: end,
+    limit: limit,
+  );
+
+  @override
+  Future<List<ConversationMessage>> between(
+    DateTime start,
+    DateTime end, {
+    int? limit,
+  }) => database.conversationMessagesBetween(start, end, limit: limit);
+
+  @override
+  Future<List<ConversationMessage>> byIds(List<int> ids) =>
+      database.conversationMessagesByIds(ids);
+
+  @override
+  Future<List<ConversationMessage>> pendingEmbedding(
+    String providerId, {
+    int? limit,
+  }) => database.conversationMessagesPendingEmbedding(providerId, limit: limit);
+
+  @override
+  Future<List<ConversationMessageVector>> vectors(String providerId) =>
+      database.conversationMessageVectors(providerId);
+
+  @override
+  Future<void> setEmbedding(
+    int id,
+    List<double> embedding,
+    String providerId,
+  ) => database.setConversationMessageEmbedding(id, embedding, providerId);
 
   @override
   Stream<List<ConversationSummary>> watchSummaries() =>
