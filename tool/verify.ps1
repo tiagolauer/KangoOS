@@ -2,7 +2,8 @@
 param(
   [switch]$BuildInstaller,
   [string]$InnoCompiler,
-  [string]$VcRedistSource
+  [string]$VcRedistSource,
+  [string]$OpenSslRoot
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,11 +71,61 @@ if ($BuildInstaller) {
   }
 
   Write-Host "`n==> Windows installer"
+  if ([string]::IsNullOrWhiteSpace($OpenSslRoot)) {
+    $opensslCommand = Get-Command 'openssl' -ErrorAction Ignore
+    if ($null -ne $opensslCommand) {
+      $OpenSslRoot = Split-Path -Parent (Split-Path -Parent $opensslCommand.Source)
+    }
+  }
+  if ([string]::IsNullOrWhiteSpace($OpenSslRoot)) {
+    $OpenSslRoot = @(
+      (Join-Path $env:ProgramFiles 'OpenSSL-Win64'),
+      (Join-Path ${env:ProgramFiles(x86)} 'OpenSSL-Win64')
+    ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+  }
+  if ([string]::IsNullOrWhiteSpace($OpenSslRoot)) {
+    throw 'OpenSSL was not found. Pass -OpenSslRoot with its installation path.'
+  }
+
+  $opensslInclude = Join-Path $OpenSslRoot 'include'
+  $opensslLibrary = @(
+    (Join-Path $OpenSslRoot 'lib\VC\x64\MD'),
+    (Join-Path $OpenSslRoot 'lib')
+  ) | Where-Object {
+    Test-Path -LiteralPath (Join-Path $_ 'libcrypto_static.lib')
+  } | Select-Object -First 1
+  if (-not (Test-Path -LiteralPath $opensslInclude) -or
+      [string]::IsNullOrWhiteSpace($opensslLibrary)) {
+    throw "OpenSSL headers or x64 libraries were not found under $OpenSslRoot."
+  }
+
+  $previousOpenSslRoot = $env:OPENSSL_ROOT_DIR
+  $previousLibraryPath = $env:CMAKE_LIBRARY_PATH
+  $previousIncludePath = $env:CMAKE_INCLUDE_PATH
+  $env:OPENSSL_ROOT_DIR = $OpenSslRoot
+  $env:CMAKE_LIBRARY_PATH = (@(
+    $opensslLibrary,
+    $previousLibraryPath
+  ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ';'
+  $env:CMAKE_INCLUDE_PATH = (@(
+    $opensslInclude,
+    $previousIncludePath
+  ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ';'
+
   Push-Location (Join-Path $repoRoot 'app')
   try {
     Invoke-Native 'flutter' @('build', 'windows', '--release')
   } finally {
     Pop-Location
+    [Environment]::SetEnvironmentVariable(
+      'OPENSSL_ROOT_DIR', $previousOpenSslRoot, 'Process'
+    )
+    [Environment]::SetEnvironmentVariable(
+      'CMAKE_LIBRARY_PATH', $previousLibraryPath, 'Process'
+    )
+    [Environment]::SetEnvironmentVariable(
+      'CMAKE_INCLUDE_PATH', $previousIncludePath, 'Process'
+    )
   }
 
   $sqlcipherLibrary =
