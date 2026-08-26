@@ -17,7 +17,7 @@ class OllamaEmbeddingProvider implements EmbeddingProvider {
   final http.Client _client;
 
   @override
-  String get id => 'ollama';
+  String get id => 'ollama:$model';
 
   @override
   Future<List<double>> embed(String text) async {
@@ -34,7 +34,8 @@ class OllamaEmbeddingProvider implements EmbeddingProvider {
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final embedding = json['embedding'] as List?;
     if (embedding == null) {
-      throw const FormatException('Ollama embeddings response missing "embedding"');
+      throw const FormatException(
+          'Ollama embeddings response missing "embedding"');
     }
     return embedding.cast<num>().map((n) => n.toDouble()).toList();
   }

@@ -1,4 +1,5 @@
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -7,7 +8,8 @@ void main() {
   setUp(() => database = KangoosDatabase.memory());
   tearDown(() => database.close());
 
-  test('createConversation then appendMessage round-trips through messagesForConversation',
+  test(
+      'createConversation then appendMessage round-trips through messagesForConversation',
       () async {
     final id = await database.createConversation();
 
@@ -22,7 +24,8 @@ void main() {
     expect(messages[1].content, 'hi there');
   });
 
-  test('latestConversationId returns the most recently updated conversation', () async {
+  test('latestConversationId returns the most recently updated conversation',
+      () async {
     expect(await database.latestConversationId(), isNull);
 
     final first = await database.createConversation();
@@ -33,7 +36,8 @@ void main() {
     expect(await database.latestConversationId(), first);
   });
 
-  test('messagesForConversation only returns messages for that conversation', () async {
+  test('messagesForConversation only returns messages for that conversation',
+      () async {
     final a = await database.createConversation();
     final b = await database.createConversation();
     await database.appendMessage(a, LlmRole.user, 'in a');
@@ -44,7 +48,22 @@ void main() {
     expect(messages.single.content, 'in a');
   });
 
-  test('watchConversationSummaries previews the first user message, newest first, '
+  test('conversation search ranks messages matching more query tokens first',
+      () async {
+    final conversation = await database.createConversation();
+    await database.appendMessage(
+        conversation, LlmRole.user, 'Kango retrieval evidence');
+    await database.appendMessage(
+        conversation, LlmRole.user, 'Kango unrelated note');
+
+    final results = await database.searchConversationMessages('kango evidence');
+
+    expect(results, hasLength(2));
+    expect(results.first.content, 'Kango retrieval evidence');
+  });
+
+  test(
+      'watchConversationSummaries previews the first user message, newest first, '
       'and excludes empty conversations', () async {
     final empty = await database.createConversation();
     final a = await database.createConversation();
@@ -62,7 +81,8 @@ void main() {
     expect(summaries.map((s) => s.id), isNot(contains(empty)));
   });
 
-  test('deleteConversation removes the conversation and its messages', () async {
+  test('deleteConversation removes the conversation and its messages',
+      () async {
     final a = await database.createConversation();
     await database.appendMessage(a, LlmRole.user, 'q');
     final b = await database.createConversation();

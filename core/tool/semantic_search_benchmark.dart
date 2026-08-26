@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 
 class _StubEmbeddingProvider implements EmbeddingProvider {
   _StubEmbeddingProvider(this.dimensions);

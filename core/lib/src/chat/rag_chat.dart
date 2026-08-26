@@ -1,13 +1,17 @@
 import '../activity/activity_span.dart';
 import '../database/database.dart';
 import '../llm/llm_provider.dart';
-import '../search/semantic_search.dart';
+import '../memory/memory_service.dart';
+import '../memory/memory_query_engine.dart';
+import '../memory/memory_agent.dart';
+import '../snippets/snippet_service.dart';
 import 'temporal_query.dart';
 
 class RagChat {
   RagChat({
-    required this.database,
-    required this.semanticSearch,
+    required this.snippets,
+    required this.memory,
+    this.agent,
     this.maxContextSnippets = 5,
     this.maxContextActivities = 30,
     this.maxContextSummaries = 5,
@@ -15,8 +19,9 @@ class RagChat {
     this.onSemanticSearchError,
   });
 
-  final KangoosDatabase database;
-  final SemanticSearch semanticSearch;
+  final SnippetService snippets;
+  final MemoryService memory;
+  final MemoryAgent? agent;
   final int maxContextSnippets;
   final int maxContextActivities;
   final int maxContextSummaries;
@@ -28,17 +33,20 @@ class RagChat {
 
   Future<List<Snippet>> retrieveContext(String query) async {
     try {
-      final matches = await semanticSearch.search(query, limit: maxContextSnippets);
-      if (matches.isNotEmpty) return matches.map((match) => match.snippet).toList();
+      final matches = await snippets.search(
+        query,
+        mode: SnippetSearchMode.semantic,
+        limit: maxContextSnippets,
+      );
+      if (matches.isNotEmpty) return matches;
     } catch (error) {
       onSemanticSearchError?.call(error);
     }
-    final matches = await database.searchByKeyword(query);
-    return matches.take(maxContextSnippets).toList();
+    return snippets.search(query, limit: maxContextSnippets);
   }
 
   Future<List<Activity>> retrieveActivity(DateRange range) async {
-    final activities = await database.activitiesBetween(
+    final activities = await memory.between(
       range.start,
       range.end.add(_queryBoundarySlack),
       limit: maxContextActivities,
@@ -47,18 +55,21 @@ class RagChat {
   }
 
   Future<List<ActivitySummary>> retrieveRecentSummaries() =>
-      database.recentSummaries(limit: maxContextSummaries);
+      memory.recentSummaries(limit: maxContextSummaries);
 
-  String buildSystemPrompt(
-    List<Snippet> snippets,
-    List<Activity> activities,
-    List<ActivitySummary> summaries,
-    DateRange activityRange,
-  ) {
+  Future<MemorySearchResult> retrieveMemory(String query) =>
+      memory.searchEpisodes(query, limit: maxContextSummaries);
+
+  String buildSystemPrompt(List<Snippet> snippets, List<Activity> activities,
+      List<ActivitySummary> summaries, DateRange activityRange,
+      [List<MemoryEpisode> episodes = const [], String? investigationContext]) {
     final buffer = StringBuffer(
-      'You are the KangoOS assistant. Answer using the snippets and captured '
-      "activity below when relevant. If nothing is relevant, say so and "
-      'answer generally.',
+      'Você é o assistente do KangoOS. Responda sempre em português do Brasil '
+      '(PT-BR), mesmo que a pergunta ou o contexto estejam em outro idioma. '
+      'Preserve código, comandos, nomes próprios e identificadores no idioma '
+      'original. Use os snippets e a atividade capturada abaixo quando forem '
+      'relevantes. Se nada for relevante, deixe isso claro e responda com base '
+      'no seu conhecimento geral.',
     );
 
     for (final snippet in snippets) {
@@ -69,6 +80,17 @@ class RagChat {
         buffer.writeln('Language: ${snippet.language}');
       }
       buffer.writeln(snippet.content);
+    }
+
+    if (episodes.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('--- Structured memory episodes ---');
+      for (final episode in episodes) {
+        buffer.writeln(
+          '[${episode.startedAt.toLocal()} - ${episode.endedAt.toLocal()}] '
+          '${episode.title}: ${episode.summary}',
+        );
+      }
     }
 
     if (summaries.isNotEmpty) {
@@ -83,7 +105,8 @@ class RagChat {
 
     if (activities.isNotEmpty) {
       buffer.writeln();
-      buffer.writeln('--- Captured activity (${_describeRange(activityRange)}) ---');
+      buffer.writeln(
+          '--- Captured activity (${_describeRange(activityRange)}) ---');
       final spans = {
         for (final span in activitySpans(activities.reversed.toList(),
             until: activityRange.end))
@@ -93,12 +116,21 @@ class RagChat {
         buffer.write('[${_time(activity.capturedAt)} '
             '${formatActivityDuration(spans[activity.id] ?? Duration.zero)}] '
             '${activity.appName} — ${activity.windowTitle}');
-        if (activity.capturedUrl != null) buffer.write(' (${activity.capturedUrl})');
+        if (activity.capturedUrl != null) {
+          buffer.write(' (${activity.capturedUrl})');
+        }
         if (activity.capturedClipboard != null) {
           buffer.write(' [clipboard: ${activity.capturedClipboard}]');
         }
         buffer.writeln();
       }
+    }
+
+    if (investigationContext != null) {
+      buffer
+        ..writeln()
+        ..writeln('--- Agentic memory investigation ---')
+        ..writeln(investigationContext);
     }
 
     return buffer.toString();
@@ -123,18 +155,50 @@ class RagChat {
     required LlmProvider provider,
     required List<LlmMessage> history,
     required String userMessage,
+    bool deepStudy = false,
   }) async* {
-    final snippets = await retrieveContext(userMessage);
     final activityRange = parseTemporalRange(userMessage);
     final activities = await retrieveActivity(activityRange);
-    final summaries = await retrieveRecentSummaries();
+    final memoryAgent = agent;
+    final List<Snippet> contextSnippets;
+    final List<ActivitySummary> summaries;
+    final List<MemoryEpisode> episodes;
+    String? investigationContext;
+    if (memoryAgent == null) {
+      contextSnippets = await retrieveContext(userMessage);
+      summaries = await retrieveRecentSummaries();
+      final memoryMatches = await retrieveMemory(userMessage);
+      episodes = memoryMatches.matches.map((match) => match.episode).toList();
+      final memorySearchError = memoryMatches.semanticError;
+      if (memorySearchError != null) {
+        onSemanticSearchError?.call(memorySearchError);
+      }
+    } else {
+      contextSnippets = const [];
+      summaries = const [];
+      episodes = const [];
+      if (deepStudy) {
+        investigationContext =
+            (await memoryAgent.deepStudy(userMessage)).markdown;
+      } else {
+        investigationContext =
+            (await memoryAgent.investigate(userMessage)).toPrompt();
+      }
+    }
     final recentHistory = history.length > maxHistoryMessages
         ? history.sublist(history.length - maxHistoryMessages)
         : history;
     final requestMessages = [
       LlmMessage(
         role: LlmRole.system,
-        content: buildSystemPrompt(snippets, activities, summaries, activityRange),
+        content: buildSystemPrompt(
+          contextSnippets,
+          activities,
+          summaries,
+          activityRange,
+          episodes,
+          investigationContext,
+        ),
       ),
       ...recentHistory,
       LlmMessage(role: LlmRole.user, content: userMessage),

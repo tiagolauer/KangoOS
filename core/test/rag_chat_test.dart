@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 class _FakeEmbeddingProvider implements EmbeddingProvider {
@@ -26,12 +27,40 @@ class _FakeLlmProvider implements LlmProvider {
 }
 
 void main() {
+  ({RagChat chat, SemanticSearch search}) buildRag(
+    KangoosDatabase database,
+    EmbeddingProvider provider, {
+    void Function(Object error)? onError,
+    int maxHistoryMessages = 20,
+  }) {
+    final repository = SqliteSnippetRepository(database);
+    final search = SemanticSearch(
+      repository: repository,
+      embeddingProvider: provider,
+    );
+    return (
+      search: search,
+      chat: RagChat(
+        snippets: SnippetService(
+          repository: repository,
+          semanticSearch: search,
+        ),
+        memory: MemoryService(
+          activities: SqliteActivityRepository(database),
+          summaries: SqliteSummaryRepository(database),
+        ),
+        onSemanticSearchError: onError,
+        maxHistoryMessages: maxHistoryMessages,
+      ),
+    );
+  }
+
   test('reply injects retrieved snippets into the system prompt', () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
-    final semanticSearch =
-        SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
-    final ragChat = RagChat(database: database, semanticSearch: semanticSearch);
+    final built = buildRag(database, _FakeEmbeddingProvider());
+    final semanticSearch = built.search;
+    final ragChat = built.chat;
 
     final id = await database.createSnippet(SnippetsCompanion.insert(
       title: 'Reverse a string',
@@ -41,23 +70,27 @@ void main() {
 
     final provider = _FakeLlmProvider();
     final chunks = await ragChat
-        .reply(provider: provider, history: const [], userMessage: 'how do I reverse a string?')
+        .reply(
+            provider: provider,
+            history: const [],
+            userMessage: 'how do I reverse a string?')
         .toList();
 
     expect(chunks.join(), 'Hello');
     final systemPrompt = provider.lastMessages!.first;
     expect(systemPrompt.role, LlmRole.system);
+    expect(systemPrompt.content,
+        contains('Responda sempre em português do Brasil'));
     expect(systemPrompt.content, contains('Reverse a string'));
     expect(provider.lastMessages!.last.content, 'how do I reverse a string?');
   });
 
-  test('reply grounds the system prompt in today\'s captured activity and summaries',
+  test(
+      'reply grounds the system prompt in today\'s captured activity and summaries',
       () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
-    final semanticSearch =
-        SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
-    final ragChat = RagChat(database: database, semanticSearch: semanticSearch);
+    final ragChat = buildRag(database, _FakeEmbeddingProvider()).chat;
 
     final now = DateTime.now();
     await database.logActivity(ActivitiesCompanion.insert(
@@ -85,13 +118,12 @@ void main() {
     expect(systemPrompt, contains('Fixed the LTM-blind RAG chat bug.'));
   });
 
-  test('reply grounds "yesterday" queries in yesterday\'s activity, not today\'s',
+  test(
+      'reply grounds "yesterday" queries in yesterday\'s activity, not today\'s',
       () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
-    final semanticSearch =
-        SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
-    final ragChat = RagChat(database: database, semanticSearch: semanticSearch);
+    final ragChat = buildRag(database, _FakeEmbeddingProvider()).chat;
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -119,12 +151,11 @@ void main() {
     expect(systemPrompt, isNot(contains('today-work.dart')));
   });
 
-  test('retrieveContext falls back to keyword search with no embeddings', () async {
+  test('retrieveContext falls back to keyword search with no embeddings',
+      () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
-    final semanticSearch =
-        SemanticSearch(database: database, embeddingProvider: _FakeEmbeddingProvider());
-    final ragChat = RagChat(database: database, semanticSearch: semanticSearch);
+    final ragChat = buildRag(database, _FakeEmbeddingProvider()).chat;
 
     await database.createSnippet(SnippetsCompanion.insert(
       title: 'Dart string reverse',
@@ -139,14 +170,12 @@ void main() {
   test('onSemanticSearchError fires when semantic search throws', () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
-    final semanticSearch = SemanticSearch(
-        database: database, embeddingProvider: _ThrowingEmbeddingProvider());
     Object? reported;
-    final ragChat = RagChat(
-      database: database,
-      semanticSearch: semanticSearch,
-      onSemanticSearchError: (e) => reported = e,
-    );
+    final ragChat = buildRag(
+      database,
+      _ThrowingEmbeddingProvider(),
+      onError: (error) => reported = error,
+    ).chat;
 
     await database.createSnippet(SnippetsCompanion.insert(
       title: 'Dart string reverse',
@@ -162,12 +191,11 @@ void main() {
   test('only the tail of a long conversation is replayed', () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
-    final ragChat = RagChat(
-      database: database,
-      semanticSearch: SemanticSearch(
-          database: database, embeddingProvider: _FakeEmbeddingProvider()),
+    final ragChat = buildRag(
+      database,
+      _FakeEmbeddingProvider(),
       maxHistoryMessages: 4,
-    );
+    ).chat;
 
     final provider = _FakeLlmProvider();
     final history = [
@@ -189,11 +217,7 @@ void main() {
   test('the activity context carries a duration per window', () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
-    final ragChat = RagChat(
-      database: database,
-      semanticSearch: SemanticSearch(
-          database: database, embeddingProvider: _FakeEmbeddingProvider()),
-    );
+    final ragChat = buildRag(database, _FakeEmbeddingProvider()).chat;
 
     final now = DateTime.now();
     await database.logActivity(ActivitiesCompanion.insert(

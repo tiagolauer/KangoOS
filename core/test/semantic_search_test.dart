@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 class _FakeEmbeddingProvider implements EmbeddingProvider {
@@ -42,6 +43,23 @@ void main() {
     );
   });
 
+  test('BruteForceVectorIndex ranks and filters compatible vectors', () {
+    const index = BruteForceVectorIndex<String>();
+
+    final matches = index.search(
+      const [1, 0],
+      const [
+        VectorEntry(key: 'same', vector: [1, 0]),
+        VectorEntry(key: 'orthogonal', vector: [0, 1]),
+        VectorEntry(key: 'wrong-size', vector: [1, 0, 0]),
+      ],
+      limit: 2,
+      minScore: 0,
+    );
+
+    expect(matches.map((match) => match.key), ['same', 'orthogonal']);
+  });
+
   test('indexSnippet stores the embedding, search ranks by similarity',
       () async {
     final database = KangoosDatabase.memory();
@@ -61,7 +79,7 @@ void main() {
       'Python': [0, 1, 0],
     });
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: embeddingProvider,
     );
 
@@ -93,7 +111,7 @@ void main() {
     ));
 
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: _FakeEmbeddingProvider({
         'Bake': [1, 0, 0],
         'kubernetes': [0, 1, 0],
@@ -112,15 +130,17 @@ void main() {
       title: 'Wrong dimensions',
       content: 'indexed by another model',
       embedding: const Value([1, 0, 0, 0, 0]),
+      embeddingProviderId: const Value('fake'),
     ));
     final matchingId = await database.createSnippet(SnippetsCompanion.insert(
       title: 'Right dimensions',
       content: 'indexed here',
       embedding: const Value([1, 0, 0]),
+      embeddingProviderId: const Value('fake'),
     ));
 
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: _FakeEmbeddingProvider({
         'query': [1, 0, 0],
       }),
@@ -131,44 +151,51 @@ void main() {
     expect(results.single.snippet.id, matchingId);
   });
 
-  test('createAndIndex embeds the snippet it just created', () async {
+  test('SnippetService embeds the snippet it just created', () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
 
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: _FakeEmbeddingProvider({
         'Reverse': [1, 0, 0],
       }),
     );
 
-    final id = await semanticSearch.createAndIndex(SnippetsCompanion.insert(
+    final result = await SnippetService(
+      repository: SqliteSnippetRepository(database),
+      semanticSearch: semanticSearch,
+    ).create(const NewSnippet(
       title: 'Reverse a string',
       content: 'input.split("").reversed.join()',
     ));
 
     expect(await database.snippetsMissingEmbedding(), isEmpty);
-    expect((await database.snippetVectors()).single.id, id);
+    expect((await database.snippetVectors()).single.id, result.snippet.id);
   });
 
-  test('createAndIndex still creates the snippet when embedding fails',
+  test('SnippetService reports indexing failure and keeps the snippet',
       () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
 
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: _FailingEmbeddingProvider(),
     );
 
-    final id = await semanticSearch.createAndIndex(
-        SnippetsCompanion.insert(title: 'Offline', content: 'no ollama here'));
+    final result = await SnippetService(
+      repository: SqliteSnippetRepository(database),
+      semanticSearch: semanticSearch,
+    ).create(const NewSnippet(title: 'Offline', content: 'no ollama here'));
 
-    expect((await database.getSnippetById(id))!.title, 'Offline');
+    expect(result.indexingError, isA<StateError>());
+    expect(
+        (await database.getSnippetById(result.snippet.id))!.title, 'Offline');
     expect(await database.snippetsMissingEmbedding(), hasLength(1));
   });
 
-  test('indexMissing only embeds snippets without one and returns the count',
+  test('indexPending only embeds snippets without a current fingerprint',
       () async {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
@@ -179,15 +206,44 @@ void main() {
         .createSnippet(SnippetsCompanion.insert(title: 'B', content: 'b'));
 
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: _FakeEmbeddingProvider(const {}),
     );
 
-    final indexedCount = await semanticSearch.indexMissing();
-    expect(indexedCount, 2);
+    final report = await semanticSearch.indexPending();
+    expect(report.indexed, 2);
+    expect(report.failures, isEmpty);
     expect(await database.snippetsMissingEmbedding(), isEmpty);
 
-    final indexedAgainCount = await semanticSearch.indexMissing();
-    expect(indexedAgainCount, 0);
+    final secondReport = await semanticSearch.indexPending();
+    expect(secondReport.indexed, 0);
+  });
+
+  test('same-size vectors from another provider fingerprint are ignored',
+      () async {
+    final database = KangoosDatabase.memory();
+    addTearDown(database.close);
+    await database.createSnippet(SnippetsCompanion.insert(
+      title: 'Stale',
+      content: 'old model',
+      embedding: const Value([1, 0, 0]),
+      embeddingProviderId: const Value('other-model'),
+    ));
+    final currentId = await database.createSnippet(SnippetsCompanion.insert(
+      title: 'Current',
+      content: 'current model',
+      embedding: const Value([1, 0, 0]),
+      embeddingProviderId: const Value('fake'),
+    ));
+    final search = SemanticSearch(
+      repository: SqliteSnippetRepository(database),
+      embeddingProvider: _FakeEmbeddingProvider({
+        'query': [1, 0, 0]
+      }),
+    );
+
+    final matches = await search.search('query');
+
+    expect(matches.map((match) => match.snippet.id), [currentId]);
   });
 }

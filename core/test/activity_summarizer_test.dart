@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 class _FakeLlmProvider implements LlmProvider {
@@ -36,19 +37,29 @@ class _FailingLlmProvider implements LlmProvider {
   String get id => 'failing';
 
   @override
-  Stream<String> chat(List<LlmMessage> messages) => Stream.error(Exception('boom'));
+  Stream<String> chat(List<LlmMessage> messages) =>
+      Stream.error(Exception('boom'));
 }
 
 void main() {
   late KangoosDatabase database;
 
+  ActivitySummarizer summarizer(
+          {int maxPromptActivities = defaultMaxPromptActivities}) =>
+      ActivitySummarizer(
+        activities: SqliteActivityRepository(database),
+        summaries: SqliteSummaryRepository(database),
+        maxPromptActivities: maxPromptActivities,
+      );
+
   setUp(() => database = KangoosDatabase.memory());
   tearDown(() => database.close());
 
-  test('summarize returns noActivity when nothing was captured in the period', () async {
-    final summarizer = ActivitySummarizer(database: database);
+  test('summarize returns noActivity when nothing was captured in the period',
+      () async {
+    final service = summarizer();
 
-    final result = await summarizer.summarize(
+    final result = await service.summarize(
       provider: _FakeLlmProvider(const ['unused']),
       kind: SummaryKind.periodic,
       start: DateTime.utc(2026, 1, 1),
@@ -59,7 +70,9 @@ void main() {
     expect((result as SummaryFailure).error, SummaryError.noActivity);
   });
 
-  test('summarize builds a prompt from captured activity and persists the summary', () async {
+  test(
+      'summarize builds a prompt from captured activity and persists the summary',
+      () async {
     await database.logActivity(ActivitiesCompanion.insert(
       appName: 'code.exe',
       windowTitle: 'main.dart - KangoOS',
@@ -71,10 +84,10 @@ void main() {
       capturedAt: Value(DateTime.utc(2026, 1, 1, 10, 5)),
     ));
 
-    final summarizer = ActivitySummarizer(database: database);
+    final service = summarizer();
     final provider = _FakeLlmProvider(const ['Worked on ', 'KangoOS.']);
 
-    final result = await summarizer.summarize(
+    final result = await service.summarize(
       provider: provider,
       kind: SummaryKind.dayRecap,
       start: DateTime.utc(2026, 1, 1),
@@ -87,6 +100,7 @@ void main() {
     expect(summary.content, 'Worked on KangoOS.');
 
     final prompt = provider.lastMessages!.single.content;
+    expect(prompt, contains('Responda sempre em português do Brasil'));
     expect(prompt, contains('code.exe'));
     expect(prompt, contains('main.dart - KangoOS'));
     expect(prompt, contains('chrome.exe'));
@@ -110,7 +124,7 @@ void main() {
     ));
 
     final provider = _RecordingLlmProvider();
-    await ActivitySummarizer(database: database).summarize(
+    await summarizer().summarize(
       provider: provider,
       kind: SummaryKind.periodic,
       start: start.subtract(const Duration(minutes: 1)),
@@ -132,15 +146,14 @@ void main() {
     }
 
     final provider = _RecordingLlmProvider();
-    await ActivitySummarizer(database: database, maxPromptActivities: 10)
-        .summarize(
+    await summarizer(maxPromptActivities: 10).summarize(
       provider: provider,
       kind: SummaryKind.periodic,
       start: start.subtract(const Duration(minutes: 1)),
       end: start.add(const Duration(minutes: 31)),
     );
 
-    expect(provider.prompt, contains('20 earlier entries omitted'));
+    expect(provider.prompt, contains('20 registros anteriores omitidos'));
     expect(provider.prompt, contains('window 29'));
     expect(provider.prompt, isNot(contains('window 0 ')));
   });
@@ -151,8 +164,8 @@ void main() {
       windowTitle: 'main.dart',
     ));
 
-    final summarizer = ActivitySummarizer(database: database);
-    final result = await summarizer.summarize(
+    final service = summarizer();
+    final result = await service.summarize(
       provider: _FailingLlmProvider(),
       kind: SummaryKind.periodic,
       start: DateTime.now().subtract(const Duration(minutes: 1)),

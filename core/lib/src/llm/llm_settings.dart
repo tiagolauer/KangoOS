@@ -1,5 +1,6 @@
 import '../embedding/embedding_provider.dart';
 import '../embedding/providers/ollama_embedding_provider.dart';
+import '../embedding/providers/openai_embedding_provider.dart';
 import 'llm_provider.dart';
 import 'providers/anthropic_provider.dart';
 import 'providers/gemini_provider.dart';
@@ -39,6 +40,24 @@ class LlmSettings {
 
   String get ollamaBaseUrl => baseUrl.isEmpty ? defaultOllamaBaseUrl : baseUrl;
 
+  String get openAiBaseUrl => baseUrl.isEmpty ? defaultOpenAiBaseUrl : baseUrl;
+
+  bool get isLocalEndpoint {
+    final value = switch (provider) {
+      LlmProviderKind.ollama => ollamaBaseUrl,
+      LlmProviderKind.openAi => openAiBaseUrl,
+      _ => '',
+    };
+    final host = Uri.tryParse(value)?.host.toLowerCase() ?? '';
+    return host == 'localhost' ||
+        host == '::1' ||
+        host == '0:0:0:0:0:0:0:1' ||
+        host.startsWith('127.');
+  }
+
+  bool get requiresApiKey =>
+      provider != LlmProviderKind.ollama && !isLocalEndpoint;
+
   LlmSettings copyWith({
     LlmProviderKind? provider,
     String? model,
@@ -57,10 +76,21 @@ class LlmSettings {
     );
   }
 
-  EmbeddingProvider buildEmbeddingProvider() => OllamaEmbeddingProvider(
-        model: embeddingModel.isEmpty ? defaultEmbeddingModel : embeddingModel,
-        baseUrl: ollamaBaseUrl,
+  EmbeddingProvider buildEmbeddingProvider() {
+    final selectedModel =
+        embeddingModel.isEmpty ? defaultEmbeddingModel : embeddingModel;
+    if (provider == LlmProviderKind.openAi) {
+      return OpenAiEmbeddingProvider(
+        model: selectedModel,
+        baseUrl: openAiBaseUrl,
+        apiKey: apiKey,
       );
+    }
+    return OllamaEmbeddingProvider(
+      model: selectedModel,
+      baseUrl: ollamaBaseUrl,
+    );
+  }
 
   LlmProvider buildProvider() {
     switch (provider) {
@@ -76,6 +106,7 @@ class LlmSettings {
         return OpenAiProvider(
           apiKey: apiKey,
           model: model,
+          baseUrl: openAiBaseUrl,
           reasoningEffort: reasoningEffort,
         );
       case LlmProviderKind.gemini:

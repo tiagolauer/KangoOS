@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
-import 'package:kangoos_core/src/mcp/kango_mcp_server.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 class _FakeEmbeddingProvider implements EmbeddingProvider {
@@ -31,10 +31,34 @@ void main() {
 
   setUp(() {
     database = KangoosDatabase.memory();
-    server = KangoMcpServer(
-      database: database,
+    final snippetRepository = SqliteSnippetRepository(database);
+    final embeddingProvider = _FakeEmbeddingProvider();
+    final episodes = SqliteEpisodeRepository(database);
+    final snippets = SnippetService(
+      repository: snippetRepository,
       semanticSearch: SemanticSearch(
-          database: database, embeddingProvider: _FakeEmbeddingProvider()),
+        repository: snippetRepository,
+        embeddingProvider: embeddingProvider,
+      ),
+    );
+    final memory = MemoryService(
+      activities: SqliteActivityRepository(database),
+      summaries: SqliteSummaryRepository(database),
+      episodes: episodes,
+      queryEngine: MemoryQueryEngine(
+        episodes: episodes,
+        embeddingProvider: embeddingProvider,
+      ),
+    );
+    final conversations = SqliteConversationRepository(database);
+    server = KangoMcpServer(
+      snippets: snippets,
+      memory: memory,
+      agent: MemoryAgent(
+        memory: memory,
+        snippets: snippets,
+        conversations: conversations,
+      ),
     );
   });
   tearDown(() => database.close());
@@ -73,7 +97,7 @@ void main() {
     expect(response!['error']['code'], -32601);
   });
 
-  test('tools/list advertises all eight tools', () async {
+  test('tools/list advertises snippet and structured-memory tools', () async {
     final response = await server
         .handleMessage({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'});
     final names =
@@ -87,10 +111,90 @@ void main() {
         'get_snippet',
         'update_snippet',
         'delete_snippet',
+        'search_memories',
+        'search_memories_semantic',
+        'search_memories_by_time',
+        'get_memory_episode',
+        'list_recent_memories',
+        'find_related_memories',
+        'investigate_memory',
+        'deep_study',
+        'search_entities',
+        'search_projects',
+        'forget_memory',
+        'get_daily_summary',
+        'get_weekly_summary',
         'ask_kango_ltm',
         'create_kango_memory',
+        'remember',
       },
     );
+  });
+
+  test('agentic tools return reflection and a DeepStudy report', () async {
+    await database.createSnippet(SnippetsCompanion.insert(
+      title: 'Kango evidence',
+      content: 'Kango evidence retrieval',
+    ));
+    final investigation = await server.handleMessage(
+      _call('investigate_memory', {'query': 'Kango evidence'}),
+    );
+    final study = await server.handleMessage(
+      _call('deep_study', {'query': 'Kango evidence'}),
+    );
+
+    final investigationJson = jsonDecode(_text(investigation!)) as Map;
+    final studyJson = jsonDecode(_text(study!)) as Map;
+    expect(investigationJson['reflection'], isA<Map>());
+    expect(studyJson['report'], contains('# DeepStudy: Kango evidence'));
+  });
+
+  test('semantic and temporal memory tools use distinct retrieval modes',
+      () async {
+    final episodes = SqliteEpisodeRepository(database);
+    final id = await episodes.create(NewMemoryEpisode(
+      sourceKey: 'mcp-mode-test',
+      startedAt: DateTime(2026, 8, 24, 10),
+      endedAt: DateTime(2026, 8, 24, 11),
+      title: 'Architecture review',
+      summary: 'Reviewed storage boundaries',
+      applications: const ['Code'],
+      urls: const [],
+      topics: const ['architecture'],
+      entities: const [],
+      sourceActivityIds: const [],
+    ));
+    await episodes.setEmbedding(id, const [1, 0, 0], 'fake');
+
+    final semanticResponse = await server.handleMessage(
+      _call('search_memories_semantic', {'query': 'unrelated semantics'}),
+    );
+    final semantic =
+        jsonDecode(_text(semanticResponse!)) as Map<String, dynamic>;
+    final semanticMemory =
+        (semantic['memories'] as List).single as Map<String, dynamic>;
+    expect(semanticMemory['semanticMatch'], isTrue);
+    expect(semanticMemory['lexicalMatch'], isFalse);
+
+    final temporalResponse = await server.handleMessage(
+      _call('search_memories_by_time', {'query': '2026-08-24'}),
+    );
+    final temporal =
+        jsonDecode(_text(temporalResponse!)) as Map<String, dynamic>;
+    final temporalMemory =
+        (temporal['memories'] as List).single as Map<String, dynamic>;
+    expect(temporalMemory['id'], id);
+    expect(temporalMemory['semanticMatch'], isFalse);
+    expect(temporalMemory['lexicalMatch'], isFalse);
+  });
+
+  test('structured-memory tools reject unsafe limits', () async {
+    final response = await server.handleMessage(
+      _call('search_memories', {'query': 'anything', 'limit': 0}),
+    );
+
+    expect(response!['result']['isError'], isTrue);
+    expect(_text(response), contains('between 1 and'));
   });
 
   test('create_snippet then get_snippet round-trips through JSON content',
@@ -183,11 +287,12 @@ void main() {
       content: 'Recap of today.',
     ));
 
-    final response = await server
-        .handleMessage(_call('ask_kango_ltm', {'query': 'what did I do today?'}));
+    final response = await server.handleMessage(
+        _call('ask_kango_ltm', {'query': 'what did I do today?'}));
     final result = jsonDecode(_text(response!)) as Map<String, dynamic>;
 
-    expect((result['activities'] as List).single['windowTitle'], 'today-work.dart');
+    expect((result['activities'] as List).single['windowTitle'],
+        'today-work.dart');
     expect((result['summaries'] as List).single['content'], 'Recap of today.');
   });
 
@@ -205,8 +310,8 @@ void main() {
       capturedAt: Value(now),
     ));
 
-    final response = await server.handleMessage(_call(
-        'ask_kango_ltm', {'query': 'today', 'keywords': 'drift'}));
+    final response = await server.handleMessage(
+        _call('ask_kango_ltm', {'query': 'today', 'keywords': 'drift'}));
     final result = jsonDecode(_text(response!)) as Map<String, dynamic>;
 
     final activities = result['activities'] as List;
@@ -219,12 +324,13 @@ void main() {
     expect(response!['result']['isError'], true);
   });
 
-  test('create_kango_memory saves a manual summary retrievable by ask_kango_ltm',
+  test(
+      'create_kango_memory saves a durable summary retrievable by ask_kango_ltm',
       () async {
-    final createResponse = await server
-        .handleMessage(_call('create_kango_memory', {'content': 'Remember this.'}));
+    final createResponse = await server.handleMessage(
+        _call('create_kango_memory', {'content': 'Remember this.'}));
     final created = jsonDecode(_text(createResponse!)) as Map<String, dynamic>;
-    expect(created['kind'], 'manual');
+    expect(created['kind'], 'durable');
     expect(created['content'], 'Remember this.');
 
     final askResponse =
@@ -240,7 +346,15 @@ void main() {
 
   test('semantic search without a semantic search instance reports an error',
       () async {
-    final serverWithoutSemantic = KangoMcpServer(database: database);
+    final serverWithoutSemantic = KangoMcpServer(
+      snippets: SnippetService(
+        repository: SqliteSnippetRepository(database),
+      ),
+      memory: MemoryService(
+        activities: SqliteActivityRepository(database),
+        summaries: SqliteSummaryRepository(database),
+      ),
+    );
     final response = await serverWithoutSemantic.handleMessage(
       _call('search_snippets', {'query': 'x', 'semantic': true}),
     );

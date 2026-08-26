@@ -1,16 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
-
 import '../chat/temporal_query.dart';
 import '../database/database.dart';
 import '../database/snippet_json.dart';
-import '../database/tables/activity_summaries_table.dart';
-import '../search/semantic_search.dart';
+import '../memory/memory_agent.dart';
+import '../memory/memory_service.dart';
+import '../memory/memory_query_engine.dart';
+import '../snippets/snippet_repository.dart';
+import '../snippets/snippet_service.dart';
 
 typedef _ToolHandler = FutureOr<Map<String, dynamic>> Function(
     Map<String, dynamic> arguments);
+
+const maxMcpMemoryResults = 100;
 
 class _McpTool {
   const _McpTool(
@@ -23,30 +26,54 @@ class _McpTool {
   final _ToolHandler handler;
 }
 
-/// Hand-rolled MCP (Model Context Protocol) server, so IDE assistants
-/// (Cursor, GitHub Copilot, Claude Desktop, etc) can search/create/edit
-/// saved snippets as tools.
-///
-/// This project pins Dart SDK ^3.6.1, and the official `package:dart_mcp`
-/// (labs.dart.dev) requires >=3.7.0 — bumping the SDK constraint here would
-/// break `dart pub get` on this exact toolchain, so this hand-rolls the
-/// stdio JSON-RPC 2.0 transport instead (deliberately minimal: tools only,
-/// no resources/prompts/sampling). Swap in `package:dart_mcp` once the SDK
-/// floor moves to 3.7+ — [handleMessage] is decoupled from stdio, so only
-/// the `bin/kango_mcp.dart` entrypoint would need to change.
+class KangoMcpToolDefinition {
+  const KangoMcpToolDefinition({
+    required this.name,
+    required this.description,
+    required this.inputSchema,
+  });
+
+  final String name;
+  final String description;
+  final Map<String, dynamic> inputSchema;
+}
+
 class KangoMcpServer {
   KangoMcpServer({
-    required this.database,
-    this.semanticSearch,
+    required this.snippets,
+    required this.memory,
+    this.agent,
     this.maxLtmActivities = 100,
   }) {
     _registerTools();
   }
 
-  final KangoosDatabase database;
-  final SemanticSearch? semanticSearch;
+  final SnippetService snippets;
+  final MemoryService memory;
+  final MemoryAgent? agent;
   final int maxLtmActivities;
   final _tools = <String, _McpTool>{};
+
+  List<KangoMcpToolDefinition> get toolDefinitions => _tools.entries
+      .map((entry) => KangoMcpToolDefinition(
+            name: entry.key,
+            description: entry.value.description,
+            inputSchema: entry.value.inputSchema,
+          ))
+      .toList(growable: false);
+
+  Future<Map<String, dynamic>> callTool(
+    String name, [
+    Map<String, dynamic> arguments = const {},
+  ]) async {
+    final tool = _tools[name];
+    if (tool == null) return _toolError('Unknown tool: $name');
+    try {
+      return await tool.handler(arguments);
+    } catch (error) {
+      return _toolError('$name failed: $error');
+    }
+  }
 
   void _registerTools() {
     _tools['search_snippets'] = _McpTool(
@@ -147,11 +174,145 @@ class KangoMcpServer {
       handler: _deleteSnippet,
     );
 
+    final memorySearchSchema = {
+      'type': 'object',
+      'properties': {
+        'query': {'type': 'string'},
+        'limit': {'type': 'integer'},
+      },
+      'required': ['query'],
+    };
+    _tools['search_memories'] = _McpTool(
+      description:
+          'Search structured memory episodes with hybrid lexical, semantic and temporal retrieval.',
+      inputSchema: memorySearchSchema,
+      handler: _searchMemories,
+    );
+    _tools['search_memories_semantic'] = _McpTool(
+      description: 'Search memory episodes using semantic similarity only.',
+      inputSchema: memorySearchSchema,
+      handler: _searchMemoriesSemantic,
+    );
+    _tools['search_memories_by_time'] = _McpTool(
+      description:
+          'List memory episodes inside the natural-language time range in the query.',
+      inputSchema: memorySearchSchema,
+      handler: _searchMemoriesByTime,
+    );
+
+    _tools['get_memory_episode'] = _McpTool(
+      description: 'Get one structured memory episode by id.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'id': {'type': 'integer'},
+        },
+        'required': ['id'],
+      },
+      handler: _getMemoryEpisode,
+    );
+
+    _tools['list_recent_memories'] = _McpTool(
+      description: 'List recently formed memory episodes.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'limit': {'type': 'integer'},
+        },
+      },
+      handler: _listRecentMemories,
+    );
+
+    _tools['find_related_memories'] = _McpTool(
+      description: 'Find episodes related to an existing memory episode.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'id': {'type': 'integer'},
+          'limit': {'type': 'integer'},
+        },
+        'required': ['id'],
+      },
+      handler: _findRelatedMemories,
+    );
+
+    _tools['investigate_memory'] = _McpTool(
+      description:
+          'Investigate memories across episodes, summaries, snippets and conversations, with evidence coverage and confidence.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'query': {'type': 'string'},
+        },
+        'required': ['query'],
+      },
+      handler: _investigateMemory,
+    );
+
+    _tools['deep_study'] = _McpTool(
+      description:
+          'Produce a deep evidence report with cross-references and explicit missing evidence.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'query': {'type': 'string'},
+        },
+        'required': ['query'],
+      },
+      handler: _deepStudy,
+    );
+
+    for (final entry in {
+      'search_entities': false,
+      'search_projects': true,
+    }.entries) {
+      _tools[entry.key] = _McpTool(
+        description: entry.value
+            ? 'Search project references extracted from memory episodes.'
+            : 'Search entity references extracted from memory episodes.',
+        inputSchema: memorySearchSchema,
+        handler: (args) => _searchEntities(args, projectsOnly: entry.value),
+      );
+    }
+
+    _tools['forget_memory'] = _McpTool(
+      description: 'Delete a structured memory episode by id.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'id': {'type': 'integer'},
+        },
+        'required': ['id'],
+      },
+      handler: _forgetMemory,
+    );
+
+    for (final entry in {
+      'get_daily_summary': false,
+      'get_weekly_summary': true,
+    }.entries) {
+      _tools[entry.key] = _McpTool(
+        description: entry.value
+            ? 'Get activity summaries for the calendar week containing a date.'
+            : 'Get activity summaries for one date.',
+        inputSchema: {
+          'type': 'object',
+          'properties': {
+            'date': {
+              'type': 'string',
+              'description': 'ISO date, defaults to today',
+            },
+          },
+        },
+        handler: entry.value ? _getWeeklySummary : _getDailySummary,
+      );
+    }
+
     _tools['ask_kango_ltm'] = _McpTool(
       description:
           "Query KangoOS's long-term memory: captured window/app activity "
-          'and recap summaries. The query can reference a time range in '
-          'plain English (today, yesterday, this week, last week); it '
+          'structured episodes and hierarchical summaries. The query can '
+          'reference natural-language time ranges in English or Portuguese; it '
           'defaults to today when none is mentioned. Pass keywords to '
           'full-text-search the activity (app name, window title, captured '
           'text/url/clipboard) within that range instead of listing it '
@@ -187,10 +348,20 @@ class KangoMcpServer {
       },
       handler: _createMemory,
     );
+
+    _tools['remember'] = _McpTool(
+      description: 'Explicitly save a durable memory.',
+      inputSchema: {
+        'type': 'object',
+        'properties': {
+          'content': {'type': 'string'},
+        },
+        'required': ['content'],
+      },
+      handler: _createMemory,
+    );
   }
 
-  /// Handles one already-decoded JSON-RPC message. Returns the response
-  /// object to send back, or null for notifications/no-reply messages.
   Future<Map<String, dynamic>?> handleMessage(
       Map<String, dynamic> message) async {
     final method = message['method'] as String?;
@@ -236,17 +407,9 @@ class KangoMcpServer {
 
   Future<Map<String, dynamic>> _callTool(Map<String, dynamic>? params) async {
     final name = params?['name'] as String?;
-    final tool = _tools[name];
-    if (tool == null) {
-      return _toolError('Unknown tool: $name');
-    }
     final arguments =
         (params?['arguments'] as Map?)?.cast<String, dynamic>() ?? const {};
-    try {
-      return await tool.handler(arguments);
-    } catch (e) {
-      return _toolError('$name failed: $e');
-    }
+    return callTool(name ?? '', arguments);
   }
 
   Future<Map<String, dynamic>> _searchSnippets(
@@ -255,19 +418,17 @@ class KangoMcpServer {
     if (query.isEmpty) return _toolError('query is required');
     final limit = (args['limit'] as num?)?.toInt() ?? 10;
 
-    List<Snippet> results;
-    if (args['semantic'] == true) {
-      final search = semanticSearch;
-      if (search == null) return _toolError('semantic search is not available');
-      try {
-        results = (await search.search(query, limit: limit))
-            .map((m) => m.snippet)
-            .toList();
-      } catch (e) {
-        return _toolError('semantic search failed: $e');
-      }
-    } else {
-      results = (await database.searchByKeyword(query)).take(limit).toList();
+    final List<Snippet> results;
+    try {
+      results = await snippets.search(
+        query,
+        mode: args['semantic'] == true
+            ? SnippetSearchMode.semantic
+            : SnippetSearchMode.keyword,
+        limit: limit,
+      );
+    } catch (error) {
+      return _toolError('snippet search failed: $error');
     }
     return _toolJson(results.map(snippetToJson).toList());
   }
@@ -282,31 +443,30 @@ class KangoMcpServer {
     final language = (args['language'] as String?)?.trim();
     final tags = (args['tags'] as List?)?.cast<String>() ?? const <String>[];
 
-    final entry = SnippetsCompanion.insert(
+    final result = await snippets.create(NewSnippet(
       title: title,
       content: content,
-      language: Value(language == null || language.isEmpty ? null : language),
-      tags: Value(tags),
-    );
-    final search = semanticSearch;
-    final id = search == null
-        ? await database.createSnippet(entry)
-        : await search.createAndIndex(entry);
-    final created = await database.getSnippetById(id);
-    return _toolJson(snippetToJson(created!));
+      language: language == null || language.isEmpty ? null : language,
+      tags: tags,
+    ));
+    return _toolJson({
+      ...snippetToJson(result.snippet),
+      if (result.indexingError != null)
+        'indexingWarning': '${result.indexingError}',
+    });
   }
 
   Future<Map<String, dynamic>> _listSnippets(Map<String, dynamic> args) async {
     final limit = (args['limit'] as num?)?.toInt() ?? 20;
-    final snippets = (await database.watchAllSnippets().first).take(limit);
-    return _toolJson(snippets.map(snippetToJson).toList());
+    final results = await snippets.list(limit: limit);
+    return _toolJson(results.map(snippetToJson).toList());
   }
 
   Future<Map<String, dynamic>> _getSnippet(Map<String, dynamic> args) async {
     final id = (args['id'] as num?)?.toInt();
     if (id == null) return _toolError('id is required');
 
-    final snippet = await database.getSnippetById(id);
+    final snippet = await snippets.get(id);
     if (snippet == null) return _toolError('snippet #$id not found');
     return _toolJson(snippetToJson(snippet));
   }
@@ -315,30 +475,211 @@ class KangoMcpServer {
     final id = (args['id'] as num?)?.toInt();
     if (id == null) return _toolError('id is required');
 
-    final existing = await database.getSnippetById(id);
+    final existing = await snippets.get(id);
     if (existing == null) return _toolError('snippet #$id not found');
 
-    final updated = existing.copyWith(
-      title: args['title'] as String? ?? existing.title,
-      content: args['content'] as String? ?? existing.content,
-      language: args.containsKey('language')
-          ? Value(_normalize(args['language'] as String?))
-          : Value(existing.language),
-      tags: (args['tags'] as List?)?.cast<String>() ?? existing.tags,
-      updatedAt: DateTime.now(),
-    );
-    await database.updateSnippet(updated);
-    return _toolJson(snippetToJson(updated));
+    final result = await snippets.update(
+        id,
+        SnippetUpdate(
+          title: args['title'] as String? ?? existing.title,
+          content: args['content'] as String? ?? existing.content,
+          language: args.containsKey('language')
+              ? _normalize(args['language'] as String?)
+              : existing.language,
+          languageProvided: args.containsKey('language'),
+          tags: (args['tags'] as List?)?.cast<String>() ?? existing.tags,
+          updatedAt: DateTime.now(),
+        ));
+    return _toolJson({
+      ...snippetToJson(result!.snippet),
+      if (result.indexingError != null)
+        'indexingWarning': '${result.indexingError}',
+    });
   }
 
   Future<Map<String, dynamic>> _deleteSnippet(Map<String, dynamic> args) async {
     final id = (args['id'] as num?)?.toInt();
     if (id == null) return _toolError('id is required');
 
-    final deleted = await database.deleteSnippet(id);
+    final deleted = await snippets.delete(id);
     if (deleted == 0) return _toolError('snippet #$id not found');
     return _toolText('Deleted snippet #$id.');
   }
+
+  Future<Map<String, dynamic>> _searchMemories(Map<String, dynamic> args) =>
+      _searchMemoriesWithMode(args, MemorySearchMode.hybrid);
+
+  Future<Map<String, dynamic>> _searchMemoriesSemantic(
+          Map<String, dynamic> args) =>
+      _searchMemoriesWithMode(args, MemorySearchMode.semantic);
+
+  Future<Map<String, dynamic>> _searchMemoriesByTime(
+          Map<String, dynamic> args) =>
+      _searchMemoriesWithMode(args, MemorySearchMode.temporal);
+
+  Future<Map<String, dynamic>> _searchMemoriesWithMode(
+    Map<String, dynamic> args,
+    MemorySearchMode mode,
+  ) async {
+    final query = (args['query'] as String?)?.trim() ?? '';
+    if (query.isEmpty) return _toolError('query is required');
+    final limit = _memoryLimit(args, 10);
+    if (limit == null) {
+      return _toolError('limit must be between 1 and $maxMcpMemoryResults');
+    }
+    final result = await memory.searchEpisodes(
+      query,
+      limit: limit,
+      mode: mode,
+    );
+    return _toolJson({
+      'memories': result.matches
+          .map((match) => {
+                ..._episodeJson(match.episode),
+                'score': match.score,
+                'lexicalMatch': match.lexical,
+                'semanticMatch': match.semantic,
+              })
+          .toList(),
+      if (result.semanticError != null)
+        'semanticWarning': '${result.semanticError}',
+    });
+  }
+
+  Future<Map<String, dynamic>> _getMemoryEpisode(
+      Map<String, dynamic> args) async {
+    final id = (args['id'] as num?)?.toInt();
+    if (id == null) return _toolError('id is required');
+    final episode = await memory.getEpisode(id);
+    if (episode == null) return _toolError('memory episode #$id not found');
+    return _toolJson(_episodeJson(episode));
+  }
+
+  Future<Map<String, dynamic>> _listRecentMemories(
+      Map<String, dynamic> args) async {
+    final limit = _memoryLimit(args, 20);
+    if (limit == null) {
+      return _toolError('limit must be between 1 and $maxMcpMemoryResults');
+    }
+    final episodes = await memory.recentEpisodes(limit: limit);
+    return _toolJson(episodes.map(_episodeJson).toList());
+  }
+
+  Future<Map<String, dynamic>> _findRelatedMemories(
+      Map<String, dynamic> args) async {
+    final id = (args['id'] as num?)?.toInt();
+    if (id == null) return _toolError('id is required');
+    final episode = await memory.getEpisode(id);
+    if (episode == null) return _toolError('memory episode #$id not found');
+    final limit = _memoryLimit(args, 10);
+    if (limit == null) {
+      return _toolError('limit must be between 1 and $maxMcpMemoryResults');
+    }
+    final query = [episode.title, ...episode.topics].join(' ');
+    final result = await memory.searchEpisodes(query, limit: limit + 1);
+    return _toolJson(result.matches
+        .where((match) => match.episode.id != id)
+        .take(limit)
+        .map((match) => _episodeJson(match.episode))
+        .toList());
+  }
+
+  Future<Map<String, dynamic>> _investigateMemory(
+      Map<String, dynamic> args) async {
+    final query = (args['query'] as String?)?.trim() ?? '';
+    if (query.isEmpty) return _toolError('query is required');
+    final memoryAgent = agent;
+    if (memoryAgent == null) {
+      return _toolError('agentic memory is not available');
+    }
+    return _toolJson((await memoryAgent.investigate(query)).toJson());
+  }
+
+  Future<Map<String, dynamic>> _deepStudy(Map<String, dynamic> args) async {
+    final query = (args['query'] as String?)?.trim() ?? '';
+    if (query.isEmpty) return _toolError('query is required');
+    final memoryAgent = agent;
+    if (memoryAgent == null) {
+      return _toolError('agentic memory is not available');
+    }
+    final report = await memoryAgent.deepStudy(query);
+    return _toolJson({
+      'report': report.markdown,
+      'investigation': report.investigation.toJson(),
+    });
+  }
+
+  Future<Map<String, dynamic>> _searchEntities(
+    Map<String, dynamic> args, {
+    required bool projectsOnly,
+  }) async {
+    final query = (args['query'] as String?)?.trim() ?? '';
+    if (query.isEmpty) return _toolError('query is required');
+    final limit = _memoryLimit(args, 20);
+    if (limit == null) {
+      return _toolError('limit must be between 1 and $maxMcpMemoryResults');
+    }
+    final normalized = query.toLowerCase();
+    final result = await memory.searchEpisodes(query, limit: limit);
+    final entities = <String>{};
+    for (final match in result.matches) {
+      for (final entity in match.episode.entities) {
+        final lowered = entity.toLowerCase();
+        if ((!projectsOnly || lowered.startsWith('project:')) &&
+            lowered.contains(normalized)) {
+          entities.add(entity);
+        }
+      }
+    }
+    return _toolJson(entities.take(limit).toList());
+  }
+
+  Future<Map<String, dynamic>> _forgetMemory(Map<String, dynamic> args) async {
+    final id = (args['id'] as num?)?.toInt();
+    if (id == null) return _toolError('id is required');
+    if (await memory.forgetEpisode(id) == 0) {
+      return _toolError('memory episode #$id not found');
+    }
+    return _toolText('Deleted memory episode #$id.');
+  }
+
+  Future<Map<String, dynamic>> _getDailySummary(
+      Map<String, dynamic> args) async {
+    final day = _summaryDate(args);
+    if (day == null) return _toolError('date must be an ISO date');
+    return _summariesFor(day, day.add(const Duration(days: 1)));
+  }
+
+  Future<Map<String, dynamic>> _getWeeklySummary(
+      Map<String, dynamic> args) async {
+    final day = _summaryDate(args);
+    if (day == null) return _toolError('date must be an ISO date');
+    final start = day.subtract(Duration(days: day.weekday - DateTime.monday));
+    return _summariesFor(start, start.add(const Duration(days: 7)));
+  }
+
+  DateTime? _summaryDate(Map<String, dynamic> args) {
+    final raw = args['date'];
+    final now = DateTime.now();
+    if (raw == null) return DateTime(now.year, now.month, now.day);
+    if (raw is! String) return null;
+    final parsed = DateTime.tryParse(raw);
+    return parsed == null
+        ? null
+        : DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  Future<Map<String, dynamic>> _summariesFor(
+    DateTime start,
+    DateTime end,
+  ) async =>
+      _toolJson({
+        'rangeStart': start.toIso8601String(),
+        'rangeEnd': end.toIso8601String(),
+        'summaries': (await memory.summariesBetween(start, end))
+            .map(_summaryJson)
+            .toList(),
+      });
 
   Future<Map<String, dynamic>> _askLtm(Map<String, dynamic> args) async {
     final query = (args['query'] as String?)?.trim() ?? '';
@@ -348,18 +689,24 @@ class KangoMcpServer {
     final queryEnd = range.end.add(const Duration(seconds: 1));
     final keywords = (args['keywords'] as String?)?.trim() ?? '';
     final activities = keywords.isEmpty
-        ? (await database.activitiesBetween(range.start, queryEnd))
+        ? (await memory.between(range.start, queryEnd))
             .take(maxLtmActivities)
             .toList()
-        : await database.searchActivities(keywords,
+        : await memory.search(keywords,
             start: range.start, end: queryEnd, limit: maxLtmActivities);
-    final summaries = await database.summariesBetween(range.start, queryEnd);
+    final summaries = await memory.summariesBetween(range.start, queryEnd);
+    final episodeResult = await memory.searchEpisodes(query, limit: 20);
 
     return _toolJson({
       'rangeStart': range.start.toIso8601String(),
       'rangeEnd': range.end.toIso8601String(),
       'activities': activities.map((a) => a.toJson()).toList(),
+      'episodes': episodeResult.matches
+          .map((match) => _episodeJson(match.episode))
+          .toList(),
       'summaries': summaries.map(_summaryJson).toList(),
+      if (episodeResult.semanticError != null)
+        'semanticWarning': '${episodeResult.semanticError}',
     });
   }
 
@@ -367,24 +714,35 @@ class KangoMcpServer {
     final content = (args['content'] as String?)?.trim() ?? '';
     if (content.isEmpty) return _toolError('content is required');
 
-    final now = DateTime.now();
-    final id =
-        await database.insertActivitySummary(ActivitySummariesCompanion.insert(
-      kind: SummaryKind.manual,
-      periodStart: now,
-      periodEnd: now,
-      content: content,
-      createdAt: Value(now),
-    ));
-    final created = await database.getSummaryById(id);
-    return _toolJson(_summaryJson(created!));
+    return _toolJson(_summaryJson(await memory.remember(content)));
   }
 
   Map<String, dynamic> _summaryJson(ActivitySummary summary) =>
       {...summary.toJson(), 'kind': summary.kind.name};
 
+  Map<String, dynamic> _episodeJson(MemoryEpisode episode) => {
+        'id': episode.id,
+        'startedAt': episode.startedAt.toIso8601String(),
+        'endedAt': episode.endedAt.toIso8601String(),
+        'title': episode.title,
+        'summary': episode.summary,
+        'applications': episode.applications,
+        'urls': episode.urls,
+        'topics': episode.topics,
+        'entities': episode.entities,
+        'sourceActivityIds': episode.sourceActivityIds,
+      };
+
   String? _normalize(String? value) =>
       value == null || value.isEmpty ? null : value;
+}
+
+int? _memoryLimit(Map<String, dynamic> args, int defaultValue) {
+  final raw = args['limit'];
+  if (raw == null) return defaultValue;
+  if (raw is! num || !raw.isFinite || raw != raw.roundToDouble()) return null;
+  final limit = raw.toInt();
+  return limit >= 1 && limit <= maxMcpMemoryResults ? limit : null;
 }
 
 Map<String, dynamic> _toolText(String text) => {

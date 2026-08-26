@@ -6,10 +6,13 @@ import '../llm_http.dart';
 import '../llm_provider.dart';
 import '../sse.dart';
 
+const defaultOpenAiBaseUrl = 'https://api.openai.com/v1';
+
 class OpenAiProvider implements LlmProvider {
   OpenAiProvider({
     required this.apiKey,
     required this.model,
+    this.baseUrl = defaultOpenAiBaseUrl,
     this.reasoningEffort = ReasoningEffort.balanced,
     this.timeout = defaultLlmTimeout,
     http.Client? client,
@@ -17,21 +20,22 @@ class OpenAiProvider implements LlmProvider {
 
   final String apiKey;
   final String model;
+  final String baseUrl;
   final ReasoningEffort reasoningEffort;
   final Duration timeout;
   final http.Client _client;
-
-  static const _endpoint = 'https://api.openai.com/v1/chat/completions';
 
   @override
   String get id => 'openai';
 
   @override
   Stream<String> chat(List<LlmMessage> messages) async* {
-    final request = http.Request('POST', Uri.parse(_endpoint))
+    final endpoint =
+        '${baseUrl.replaceFirst(RegExp(r'/+$'), '')}/chat/completions';
+    final request = http.Request('POST', Uri.parse(endpoint))
       ..headers.addAll({
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
+        if (apiKey.isNotEmpty) 'Authorization': 'Bearer $apiKey',
       })
       ..body = jsonEncode({
         'model': model,

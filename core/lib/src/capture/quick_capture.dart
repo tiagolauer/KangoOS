@@ -1,6 +1,4 @@
-import 'package:drift/drift.dart' show Value;
-
-import '../database/database.dart';
+import '../snippets/snippet_repository.dart';
 
 const maxQuickCaptureTitleLength = 60;
 
@@ -70,7 +68,7 @@ String quickCaptureTitle(String content) {
   return '${firstLine.substring(0, maxQuickCaptureTitleLength).trimRight()}...';
 }
 
-SnippetsCompanion buildQuickCapture({
+NewSnippet buildQuickCapture({
   required String clipboard,
   String? sourceApp,
 }) {
@@ -78,13 +76,13 @@ SnippetsCompanion buildQuickCapture({
   final language = detectSnippetLanguage(content);
   final source = sourceApp?.trim().toLowerCase();
 
-  return SnippetsCompanion.insert(
+  return NewSnippet(
     title: quickCaptureTitle(content),
     content: content,
-    language: Value(language),
-    tags: Value([
+    language: language,
+    tags: [
       'quick-capture',
       if (source != null && source.isNotEmpty) source,
-    ]),
+    ],
   );
 }

@@ -1,4 +1,5 @@
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -36,7 +37,7 @@ void main() {
     final database = KangoosDatabase.memory();
     addTearDown(database.close);
 
-    final id = await database.createSnippet(buildQuickCapture(
+    final id = await SqliteSnippetRepository(database).create(buildQuickCapture(
       clipboard: 'SELECT 1 FROM snippets;',
       sourceApp: 'Code.exe',
     ));

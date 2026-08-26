@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
-import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
@@ -86,6 +86,72 @@ void main() {
     expect(ordered.map((s) => s.id), [second, first]);
     expect(await database.snippetsByIds([]), isEmpty);
     expect(await database.snippetsByIds([first, 9999]), hasLength(1));
+  });
+
+  test('reopens an unversioned database without losing existing rows',
+      () async {
+    final tempDir = Directory.systemTemp.createTempSync('kangoos_unversioned');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+    final file = File('${tempDir.path}/partial.db');
+
+    final initial = KangoosDatabase.native(file);
+    await initial.createSnippet(
+      SnippetsCompanion.insert(title: 'existing', content: 'preserved'),
+    );
+    await initial.close();
+
+    final unversioned = sqlite3.open(file.path);
+    unversioned.execute('PRAGMA user_version = 0;');
+    unversioned.dispose();
+
+    final reopened = KangoosDatabase.native(file);
+    addTearDown(reopened.close);
+
+    expect((await reopened.allSnippets()).single.title, 'existing');
+  });
+
+  test('repairs missing capture columns in a v17 database', () async {
+    final tempDir = Directory.systemTemp.createTempSync('kangoos_v17_repair');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+    final file = File('${tempDir.path}/legacy.db');
+
+    final legacy = sqlite3.open(file.path);
+    legacy.execute(_legacySnippetsSchema);
+    legacy.execute('''
+CREATE TABLE activities (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  app_name TEXT NOT NULL,
+  window_title TEXT NOT NULL,
+  captured_text TEXT NULL,
+  captured_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+''');
+    legacy.execute(
+      'INSERT INTO snippets (title, content, embedding) VALUES (?, ?, ?);',
+      [
+        'existing',
+        'preserved',
+        jsonEncode([0.25, 0.5])
+      ],
+    );
+    legacy.execute(
+      'INSERT INTO activities (app_name, window_title) VALUES (?, ?);',
+      ['code.exe', 'preserved'],
+    );
+    legacy.execute('''
+CREATE TRIGGER activities_fts_ai AFTER INSERT ON activities BEGIN
+  SELECT new.captured_url;
+END;
+''');
+    legacy.execute('PRAGMA user_version = 17;');
+    legacy.dispose();
+
+    final repaired = KangoosDatabase.native(file);
+    addTearDown(repaired.close);
+
+    expect((await repaired.allActivities()).single.windowTitle, 'preserved');
+    expect(await repaired.searchActivities('preserved'), hasLength(1));
+    expect((await repaired.snippetVectors()).single.embedding, hasLength(2));
   });
 
   test('migrating a v11 database converts json embeddings to binary', () async {

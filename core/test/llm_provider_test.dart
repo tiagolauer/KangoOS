@@ -76,6 +76,41 @@ void main() {
     expect(chunks.join(), 'Hello');
   });
 
+  test('OpenAiProvider supports a keyless OpenAI-compatible local endpoint',
+      () async {
+    final client = MockClient((request) async {
+      expect(
+          request.url.toString(), 'http://127.0.0.1:1234/v1/chat/completions');
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      return http.Response('data: [DONE]\n\n', 200);
+    });
+
+    await OpenAiProvider(
+      apiKey: '',
+      model: 'qwen/qwen3-8b',
+      baseUrl: 'http://127.0.0.1:1234/v1/',
+      client: client,
+    ).chat(userMessages).drain<void>();
+  });
+
+  test('OpenAiEmbeddingProvider reads OpenAI-compatible vectors', () async {
+    final client = MockClient((request) async {
+      expect(request.url.toString(), 'http://127.0.0.1:1234/v1/embeddings');
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      return http.Response(
+        '{"data":[{"embedding":[0.25,0.75]}]}',
+        200,
+      );
+    });
+    final provider = OpenAiEmbeddingProvider(
+      model: 'nomic-embed',
+      baseUrl: 'http://127.0.0.1:1234/v1',
+      client: client,
+    );
+
+    expect(await provider.embed('KangoOS'), [0.25, 0.75]);
+  });
+
   test(
       'OpenAiProvider omits reasoning_effort for balanced but sends it for fast/thinking',
       () async {

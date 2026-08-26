@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' show Database, sqlite3;
 
 import '../llm/llm_provider.dart';
@@ -9,6 +10,7 @@ import 'tables/activities_table.dart';
 import 'tables/activity_summaries_table.dart';
 import 'tables/conversations_table.dart';
 import 'tables/deleted_snippets_table.dart';
+import 'tables/memory_episodes_table.dart';
 import 'tables/snippets_table.dart';
 
 part 'database.g.dart';
@@ -20,6 +22,7 @@ part 'database.g.dart';
   Conversations,
   ConversationMessages,
   DeletedSnippets,
+  MemoryEpisodes,
 ])
 class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase(super.executor);
@@ -33,14 +36,17 @@ class KangoosDatabase extends _$KangoosDatabase {
   KangoosDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
+          for (final index in allSchemaEntities.whereType<Index>()) {
+            await customStatement('DROP INDEX IF EXISTS ${index.entityName};');
+          }
           await m.createAll();
-          await _createSnippetsFts();
-          await _createActivitiesFts();
+          await _repairLegacySchema(m);
+          await _createMemoryEpisodesFts();
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
@@ -87,8 +93,60 @@ class KangoosDatabase extends _$KangoosDatabase {
             await _rebuildSnippetsFts();
             await _rebuildActivitiesFts();
           }
+          if (from < 16) {
+            await m.addColumn(snippets, snippets.embeddingProviderId);
+          }
+          if (from < 17) {
+            await m.createTable(memoryEpisodes);
+            await _createMemoryEpisodesFts();
+          }
+          if (from < 18) {
+            await _repairLegacySchema(m);
+          }
         },
       );
+
+  Future<void> _repairLegacySchema(Migrator migrator) async {
+    if (!await _hasColumn('activities', 'captured_url')) {
+      await migrator.addColumn(activities, activities.capturedUrl);
+    }
+    if (!await _hasColumn('activities', 'captured_clipboard')) {
+      await migrator.addColumn(activities, activities.capturedClipboard);
+    }
+    if (!await _hasColumn('activities', 'captured_screen_text')) {
+      await migrator.addColumn(activities, activities.capturedScreenText);
+    }
+    if (!await _hasColumn('activities', 'captured_audio_text')) {
+      await migrator.addColumn(activities, activities.capturedAudioText);
+    }
+    if (!await _hasColumn('snippets', 'embedding')) {
+      await migrator.addColumn(snippets, snippets.embedding);
+    }
+    if ((await _columnType('snippets', 'embedding'))?.toUpperCase() == 'TEXT') {
+      await _convertEmbeddingsToBinary();
+    }
+    if (!await _hasColumn('snippets', 'sync_id')) {
+      await migrator.addColumn(snippets, snippets.syncId);
+    }
+    if (!await _hasColumn('snippets', 'embedding_provider_id')) {
+      await migrator.addColumn(snippets, snippets.embeddingProviderId);
+    }
+    await _rebuildSnippetsFts();
+    await _rebuildActivitiesFts();
+  }
+
+  Future<bool> _hasColumn(String tableName, String columnName) async =>
+      await _columnType(tableName, columnName) != null;
+
+  Future<String?> _columnType(String tableName, String columnName) async {
+    final columns = await customSelect('PRAGMA table_info($tableName);').get();
+    for (final column in columns) {
+      if (column.read<String>('name') == columnName) {
+        return column.read<String>('type');
+      }
+    }
+    return null;
+  }
 
   Future<void> _rebuildSnippetsFts() async {
     for (final name in [
@@ -247,7 +305,7 @@ END;
   /// prefix matches (implicit AND), so "reverse str" matches a snippet
   /// containing both "reverse…" and "str…" anywhere, in any order.
   Future<List<Snippet>> searchByKeyword(String query) async {
-    final matchQuery = _ftsMatchQuery(query);
+    final matchQuery = ftsMatchQuery(query);
     if (matchQuery.isEmpty) return const [];
 
     final rows = await customSelect(
@@ -266,9 +324,13 @@ END;
   Future<List<Snippet>> snippetsWithEmbedding() =>
       (select(snippets)..where((row) => row.embedding.isNotNull())).get();
 
-  Future<List<SnippetVector>> snippetVectors() async {
+  Future<List<SnippetVector>> snippetVectors({String? providerId}) async {
+    final filter = providerId == null ? '' : ' AND embedding_provider_id = ?';
     final rows = await customSelect(
-      'SELECT id, embedding FROM snippets WHERE embedding IS NOT NULL;',
+      'SELECT id, embedding, embedding_provider_id FROM snippets '
+      'WHERE embedding IS NOT NULL$filter;',
+      variables:
+          providerId == null ? const [] : [Variable.withString(providerId)],
       readsFrom: {snippets},
     ).get();
     const converter = EmbeddingConverter();
@@ -276,9 +338,51 @@ END;
         .map((row) => SnippetVector(
               id: row.read<int>('id'),
               embedding: converter.fromSql(row.read<Uint8List>('embedding')),
+              providerId: row.read<String?>('embedding_provider_id') ?? '',
             ))
         .toList();
   }
+
+  Future<void> _createMemoryEpisodesFts() async {
+    await customStatement('''
+CREATE VIRTUAL TABLE IF NOT EXISTS memory_episodes_fts USING fts5(
+  title, summary, applications, urls, topics, entities,
+  content='memory_episodes', content_rowid='id'
+);
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS memory_episodes_fts_ai AFTER INSERT ON memory_episodes BEGIN
+  INSERT INTO memory_episodes_fts(rowid, title, summary, applications, urls, topics, entities)
+  VALUES (new.id, new.title, new.summary, new.applications, new.urls, new.topics, new.entities);
+END;
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS memory_episodes_fts_ad AFTER DELETE ON memory_episodes BEGIN
+  INSERT INTO memory_episodes_fts(memory_episodes_fts, rowid, title, summary, applications, urls, topics, entities)
+  VALUES ('delete', old.id, old.title, old.summary, old.applications, old.urls, old.topics, old.entities);
+END;
+''');
+    await customStatement('''
+CREATE TRIGGER IF NOT EXISTS memory_episodes_fts_au AFTER UPDATE ON memory_episodes BEGIN
+  INSERT INTO memory_episodes_fts(memory_episodes_fts, rowid, title, summary, applications, urls, topics, entities)
+  VALUES ('delete', old.id, old.title, old.summary, old.applications, old.urls, old.topics, old.entities);
+  INSERT INTO memory_episodes_fts(rowid, title, summary, applications, urls, topics, entities)
+  VALUES (new.id, new.title, new.summary, new.applications, new.urls, new.topics, new.entities);
+END;
+''');
+  }
+
+  Future<void> setSnippetEmbedding(
+    int id,
+    List<double> embedding,
+    String providerId,
+  ) =>
+      (update(snippets)..where((row) => row.id.equals(id))).write(
+        SnippetsCompanion(
+          embedding: Value(embedding),
+          embeddingProviderId: Value(providerId),
+        ),
+      );
 
   Future<List<Snippet>> snippetsByIds(List<int> ids) async {
     if (ids.isEmpty) return const [];
@@ -295,6 +399,14 @@ END;
 
   Future<List<Snippet>> snippetsMissingEmbedding() =>
       (select(snippets)..where((row) => row.embedding.isNull())).get();
+
+  Future<List<Snippet>> snippetsPendingEmbedding(String providerId) =>
+      (select(snippets)
+            ..where((row) =>
+                row.embedding.isNull() |
+                row.embeddingProviderId.isNull() |
+                row.embeddingProviderId.equals(providerId).not()))
+          .get();
 
   Future<int> logActivity(ActivitiesCompanion entry) =>
       into(activities).insert(entry);
@@ -351,7 +463,7 @@ END;
     DateTime? end,
     int limit = 50,
   }) async {
-    final matchQuery = _ftsMatchQuery(query);
+    final matchQuery = ftsMatchQuery(query);
     if (matchQuery.isEmpty) return const [];
 
     final buffer = StringBuffer(
@@ -410,6 +522,11 @@ END;
             ..limit(limit))
           .get();
 
+  Future<int> purgeSummariesOlderThan(DateTime cutoff) =>
+      (delete(activitySummaries)
+            ..where((row) => row.periodEnd.isSmallerOrEqualValue(cutoff)))
+          .go();
+
   Future<int> createConversation() =>
       into(conversations).insert(ConversationsCompanion.insert());
 
@@ -440,6 +557,38 @@ END;
             ..where((row) => row.conversationId.equals(conversationId))
             ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
           .get();
+
+  Future<List<ConversationMessage>> searchConversationMessages(
+    String query, {
+    int limit = 20,
+  }) async {
+    final tokens = query
+        .trim()
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((token) => token.length >= 2)
+        .toSet()
+        .take(12)
+        .toList();
+    if (tokens.isEmpty || limit < 1) return const [];
+    final clauses = List.filled(tokens.length, 'LOWER(content) LIKE ?');
+    final scores = List.filled(
+      tokens.length,
+      'CASE WHEN LOWER(content) LIKE ? THEN 1 ELSE 0 END',
+    );
+    final rows = await customSelect(
+      'SELECT * FROM conversation_messages '
+      'WHERE ${clauses.join(' OR ')} '
+      'ORDER BY (${scores.join(' + ')}) DESC, created_at DESC LIMIT ?',
+      variables: [
+        ...tokens.map((token) => Variable.withString('%$token%')),
+        ...tokens.map((token) => Variable.withString('%$token%')),
+        Variable.withInt(limit),
+      ],
+      readsFrom: {conversationMessages},
+    ).get();
+    return rows.map((row) => conversationMessages.map(row.data)).toList();
+  }
 
   Stream<List<ConversationSummary>> watchConversationSummaries() {
     return customSelect(
@@ -513,12 +662,29 @@ END;
       db.dispose();
     }
 
-    var backupPath = '${file.path}.plaintext-backup';
-    for (var i = 2; File(backupPath).existsSync(); i++) {
-      backupPath = '${file.path}.plaintext-backup-$i';
+    removePlaintextBackups(file);
+    final backup = File('${file.path}.plaintext-backup');
+    file.renameSync(backup.path);
+    try {
+      encrypted.renameSync(file.path);
+      backup.deleteSync();
+    } catch (error) {
+      if (file.existsSync()) file.deleteSync();
+      if (backup.existsSync()) backup.renameSync(file.path);
+      if (encrypted.existsSync()) encrypted.deleteSync();
+      rethrow;
     }
-    file.renameSync(backupPath);
-    encrypted.renameSync(file.path);
+  }
+
+  static void removePlaintextBackups(File databaseFile) {
+    final prefix = '${p.basename(databaseFile.path)}.plaintext-backup';
+    if (!databaseFile.parent.existsSync()) return;
+    for (final entity in databaseFile.parent.listSync()) {
+      final name = p.basename(entity.path);
+      if (entity is File && (name == prefix || name.startsWith('$prefix-'))) {
+        entity.deleteSync();
+      }
+    }
   }
 
   static void Function(Database) _setupCipher(String encryptionKey) {
@@ -546,7 +712,7 @@ END;
 /// becomes its own quoted-prefix term (implicit AND between terms), so
 /// punctuation in the query (":", "-", "(", etc, which FTS5's query syntax
 /// would otherwise try to parse as operators) can't produce a syntax error.
-String _ftsMatchQuery(String query) {
+String ftsMatchQuery(String query) {
   final tokens =
       query.trim().split(RegExp(r'\s+')).where((token) => token.isNotEmpty);
   return tokens.map((token) => '"${token.replaceAll('"', '""')}"*').join(' ');

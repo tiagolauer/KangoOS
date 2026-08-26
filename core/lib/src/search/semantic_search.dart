@@ -1,9 +1,7 @@
-import 'dart:math';
-
-import 'package:drift/drift.dart' show Value;
-
 import '../database/database.dart';
 import '../embedding/embedding_provider.dart';
+import '../snippets/snippet_repository.dart';
+import 'vector_index.dart';
 
 class SemanticMatch {
   const SemanticMatch({required this.snippet, required this.score});
@@ -12,48 +10,52 @@ class SemanticMatch {
   final double score;
 }
 
+class SnippetIndexingReport {
+  const SnippetIndexingReport({
+    required this.indexed,
+    required this.failures,
+  });
+
+  final int indexed;
+  final Map<int, Object> failures;
+}
+
 const defaultMinSimilarity = 0.5;
 
 class SemanticSearch {
   SemanticSearch({
-    required this.database,
+    required this.repository,
     required this.embeddingProvider,
     this.minSimilarity = defaultMinSimilarity,
+    this.vectorIndex = const BruteForceVectorIndex(),
   });
 
-  final KangoosDatabase database;
+  final SnippetRepository repository;
   final EmbeddingProvider embeddingProvider;
   final double minSimilarity;
+  final VectorIndex<int> vectorIndex;
 
   Future<void> indexSnippet(Snippet snippet) async {
+    final providerId = await _providerFingerprint();
     final embedding =
         await embeddingProvider.embed('${snippet.title}\n${snippet.content}');
-    await database.updateSnippet(snippet.copyWith(embedding: Value(embedding)));
+    await repository.setEmbedding(snippet.id, embedding, providerId);
   }
 
-  Future<int> createAndIndex(SnippetsCompanion entry) async {
-    final id = await database.createSnippet(entry);
-    final snippet = await database.getSnippetById(id);
-    if (snippet != null) {
-      await indexSnippet(snippet).catchError((Object _) {});
+  Future<SnippetIndexingReport> indexPending() async {
+    final providerId = await _providerFingerprint();
+    final pending = await repository.pendingEmbedding(providerId);
+    var indexed = 0;
+    final failures = <int, Object>{};
+    for (final snippet in pending) {
+      try {
+        await indexSnippet(snippet);
+        indexed++;
+      } catch (error) {
+        failures[snippet.id] = error;
+      }
     }
-    return id;
-  }
-
-  Future<int> indexMissingQuietly() async {
-    try {
-      return await indexMissing();
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  Future<int> indexMissing() async {
-    final missing = await database.snippetsMissingEmbedding();
-    for (final snippet in missing) {
-      await indexSnippet(snippet);
-    }
-    return missing.length;
+    return SnippetIndexingReport(indexed: indexed, failures: failures);
   }
 
   Future<List<SemanticMatch>> search(
@@ -62,45 +64,30 @@ class SemanticSearch {
     double? minSimilarity,
   }) async {
     final floor = minSimilarity ?? this.minSimilarity;
+    final providerId = await _providerFingerprint();
     final queryEmbedding = await embeddingProvider.embed(query);
-    final vectors = await database.snippetVectors();
+    final vectors = await repository.vectors(providerId);
 
-    final scored = [
-      for (final vector in vectors)
-        if (vector.embedding.length == queryEmbedding.length)
-          (
-            id: vector.id,
-            score: cosineSimilarity(queryEmbedding, vector.embedding),
-          ),
-    ]..sort((a, b) => b.score.compareTo(a.score));
-
-    final top =
-        scored.where((match) => match.score >= floor).take(limit).toList();
-    final scoreById = {for (final match in top) match.id: match.score};
-    final snippets =
-        await database.snippetsByIds([for (final match in top) match.id]);
+    final top = vectorIndex.search(
+      queryEmbedding,
+      vectors.map(
+        (vector) => VectorEntry(key: vector.id, vector: vector.embedding),
+      ),
+      limit: limit,
+      minScore: floor,
+    );
+    final scoreById = {for (final match in top) match.key: match.score};
+    final snippets = await repository.byIds([
+      for (final match in top) match.key,
+    ]);
 
     return [
       for (final snippet in snippets)
         SemanticMatch(snippet: snippet, score: scoreById[snippet.id]!),
     ];
   }
-}
 
-double cosineSimilarity(List<double> a, List<double> b) {
-  if (a.length != b.length) {
-    throw ArgumentError(
-        'Embeddings have different dimensions (${a.length} vs ${b.length}); '
-        'they come from different models and cannot be compared.');
+  Future<String> _providerFingerprint() async {
+    return embeddingProviderFingerprint(embeddingProvider);
   }
-  var dot = 0.0;
-  var normA = 0.0;
-  var normB = 0.0;
-  for (var i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  if (normA == 0 || normB == 0) return 0;
-  return dot / (sqrt(normA) * sqrt(normB));
 }

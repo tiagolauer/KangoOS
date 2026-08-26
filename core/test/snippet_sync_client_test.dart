@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -12,10 +13,12 @@ void main() {
   test('sync throws SyncException when the server rejects the fetch', () async {
     final client = MockClient((request) async => http.Response('nope', 500));
     final syncClient = SnippetSyncClient(
-      database: database,
-      baseUrl: Uri.parse('http://localhost:1234'),
-      apiToken: 'token',
-      httpClient: client,
+      repository: SqliteSnippetRepository(database),
+      transport: HttpSyncTransport(
+        baseUrl: Uri.parse('http://localhost:1234'),
+        apiToken: 'token',
+        client: client,
+      ),
     );
 
     expect(syncClient.sync(), throwsA(isA<SyncException>()));
@@ -28,10 +31,12 @@ void main() {
       return http.Response('[]', 200);
     });
     final syncClient = SnippetSyncClient(
-      database: database,
-      baseUrl: Uri.parse('http://localhost:1234'),
-      apiToken: 'my-secret-token',
-      httpClient: client,
+      repository: SqliteSnippetRepository(database),
+      transport: HttpSyncTransport(
+        baseUrl: Uri.parse('http://localhost:1234'),
+        apiToken: 'my-secret-token',
+        client: client,
+      ),
     );
 
     await syncClient.sync();

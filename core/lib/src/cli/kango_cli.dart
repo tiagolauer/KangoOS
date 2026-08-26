@@ -1,9 +1,8 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Value;
-
 import '../database/database.dart';
-import '../search/semantic_search.dart';
+import '../snippets/snippet_repository.dart';
+import '../snippets/snippet_service.dart';
 
 const _usage = '''
 Usage: kango <command> [options]
@@ -22,8 +21,7 @@ Env:
 
 Future<int> runKangoCli(
   List<String> arguments, {
-  required KangoosDatabase database,
-  SemanticSearch? semanticSearch,
+  required SnippetService snippets,
   StringSink? out,
   StringSink? err,
   String Function()? readStdin,
@@ -52,19 +50,17 @@ Future<int> runKangoCli(
 
   switch (arguments.first) {
     case 'create':
-      return _create(
-          database, semanticSearch, flags, readIn, output, errorOutput);
+      return _create(snippets, flags, readIn, output, errorOutput);
     case 'search':
-      return _search(
-          database, semanticSearch, positionals, flags, output, errorOutput);
+      return _search(snippets, positionals, flags, output, errorOutput);
     case 'list':
-      return _list(database, flags, output);
+      return _list(snippets, flags, output);
     case 'show':
-      return _show(database, positionals, output, errorOutput);
+      return _show(snippets, positionals, output, errorOutput);
     case 'edit':
-      return _edit(database, positionals, flags, output, errorOutput);
+      return _edit(snippets, positionals, flags, output, errorOutput);
     case 'delete':
-      return _delete(database, positionals, output, errorOutput);
+      return _delete(snippets, positionals, output, errorOutput);
     default:
       errorOutput.write('Unknown command: ${arguments.first}\n\n$_usage');
       return 64;
@@ -72,8 +68,7 @@ Future<int> runKangoCli(
 }
 
 Future<int> _create(
-  KangoosDatabase database,
-  SemanticSearch? semanticSearch,
+  SnippetService snippets,
   Map<String, String?> flags,
   String Function() readIn,
   StringSink out,
@@ -95,22 +90,22 @@ Future<int> _create(
   final tags = _parseTags(flags['tags']);
   final language = flags['language']?.trim();
 
-  final entry = SnippetsCompanion.insert(
+  final result = await snippets.create(NewSnippet(
     title: title,
     content: content,
-    language: Value(language == null || language.isEmpty ? null : language),
-    tags: Value(tags),
-  );
-  final id = semanticSearch == null
-      ? await database.createSnippet(entry)
-      : await semanticSearch.createAndIndex(entry);
-  out.writeln('Created snippet #$id: $title');
+    language: language == null || language.isEmpty ? null : language,
+    tags: tags,
+  ));
+  out.writeln('Created snippet #${result.snippet.id}: $title');
+  if (result.indexingError != null) {
+    err.writeln('Warning: snippet saved but indexing failed: '
+        '${result.indexingError}');
+  }
   return 0;
 }
 
 Future<int> _search(
-  KangoosDatabase database,
-  SemanticSearch? semanticSearch,
+  SnippetService snippets,
   List<String> positionals,
   Map<String, String?> flags,
   StringSink out,
@@ -124,22 +119,18 @@ Future<int> _search(
   final query = positionals.join(' ');
   final limit = int.tryParse(flags['limit'] ?? '') ?? 10;
 
-  List<Snippet> results;
-  if (flags.containsKey('semantic')) {
-    if (semanticSearch == null) {
-      err.writeln('Error: semantic search is not available.');
-      return 1;
-    }
-    try {
-      final matches = await semanticSearch.search(query, limit: limit);
-      results = matches.map((match) => match.snippet).toList();
-    } catch (e) {
-      err.writeln('Semantic search failed: $e');
-      return 1;
-    }
-  } else {
-    final matches = await database.searchByKeyword(query);
-    results = matches.take(limit).toList();
+  final List<Snippet> results;
+  try {
+    results = await snippets.search(
+      query,
+      mode: flags.containsKey('semantic')
+          ? SnippetSearchMode.semantic
+          : SnippetSearchMode.keyword,
+      limit: limit,
+    );
+  } catch (error) {
+    err.writeln('Search failed: $error');
+    return 1;
   }
 
   if (results.isEmpty) {
@@ -153,22 +144,22 @@ Future<int> _search(
 }
 
 Future<int> _list(
-    KangoosDatabase database, Map<String, String?> flags, StringSink out) async {
+    SnippetService snippets, Map<String, String?> flags, StringSink out) async {
   final limit = int.tryParse(flags['limit'] ?? '') ?? 20;
-  final snippets = (await database.watchAllSnippets().first).take(limit);
+  final results = await snippets.list(limit: limit);
 
-  if (snippets.isEmpty) {
+  if (results.isEmpty) {
     out.writeln('No snippets yet.');
     return 0;
   }
-  for (final snippet in snippets) {
+  for (final snippet in results) {
     out.writeln(_summaryLine(snippet));
   }
   return 0;
 }
 
 Future<int> _show(
-  KangoosDatabase database,
+  SnippetService snippets,
   List<String> positionals,
   StringSink out,
   StringSink err,
@@ -176,7 +167,7 @@ Future<int> _show(
   final id = _requireId(positionals, err);
   if (id == null) return 64;
 
-  final snippet = await database.getSnippetById(id);
+  final snippet = await snippets.get(id);
   if (snippet == null) {
     err.writeln('Error: snippet #$id not found.');
     return 1;
@@ -194,7 +185,7 @@ Future<int> _show(
 }
 
 Future<int> _edit(
-  KangoosDatabase database,
+  SnippetService snippets,
   List<String> positionals,
   Map<String, String?> flags,
   StringSink out,
@@ -203,28 +194,36 @@ Future<int> _edit(
   final id = _requireId(positionals, err);
   if (id == null) return 64;
 
-  final existing = await database.getSnippetById(id);
+  final existing = await snippets.get(id);
   if (existing == null) {
     err.writeln('Error: snippet #$id not found.');
     return 1;
   }
 
-  final updated = existing.copyWith(
-    title: flags['title'] ?? existing.title,
-    content: flags['content'] ?? existing.content,
-    language: flags.containsKey('language')
-        ? Value(flags['language']!.isEmpty ? null : flags['language'])
-        : Value(existing.language),
-    tags: flags.containsKey('tags') ? _parseTags(flags['tags']) : existing.tags,
-    updatedAt: DateTime.now(),
-  );
-  await database.updateSnippet(updated);
+  final result = await snippets.update(
+      id,
+      SnippetUpdate(
+        title: flags['title'] ?? existing.title,
+        content: flags['content'] ?? existing.content,
+        language: flags.containsKey('language')
+            ? (flags['language']!.isEmpty ? null : flags['language'])
+            : existing.language,
+        languageProvided: flags.containsKey('language'),
+        tags: flags.containsKey('tags')
+            ? _parseTags(flags['tags'])
+            : existing.tags,
+        updatedAt: DateTime.now(),
+      ));
+  if (result?.indexingError != null) {
+    err.writeln('Warning: snippet updated but indexing failed: '
+        '${result!.indexingError}');
+  }
   out.writeln('Updated snippet #$id.');
   return 0;
 }
 
 Future<int> _delete(
-  KangoosDatabase database,
+  SnippetService snippets,
   List<String> positionals,
   StringSink out,
   StringSink err,
@@ -232,7 +231,7 @@ Future<int> _delete(
   final id = _requireId(positionals, err);
   if (id == null) return 64;
 
-  final deleted = await database.deleteSnippet(id);
+  final deleted = await snippets.delete(id);
   if (deleted == 0) {
     err.writeln('Error: snippet #$id not found.');
     return 1;

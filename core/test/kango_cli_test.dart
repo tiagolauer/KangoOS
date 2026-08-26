@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:kangoos_core/src/cli/kango_cli.dart';
 import 'package:test/test.dart';
 
@@ -23,9 +24,15 @@ void main() {
   });
   tearDown(() => database.close());
 
+  SnippetService snippetService([SemanticSearch? semanticSearch]) =>
+      SnippetService(
+        repository: SqliteSnippetRepository(database),
+        semanticSearch: semanticSearch,
+      );
+
   Future<int> run(List<String> args, {String stdinContent = ''}) => runKangoCli(
         args,
-        database: database,
+        snippets: snippetService(),
         out: out,
         err: err,
         readStdin: () => stdinContent,
@@ -189,16 +196,16 @@ void main() {
 
   test('a bare boolean flag is still accepted', () async {
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: _FakeEmbeddingProvider(),
     );
-    await semanticSearch.createAndIndex(
-        SnippetsCompanion.insert(title: 'Reverse a string', content: 'body'));
+    final snippets = snippetService(semanticSearch);
+    await snippets
+        .create(const NewSnippet(title: 'Reverse a string', content: 'body'));
 
     final code = await runKangoCli(
       ['search', 'reverse', '--semantic'],
-      database: database,
-      semanticSearch: semanticSearch,
+      snippets: snippets,
       out: out,
       err: err,
     );
@@ -210,14 +217,13 @@ void main() {
   test('create indexes the snippet when semantic search is available',
       () async {
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: _FakeEmbeddingProvider(),
     );
 
     final code = await runKangoCli(
       ['create', '--title', 'Reverse a string'],
-      database: database,
-      semanticSearch: semanticSearch,
+      snippets: snippetService(semanticSearch),
       out: out,
       err: err,
       readStdin: () => 'input.split("").reversed.join()',

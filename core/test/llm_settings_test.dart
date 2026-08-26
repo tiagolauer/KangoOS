@@ -51,4 +51,22 @@ void main() {
             .buildProvider() as OllamaProvider;
     expect(provider.baseUrl, 'http://localhost:11434');
   });
+
+  test('loopback OpenAI-compatible settings build LM Studio providers', () {
+    const settings = LlmSettings(
+      provider: LlmProviderKind.openAi,
+      model: 'qwen/qwen3-8b',
+      baseUrl: 'http://127.0.0.1:1234/v1',
+      embeddingModel: 'text-embedding-nomic-embed-text-v1.5',
+    );
+
+    final chat = settings.buildProvider() as OpenAiProvider;
+    final embedding =
+        settings.buildEmbeddingProvider() as OpenAiEmbeddingProvider;
+
+    expect(settings.requiresApiKey, isFalse);
+    expect(settings.isLocalEndpoint, isTrue);
+    expect(chat.baseUrl, 'http://127.0.0.1:1234/v1');
+    expect(embedding.baseUrl, 'http://127.0.0.1:1234/v1');
+  });
 }

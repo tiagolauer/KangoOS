@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart' show Value;
-import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 void main() {

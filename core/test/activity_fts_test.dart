@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart' show Value;
-import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -39,10 +39,8 @@ void main() {
   });
 
   test('respects a date range', () async {
-    await log('a.exe', 'old work on drift',
-        at: DateTime.utc(2026, 1, 1));
-    await log('b.exe', 'new work on drift',
-        at: DateTime.utc(2026, 6, 1));
+    await log('a.exe', 'old work on drift', at: DateTime.utc(2026, 1, 1));
+    await log('b.exe', 'new work on drift', at: DateTime.utc(2026, 6, 1));
 
     final results = await database.searchActivities(
       'drift',

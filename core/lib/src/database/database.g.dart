@@ -46,6 +46,12 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
       embedding = GeneratedColumn<Uint8List>('embedding', aliasedName, true,
               type: DriftSqlType.blob, requiredDuringInsert: false)
           .withConverter<List<double>?>($SnippetsTable.$converterembeddingn);
+  static const VerificationMeta _embeddingProviderIdMeta =
+      const VerificationMeta('embeddingProviderId');
+  @override
+  late final GeneratedColumn<String> embeddingProviderId =
+      GeneratedColumn<String>('embedding_provider_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _syncIdMeta = const VerificationMeta('syncId');
   @override
   late final GeneratedColumn<String> syncId = GeneratedColumn<String>(
@@ -75,6 +81,7 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
         language,
         tags,
         embedding,
+        embeddingProviderId,
         syncId,
         createdAt,
         updatedAt
@@ -107,6 +114,12 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
     if (data.containsKey('language')) {
       context.handle(_languageMeta,
           language.isAcceptableOrUnknown(data['language']!, _languageMeta));
+    }
+    if (data.containsKey('embedding_provider_id')) {
+      context.handle(
+          _embeddingProviderIdMeta,
+          embeddingProviderId.isAcceptableOrUnknown(
+              data['embedding_provider_id']!, _embeddingProviderIdMeta));
     }
     if (data.containsKey('sync_id')) {
       context.handle(_syncIdMeta,
@@ -142,6 +155,8 @@ class $SnippetsTable extends Snippets with TableInfo<$SnippetsTable, Snippet> {
       embedding: $SnippetsTable.$converterembeddingn.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.blob, data['${effectivePrefix}embedding'])),
+      embeddingProviderId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}embedding_provider_id']),
       syncId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_id']),
       createdAt: attachedDatabase.typeMapping
@@ -171,6 +186,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
   final String? language;
   final List<String> tags;
   final List<double>? embedding;
+  final String? embeddingProviderId;
   final String? syncId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -181,6 +197,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       this.language,
       required this.tags,
       this.embedding,
+      this.embeddingProviderId,
       this.syncId,
       required this.createdAt,
       required this.updatedAt});
@@ -199,6 +216,9 @@ class Snippet extends DataClass implements Insertable<Snippet> {
     if (!nullToAbsent || embedding != null) {
       map['embedding'] = Variable<Uint8List>(
           $SnippetsTable.$converterembeddingn.toSql(embedding));
+    }
+    if (!nullToAbsent || embeddingProviderId != null) {
+      map['embedding_provider_id'] = Variable<String>(embeddingProviderId);
     }
     if (!nullToAbsent || syncId != null) {
       map['sync_id'] = Variable<String>(syncId);
@@ -220,6 +240,9 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       embedding: embedding == null && nullToAbsent
           ? const Value.absent()
           : Value(embedding),
+      embeddingProviderId: embeddingProviderId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(embeddingProviderId),
       syncId:
           syncId == null && nullToAbsent ? const Value.absent() : Value(syncId),
       createdAt: Value(createdAt),
@@ -237,6 +260,8 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       language: serializer.fromJson<String?>(json['language']),
       tags: serializer.fromJson<List<String>>(json['tags']),
       embedding: serializer.fromJson<List<double>?>(json['embedding']),
+      embeddingProviderId:
+          serializer.fromJson<String?>(json['embeddingProviderId']),
       syncId: serializer.fromJson<String?>(json['syncId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -252,6 +277,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       'language': serializer.toJson<String?>(language),
       'tags': serializer.toJson<List<String>>(tags),
       'embedding': serializer.toJson<List<double>?>(embedding),
+      'embeddingProviderId': serializer.toJson<String?>(embeddingProviderId),
       'syncId': serializer.toJson<String?>(syncId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -265,6 +291,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
           Value<String?> language = const Value.absent(),
           List<String>? tags,
           Value<List<double>?> embedding = const Value.absent(),
+          Value<String?> embeddingProviderId = const Value.absent(),
           Value<String?> syncId = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
@@ -275,6 +302,9 @@ class Snippet extends DataClass implements Insertable<Snippet> {
         language: language.present ? language.value : this.language,
         tags: tags ?? this.tags,
         embedding: embedding.present ? embedding.value : this.embedding,
+        embeddingProviderId: embeddingProviderId.present
+            ? embeddingProviderId.value
+            : this.embeddingProviderId,
         syncId: syncId.present ? syncId.value : this.syncId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -287,6 +317,9 @@ class Snippet extends DataClass implements Insertable<Snippet> {
       language: data.language.present ? data.language.value : this.language,
       tags: data.tags.present ? data.tags.value : this.tags,
       embedding: data.embedding.present ? data.embedding.value : this.embedding,
+      embeddingProviderId: data.embeddingProviderId.present
+          ? data.embeddingProviderId.value
+          : this.embeddingProviderId,
       syncId: data.syncId.present ? data.syncId.value : this.syncId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -302,6 +335,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
           ..write('language: $language, ')
           ..write('tags: $tags, ')
           ..write('embedding: $embedding, ')
+          ..write('embeddingProviderId: $embeddingProviderId, ')
           ..write('syncId: $syncId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -311,7 +345,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
 
   @override
   int get hashCode => Object.hash(id, title, content, language, tags, embedding,
-      syncId, createdAt, updatedAt);
+      embeddingProviderId, syncId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -322,6 +356,7 @@ class Snippet extends DataClass implements Insertable<Snippet> {
           other.language == this.language &&
           other.tags == this.tags &&
           other.embedding == this.embedding &&
+          other.embeddingProviderId == this.embeddingProviderId &&
           other.syncId == this.syncId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -334,6 +369,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
   final Value<String?> language;
   final Value<List<String>> tags;
   final Value<List<double>?> embedding;
+  final Value<String?> embeddingProviderId;
   final Value<String?> syncId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -344,6 +380,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
     this.language = const Value.absent(),
     this.tags = const Value.absent(),
     this.embedding = const Value.absent(),
+    this.embeddingProviderId = const Value.absent(),
     this.syncId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -355,6 +392,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
     this.language = const Value.absent(),
     this.tags = const Value.absent(),
     this.embedding = const Value.absent(),
+    this.embeddingProviderId = const Value.absent(),
     this.syncId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -367,6 +405,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
     Expression<String>? language,
     Expression<String>? tags,
     Expression<Uint8List>? embedding,
+    Expression<String>? embeddingProviderId,
     Expression<String>? syncId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -378,6 +417,8 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       if (language != null) 'language': language,
       if (tags != null) 'tags': tags,
       if (embedding != null) 'embedding': embedding,
+      if (embeddingProviderId != null)
+        'embedding_provider_id': embeddingProviderId,
       if (syncId != null) 'sync_id': syncId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -391,6 +432,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       Value<String?>? language,
       Value<List<String>>? tags,
       Value<List<double>?>? embedding,
+      Value<String?>? embeddingProviderId,
       Value<String?>? syncId,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt}) {
@@ -401,6 +443,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       language: language ?? this.language,
       tags: tags ?? this.tags,
       embedding: embedding ?? this.embedding,
+      embeddingProviderId: embeddingProviderId ?? this.embeddingProviderId,
       syncId: syncId ?? this.syncId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -430,6 +473,10 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
       map['embedding'] = Variable<Uint8List>(
           $SnippetsTable.$converterembeddingn.toSql(embedding.value));
     }
+    if (embeddingProviderId.present) {
+      map['embedding_provider_id'] =
+          Variable<String>(embeddingProviderId.value);
+    }
     if (syncId.present) {
       map['sync_id'] = Variable<String>(syncId.value);
     }
@@ -451,6 +498,7 @@ class SnippetsCompanion extends UpdateCompanion<Snippet> {
           ..write('language: $language, ')
           ..write('tags: $tags, ')
           ..write('embedding: $embedding, ')
+          ..write('embeddingProviderId: $embeddingProviderId, ')
           ..write('syncId: $syncId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2019,6 +2067,697 @@ class DeletedSnippetsCompanion extends UpdateCompanion<DeletedSnippet> {
   }
 }
 
+class $MemoryEpisodesTable extends MemoryEpisodes
+    with TableInfo<$MemoryEpisodesTable, MemoryEpisode> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MemoryEpisodesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _sourceKeyMeta =
+      const VerificationMeta('sourceKey');
+  @override
+  late final GeneratedColumn<String> sourceKey = GeneratedColumn<String>(
+      'source_key', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _startedAtMeta =
+      const VerificationMeta('startedAt');
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+      'started_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _endedAtMeta =
+      const VerificationMeta('endedAt');
+  @override
+  late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
+      'ended_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _summaryMeta =
+      const VerificationMeta('summary');
+  @override
+  late final GeneratedColumn<String> summary = GeneratedColumn<String>(
+      'summary', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String>
+      applications = GeneratedColumn<String>('applications', aliasedName, false,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: const Constant('[]'))
+          .withConverter<List<String>>(
+              $MemoryEpisodesTable.$converterapplications);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> urls =
+      GeneratedColumn<String>('urls', aliasedName, false,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: const Constant('[]'))
+          .withConverter<List<String>>($MemoryEpisodesTable.$converterurls);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> topics =
+      GeneratedColumn<String>('topics', aliasedName, false,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: const Constant('[]'))
+          .withConverter<List<String>>($MemoryEpisodesTable.$convertertopics);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> entities =
+      GeneratedColumn<String>('entities', aliasedName, false,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: const Constant('[]'))
+          .withConverter<List<String>>($MemoryEpisodesTable.$converterentities);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<int>, String>
+      sourceActivityIds = GeneratedColumn<String>(
+              'source_activity_ids', aliasedName, false,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: const Constant('[]'))
+          .withConverter<List<int>>(
+              $MemoryEpisodesTable.$convertersourceActivityIds);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<double>?, Uint8List>
+      embedding = GeneratedColumn<Uint8List>('embedding', aliasedName, true,
+              type: DriftSqlType.blob, requiredDuringInsert: false)
+          .withConverter<List<double>?>(
+              $MemoryEpisodesTable.$converterembeddingn);
+  static const VerificationMeta _embeddingProviderIdMeta =
+      const VerificationMeta('embeddingProviderId');
+  @override
+  late final GeneratedColumn<String> embeddingProviderId =
+      GeneratedColumn<String>('embedding_provider_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        sourceKey,
+        startedAt,
+        endedAt,
+        title,
+        summary,
+        applications,
+        urls,
+        topics,
+        entities,
+        sourceActivityIds,
+        embedding,
+        embeddingProviderId,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'memory_episodes';
+  @override
+  VerificationContext validateIntegrity(Insertable<MemoryEpisode> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('source_key')) {
+      context.handle(_sourceKeyMeta,
+          sourceKey.isAcceptableOrUnknown(data['source_key']!, _sourceKeyMeta));
+    } else if (isInserting) {
+      context.missing(_sourceKeyMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(_startedAtMeta,
+          startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta));
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('ended_at')) {
+      context.handle(_endedAtMeta,
+          endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta));
+    } else if (isInserting) {
+      context.missing(_endedAtMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('summary')) {
+      context.handle(_summaryMeta,
+          summary.isAcceptableOrUnknown(data['summary']!, _summaryMeta));
+    } else if (isInserting) {
+      context.missing(_summaryMeta);
+    }
+    if (data.containsKey('embedding_provider_id')) {
+      context.handle(
+          _embeddingProviderIdMeta,
+          embeddingProviderId.isAcceptableOrUnknown(
+              data['embedding_provider_id']!, _embeddingProviderIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MemoryEpisode map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MemoryEpisode(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      sourceKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_key'])!,
+      startedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}started_at'])!,
+      endedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}ended_at'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      summary: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}summary'])!,
+      applications: $MemoryEpisodesTable.$converterapplications.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.string, data['${effectivePrefix}applications'])!),
+      urls: $MemoryEpisodesTable.$converterurls.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}urls'])!),
+      topics: $MemoryEpisodesTable.$convertertopics.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}topics'])!),
+      entities: $MemoryEpisodesTable.$converterentities.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}entities'])!),
+      sourceActivityIds: $MemoryEpisodesTable.$convertersourceActivityIds
+          .fromSql(attachedDatabase.typeMapping.read(DriftSqlType.string,
+              data['${effectivePrefix}source_activity_ids'])!),
+      embedding: $MemoryEpisodesTable.$converterembeddingn.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.blob, data['${effectivePrefix}embedding'])),
+      embeddingProviderId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}embedding_provider_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $MemoryEpisodesTable createAlias(String alias) {
+    return $MemoryEpisodesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<List<String>, String> $converterapplications =
+      const StringListConverter();
+  static TypeConverter<List<String>, String> $converterurls =
+      const StringListConverter();
+  static TypeConverter<List<String>, String> $convertertopics =
+      const StringListConverter();
+  static TypeConverter<List<String>, String> $converterentities =
+      const StringListConverter();
+  static TypeConverter<List<int>, String> $convertersourceActivityIds =
+      const IntListConverter();
+  static TypeConverter<List<double>, Uint8List> $converterembedding =
+      const EmbeddingConverter();
+  static TypeConverter<List<double>?, Uint8List?> $converterembeddingn =
+      NullAwareTypeConverter.wrap($converterembedding);
+}
+
+class MemoryEpisode extends DataClass implements Insertable<MemoryEpisode> {
+  final int id;
+  final String sourceKey;
+  final DateTime startedAt;
+  final DateTime endedAt;
+  final String title;
+  final String summary;
+  final List<String> applications;
+  final List<String> urls;
+  final List<String> topics;
+  final List<String> entities;
+  final List<int> sourceActivityIds;
+  final List<double>? embedding;
+  final String? embeddingProviderId;
+  final DateTime createdAt;
+  const MemoryEpisode(
+      {required this.id,
+      required this.sourceKey,
+      required this.startedAt,
+      required this.endedAt,
+      required this.title,
+      required this.summary,
+      required this.applications,
+      required this.urls,
+      required this.topics,
+      required this.entities,
+      required this.sourceActivityIds,
+      this.embedding,
+      this.embeddingProviderId,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['source_key'] = Variable<String>(sourceKey);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    map['ended_at'] = Variable<DateTime>(endedAt);
+    map['title'] = Variable<String>(title);
+    map['summary'] = Variable<String>(summary);
+    {
+      map['applications'] = Variable<String>(
+          $MemoryEpisodesTable.$converterapplications.toSql(applications));
+    }
+    {
+      map['urls'] =
+          Variable<String>($MemoryEpisodesTable.$converterurls.toSql(urls));
+    }
+    {
+      map['topics'] =
+          Variable<String>($MemoryEpisodesTable.$convertertopics.toSql(topics));
+    }
+    {
+      map['entities'] = Variable<String>(
+          $MemoryEpisodesTable.$converterentities.toSql(entities));
+    }
+    {
+      map['source_activity_ids'] = Variable<String>($MemoryEpisodesTable
+          .$convertersourceActivityIds
+          .toSql(sourceActivityIds));
+    }
+    if (!nullToAbsent || embedding != null) {
+      map['embedding'] = Variable<Uint8List>(
+          $MemoryEpisodesTable.$converterembeddingn.toSql(embedding));
+    }
+    if (!nullToAbsent || embeddingProviderId != null) {
+      map['embedding_provider_id'] = Variable<String>(embeddingProviderId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  MemoryEpisodesCompanion toCompanion(bool nullToAbsent) {
+    return MemoryEpisodesCompanion(
+      id: Value(id),
+      sourceKey: Value(sourceKey),
+      startedAt: Value(startedAt),
+      endedAt: Value(endedAt),
+      title: Value(title),
+      summary: Value(summary),
+      applications: Value(applications),
+      urls: Value(urls),
+      topics: Value(topics),
+      entities: Value(entities),
+      sourceActivityIds: Value(sourceActivityIds),
+      embedding: embedding == null && nullToAbsent
+          ? const Value.absent()
+          : Value(embedding),
+      embeddingProviderId: embeddingProviderId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(embeddingProviderId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory MemoryEpisode.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MemoryEpisode(
+      id: serializer.fromJson<int>(json['id']),
+      sourceKey: serializer.fromJson<String>(json['sourceKey']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      endedAt: serializer.fromJson<DateTime>(json['endedAt']),
+      title: serializer.fromJson<String>(json['title']),
+      summary: serializer.fromJson<String>(json['summary']),
+      applications: serializer.fromJson<List<String>>(json['applications']),
+      urls: serializer.fromJson<List<String>>(json['urls']),
+      topics: serializer.fromJson<List<String>>(json['topics']),
+      entities: serializer.fromJson<List<String>>(json['entities']),
+      sourceActivityIds:
+          serializer.fromJson<List<int>>(json['sourceActivityIds']),
+      embedding: serializer.fromJson<List<double>?>(json['embedding']),
+      embeddingProviderId:
+          serializer.fromJson<String?>(json['embeddingProviderId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'sourceKey': serializer.toJson<String>(sourceKey),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'endedAt': serializer.toJson<DateTime>(endedAt),
+      'title': serializer.toJson<String>(title),
+      'summary': serializer.toJson<String>(summary),
+      'applications': serializer.toJson<List<String>>(applications),
+      'urls': serializer.toJson<List<String>>(urls),
+      'topics': serializer.toJson<List<String>>(topics),
+      'entities': serializer.toJson<List<String>>(entities),
+      'sourceActivityIds': serializer.toJson<List<int>>(sourceActivityIds),
+      'embedding': serializer.toJson<List<double>?>(embedding),
+      'embeddingProviderId': serializer.toJson<String?>(embeddingProviderId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  MemoryEpisode copyWith(
+          {int? id,
+          String? sourceKey,
+          DateTime? startedAt,
+          DateTime? endedAt,
+          String? title,
+          String? summary,
+          List<String>? applications,
+          List<String>? urls,
+          List<String>? topics,
+          List<String>? entities,
+          List<int>? sourceActivityIds,
+          Value<List<double>?> embedding = const Value.absent(),
+          Value<String?> embeddingProviderId = const Value.absent(),
+          DateTime? createdAt}) =>
+      MemoryEpisode(
+        id: id ?? this.id,
+        sourceKey: sourceKey ?? this.sourceKey,
+        startedAt: startedAt ?? this.startedAt,
+        endedAt: endedAt ?? this.endedAt,
+        title: title ?? this.title,
+        summary: summary ?? this.summary,
+        applications: applications ?? this.applications,
+        urls: urls ?? this.urls,
+        topics: topics ?? this.topics,
+        entities: entities ?? this.entities,
+        sourceActivityIds: sourceActivityIds ?? this.sourceActivityIds,
+        embedding: embedding.present ? embedding.value : this.embedding,
+        embeddingProviderId: embeddingProviderId.present
+            ? embeddingProviderId.value
+            : this.embeddingProviderId,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  MemoryEpisode copyWithCompanion(MemoryEpisodesCompanion data) {
+    return MemoryEpisode(
+      id: data.id.present ? data.id.value : this.id,
+      sourceKey: data.sourceKey.present ? data.sourceKey.value : this.sourceKey,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
+      title: data.title.present ? data.title.value : this.title,
+      summary: data.summary.present ? data.summary.value : this.summary,
+      applications: data.applications.present
+          ? data.applications.value
+          : this.applications,
+      urls: data.urls.present ? data.urls.value : this.urls,
+      topics: data.topics.present ? data.topics.value : this.topics,
+      entities: data.entities.present ? data.entities.value : this.entities,
+      sourceActivityIds: data.sourceActivityIds.present
+          ? data.sourceActivityIds.value
+          : this.sourceActivityIds,
+      embedding: data.embedding.present ? data.embedding.value : this.embedding,
+      embeddingProviderId: data.embeddingProviderId.present
+          ? data.embeddingProviderId.value
+          : this.embeddingProviderId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MemoryEpisode(')
+          ..write('id: $id, ')
+          ..write('sourceKey: $sourceKey, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('title: $title, ')
+          ..write('summary: $summary, ')
+          ..write('applications: $applications, ')
+          ..write('urls: $urls, ')
+          ..write('topics: $topics, ')
+          ..write('entities: $entities, ')
+          ..write('sourceActivityIds: $sourceActivityIds, ')
+          ..write('embedding: $embedding, ')
+          ..write('embeddingProviderId: $embeddingProviderId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      sourceKey,
+      startedAt,
+      endedAt,
+      title,
+      summary,
+      applications,
+      urls,
+      topics,
+      entities,
+      sourceActivityIds,
+      embedding,
+      embeddingProviderId,
+      createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MemoryEpisode &&
+          other.id == this.id &&
+          other.sourceKey == this.sourceKey &&
+          other.startedAt == this.startedAt &&
+          other.endedAt == this.endedAt &&
+          other.title == this.title &&
+          other.summary == this.summary &&
+          other.applications == this.applications &&
+          other.urls == this.urls &&
+          other.topics == this.topics &&
+          other.entities == this.entities &&
+          other.sourceActivityIds == this.sourceActivityIds &&
+          other.embedding == this.embedding &&
+          other.embeddingProviderId == this.embeddingProviderId &&
+          other.createdAt == this.createdAt);
+}
+
+class MemoryEpisodesCompanion extends UpdateCompanion<MemoryEpisode> {
+  final Value<int> id;
+  final Value<String> sourceKey;
+  final Value<DateTime> startedAt;
+  final Value<DateTime> endedAt;
+  final Value<String> title;
+  final Value<String> summary;
+  final Value<List<String>> applications;
+  final Value<List<String>> urls;
+  final Value<List<String>> topics;
+  final Value<List<String>> entities;
+  final Value<List<int>> sourceActivityIds;
+  final Value<List<double>?> embedding;
+  final Value<String?> embeddingProviderId;
+  final Value<DateTime> createdAt;
+  const MemoryEpisodesCompanion({
+    this.id = const Value.absent(),
+    this.sourceKey = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+    this.title = const Value.absent(),
+    this.summary = const Value.absent(),
+    this.applications = const Value.absent(),
+    this.urls = const Value.absent(),
+    this.topics = const Value.absent(),
+    this.entities = const Value.absent(),
+    this.sourceActivityIds = const Value.absent(),
+    this.embedding = const Value.absent(),
+    this.embeddingProviderId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  MemoryEpisodesCompanion.insert({
+    this.id = const Value.absent(),
+    required String sourceKey,
+    required DateTime startedAt,
+    required DateTime endedAt,
+    required String title,
+    required String summary,
+    this.applications = const Value.absent(),
+    this.urls = const Value.absent(),
+    this.topics = const Value.absent(),
+    this.entities = const Value.absent(),
+    this.sourceActivityIds = const Value.absent(),
+    this.embedding = const Value.absent(),
+    this.embeddingProviderId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  })  : sourceKey = Value(sourceKey),
+        startedAt = Value(startedAt),
+        endedAt = Value(endedAt),
+        title = Value(title),
+        summary = Value(summary);
+  static Insertable<MemoryEpisode> custom({
+    Expression<int>? id,
+    Expression<String>? sourceKey,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? endedAt,
+    Expression<String>? title,
+    Expression<String>? summary,
+    Expression<String>? applications,
+    Expression<String>? urls,
+    Expression<String>? topics,
+    Expression<String>? entities,
+    Expression<String>? sourceActivityIds,
+    Expression<Uint8List>? embedding,
+    Expression<String>? embeddingProviderId,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sourceKey != null) 'source_key': sourceKey,
+      if (startedAt != null) 'started_at': startedAt,
+      if (endedAt != null) 'ended_at': endedAt,
+      if (title != null) 'title': title,
+      if (summary != null) 'summary': summary,
+      if (applications != null) 'applications': applications,
+      if (urls != null) 'urls': urls,
+      if (topics != null) 'topics': topics,
+      if (entities != null) 'entities': entities,
+      if (sourceActivityIds != null) 'source_activity_ids': sourceActivityIds,
+      if (embedding != null) 'embedding': embedding,
+      if (embeddingProviderId != null)
+        'embedding_provider_id': embeddingProviderId,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  MemoryEpisodesCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? sourceKey,
+      Value<DateTime>? startedAt,
+      Value<DateTime>? endedAt,
+      Value<String>? title,
+      Value<String>? summary,
+      Value<List<String>>? applications,
+      Value<List<String>>? urls,
+      Value<List<String>>? topics,
+      Value<List<String>>? entities,
+      Value<List<int>>? sourceActivityIds,
+      Value<List<double>?>? embedding,
+      Value<String?>? embeddingProviderId,
+      Value<DateTime>? createdAt}) {
+    return MemoryEpisodesCompanion(
+      id: id ?? this.id,
+      sourceKey: sourceKey ?? this.sourceKey,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      title: title ?? this.title,
+      summary: summary ?? this.summary,
+      applications: applications ?? this.applications,
+      urls: urls ?? this.urls,
+      topics: topics ?? this.topics,
+      entities: entities ?? this.entities,
+      sourceActivityIds: sourceActivityIds ?? this.sourceActivityIds,
+      embedding: embedding ?? this.embedding,
+      embeddingProviderId: embeddingProviderId ?? this.embeddingProviderId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (sourceKey.present) {
+      map['source_key'] = Variable<String>(sourceKey.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (endedAt.present) {
+      map['ended_at'] = Variable<DateTime>(endedAt.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (summary.present) {
+      map['summary'] = Variable<String>(summary.value);
+    }
+    if (applications.present) {
+      map['applications'] = Variable<String>($MemoryEpisodesTable
+          .$converterapplications
+          .toSql(applications.value));
+    }
+    if (urls.present) {
+      map['urls'] = Variable<String>(
+          $MemoryEpisodesTable.$converterurls.toSql(urls.value));
+    }
+    if (topics.present) {
+      map['topics'] = Variable<String>(
+          $MemoryEpisodesTable.$convertertopics.toSql(topics.value));
+    }
+    if (entities.present) {
+      map['entities'] = Variable<String>(
+          $MemoryEpisodesTable.$converterentities.toSql(entities.value));
+    }
+    if (sourceActivityIds.present) {
+      map['source_activity_ids'] = Variable<String>($MemoryEpisodesTable
+          .$convertersourceActivityIds
+          .toSql(sourceActivityIds.value));
+    }
+    if (embedding.present) {
+      map['embedding'] = Variable<Uint8List>(
+          $MemoryEpisodesTable.$converterembeddingn.toSql(embedding.value));
+    }
+    if (embeddingProviderId.present) {
+      map['embedding_provider_id'] =
+          Variable<String>(embeddingProviderId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MemoryEpisodesCompanion(')
+          ..write('id: $id, ')
+          ..write('sourceKey: $sourceKey, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('title: $title, ')
+          ..write('summary: $summary, ')
+          ..write('applications: $applications, ')
+          ..write('urls: $urls, ')
+          ..write('topics: $topics, ')
+          ..write('entities: $entities, ')
+          ..write('sourceActivityIds: $sourceActivityIds, ')
+          ..write('embedding: $embedding, ')
+          ..write('embeddingProviderId: $embeddingProviderId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KangoosDatabase extends GeneratedDatabase {
   _$KangoosDatabase(QueryExecutor e) : super(e);
   $KangoosDatabaseManager get managers => $KangoosDatabaseManager(this);
@@ -2031,6 +2770,7 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
       $ConversationMessagesTable(this);
   late final $DeletedSnippetsTable deletedSnippets =
       $DeletedSnippetsTable(this);
+  late final $MemoryEpisodesTable memoryEpisodes = $MemoryEpisodesTable(this);
   late final Index snippetsUpdatedAtIdx = Index('snippets_updated_at_idx',
       'CREATE INDEX snippets_updated_at_idx ON snippets (updated_at)');
   late final Index activitiesCapturedAtIdx = Index('activities_captured_at_idx',
@@ -2044,6 +2784,12 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
   late final Index deletedSnippetsDeletedAtIdx = Index(
       'deleted_snippets_deleted_at_idx',
       'CREATE INDEX deleted_snippets_deleted_at_idx ON deleted_snippets (deleted_at)');
+  late final Index memoryEpisodesStartedAtIdx = Index(
+      'memory_episodes_started_at_idx',
+      'CREATE INDEX memory_episodes_started_at_idx ON memory_episodes (started_at)');
+  late final Index memoryEpisodesEndedAtIdx = Index(
+      'memory_episodes_ended_at_idx',
+      'CREATE INDEX memory_episodes_ended_at_idx ON memory_episodes (ended_at)');
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2055,11 +2801,14 @@ abstract class _$KangoosDatabase extends GeneratedDatabase {
         conversations,
         conversationMessages,
         deletedSnippets,
+        memoryEpisodes,
         snippetsUpdatedAtIdx,
         activitiesCapturedAtIdx,
         activitySummariesPeriodEndIdx,
         conversationMessagesConversationIdIdx,
-        deletedSnippetsDeletedAtIdx
+        deletedSnippetsDeletedAtIdx,
+        memoryEpisodesStartedAtIdx,
+        memoryEpisodesEndedAtIdx
       ];
 }
 
@@ -2070,6 +2819,7 @@ typedef $$SnippetsTableCreateCompanionBuilder = SnippetsCompanion Function({
   Value<String?> language,
   Value<List<String>> tags,
   Value<List<double>?> embedding,
+  Value<String?> embeddingProviderId,
   Value<String?> syncId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -2081,6 +2831,7 @@ typedef $$SnippetsTableUpdateCompanionBuilder = SnippetsCompanion Function({
   Value<String?> language,
   Value<List<String>> tags,
   Value<List<double>?> embedding,
+  Value<String?> embeddingProviderId,
   Value<String?> syncId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -2116,6 +2867,10 @@ class $$SnippetsTableFilterComposer
       get embedding => $composableBuilder(
           column: $table.embedding,
           builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<String> get embeddingProviderId => $composableBuilder(
+      column: $table.embeddingProviderId,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get syncId => $composableBuilder(
       column: $table.syncId, builder: (column) => ColumnFilters(column));
@@ -2154,6 +2909,10 @@ class $$SnippetsTableOrderingComposer
   ColumnOrderings<Uint8List> get embedding => $composableBuilder(
       column: $table.embedding, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get embeddingProviderId => $composableBuilder(
+      column: $table.embeddingProviderId,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get syncId => $composableBuilder(
       column: $table.syncId, builder: (column) => ColumnOrderings(column));
 
@@ -2190,6 +2949,9 @@ class $$SnippetsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<List<double>?, Uint8List> get embedding =>
       $composableBuilder(column: $table.embedding, builder: (column) => column);
+
+  GeneratedColumn<String> get embeddingProviderId => $composableBuilder(
+      column: $table.embeddingProviderId, builder: (column) => column);
 
   GeneratedColumn<String> get syncId =>
       $composableBuilder(column: $table.syncId, builder: (column) => column);
@@ -2230,6 +2992,7 @@ class $$SnippetsTableTableManager extends RootTableManager<
             Value<String?> language = const Value.absent(),
             Value<List<String>> tags = const Value.absent(),
             Value<List<double>?> embedding = const Value.absent(),
+            Value<String?> embeddingProviderId = const Value.absent(),
             Value<String?> syncId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -2241,6 +3004,7 @@ class $$SnippetsTableTableManager extends RootTableManager<
             language: language,
             tags: tags,
             embedding: embedding,
+            embeddingProviderId: embeddingProviderId,
             syncId: syncId,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -2252,6 +3016,7 @@ class $$SnippetsTableTableManager extends RootTableManager<
             Value<String?> language = const Value.absent(),
             Value<List<String>> tags = const Value.absent(),
             Value<List<double>?> embedding = const Value.absent(),
+            Value<String?> embeddingProviderId = const Value.absent(),
             Value<String?> syncId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -2263,6 +3028,7 @@ class $$SnippetsTableTableManager extends RootTableManager<
             language: language,
             tags: tags,
             embedding: embedding,
+            embeddingProviderId: embeddingProviderId,
             syncId: syncId,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -3144,6 +3910,327 @@ typedef $$DeletedSnippetsTableProcessedTableManager = ProcessedTableManager<
     ),
     DeletedSnippet,
     PrefetchHooks Function()>;
+typedef $$MemoryEpisodesTableCreateCompanionBuilder = MemoryEpisodesCompanion
+    Function({
+  Value<int> id,
+  required String sourceKey,
+  required DateTime startedAt,
+  required DateTime endedAt,
+  required String title,
+  required String summary,
+  Value<List<String>> applications,
+  Value<List<String>> urls,
+  Value<List<String>> topics,
+  Value<List<String>> entities,
+  Value<List<int>> sourceActivityIds,
+  Value<List<double>?> embedding,
+  Value<String?> embeddingProviderId,
+  Value<DateTime> createdAt,
+});
+typedef $$MemoryEpisodesTableUpdateCompanionBuilder = MemoryEpisodesCompanion
+    Function({
+  Value<int> id,
+  Value<String> sourceKey,
+  Value<DateTime> startedAt,
+  Value<DateTime> endedAt,
+  Value<String> title,
+  Value<String> summary,
+  Value<List<String>> applications,
+  Value<List<String>> urls,
+  Value<List<String>> topics,
+  Value<List<String>> entities,
+  Value<List<int>> sourceActivityIds,
+  Value<List<double>?> embedding,
+  Value<String?> embeddingProviderId,
+  Value<DateTime> createdAt,
+});
+
+class $$MemoryEpisodesTableFilterComposer
+    extends Composer<_$KangoosDatabase, $MemoryEpisodesTable> {
+  $$MemoryEpisodesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceKey => $composableBuilder(
+      column: $table.sourceKey, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+      column: $table.startedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get endedAt => $composableBuilder(
+      column: $table.endedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get summary => $composableBuilder(
+      column: $table.summary, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get applications => $composableBuilder(
+          column: $table.applications,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String> get urls =>
+      $composableBuilder(
+          column: $table.urls,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get topics => $composableBuilder(
+          column: $table.topics,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+      get entities => $composableBuilder(
+          column: $table.entities,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<List<int>, List<int>, String>
+      get sourceActivityIds => $composableBuilder(
+          column: $table.sourceActivityIds,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<List<double>?, List<double>, Uint8List>
+      get embedding => $composableBuilder(
+          column: $table.embedding,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<String> get embeddingProviderId => $composableBuilder(
+      column: $table.embeddingProviderId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$MemoryEpisodesTableOrderingComposer
+    extends Composer<_$KangoosDatabase, $MemoryEpisodesTable> {
+  $$MemoryEpisodesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceKey => $composableBuilder(
+      column: $table.sourceKey, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+      column: $table.startedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get endedAt => $composableBuilder(
+      column: $table.endedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get summary => $composableBuilder(
+      column: $table.summary, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get applications => $composableBuilder(
+      column: $table.applications,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get urls => $composableBuilder(
+      column: $table.urls, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get topics => $composableBuilder(
+      column: $table.topics, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get entities => $composableBuilder(
+      column: $table.entities, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceActivityIds => $composableBuilder(
+      column: $table.sourceActivityIds,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<Uint8List> get embedding => $composableBuilder(
+      column: $table.embedding, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get embeddingProviderId => $composableBuilder(
+      column: $table.embeddingProviderId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$MemoryEpisodesTableAnnotationComposer
+    extends Composer<_$KangoosDatabase, $MemoryEpisodesTable> {
+  $$MemoryEpisodesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceKey =>
+      $composableBuilder(column: $table.sourceKey, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endedAt =>
+      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get summary =>
+      $composableBuilder(column: $table.summary, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get applications =>
+      $composableBuilder(
+          column: $table.applications, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get urls =>
+      $composableBuilder(column: $table.urls, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get topics =>
+      $composableBuilder(column: $table.topics, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get entities =>
+      $composableBuilder(column: $table.entities, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<int>, String> get sourceActivityIds =>
+      $composableBuilder(
+          column: $table.sourceActivityIds, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<double>?, Uint8List> get embedding =>
+      $composableBuilder(column: $table.embedding, builder: (column) => column);
+
+  GeneratedColumn<String> get embeddingProviderId => $composableBuilder(
+      column: $table.embeddingProviderId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$MemoryEpisodesTableTableManager extends RootTableManager<
+    _$KangoosDatabase,
+    $MemoryEpisodesTable,
+    MemoryEpisode,
+    $$MemoryEpisodesTableFilterComposer,
+    $$MemoryEpisodesTableOrderingComposer,
+    $$MemoryEpisodesTableAnnotationComposer,
+    $$MemoryEpisodesTableCreateCompanionBuilder,
+    $$MemoryEpisodesTableUpdateCompanionBuilder,
+    (
+      MemoryEpisode,
+      BaseReferences<_$KangoosDatabase, $MemoryEpisodesTable, MemoryEpisode>
+    ),
+    MemoryEpisode,
+    PrefetchHooks Function()> {
+  $$MemoryEpisodesTableTableManager(
+      _$KangoosDatabase db, $MemoryEpisodesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MemoryEpisodesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MemoryEpisodesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MemoryEpisodesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> sourceKey = const Value.absent(),
+            Value<DateTime> startedAt = const Value.absent(),
+            Value<DateTime> endedAt = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> summary = const Value.absent(),
+            Value<List<String>> applications = const Value.absent(),
+            Value<List<String>> urls = const Value.absent(),
+            Value<List<String>> topics = const Value.absent(),
+            Value<List<String>> entities = const Value.absent(),
+            Value<List<int>> sourceActivityIds = const Value.absent(),
+            Value<List<double>?> embedding = const Value.absent(),
+            Value<String?> embeddingProviderId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              MemoryEpisodesCompanion(
+            id: id,
+            sourceKey: sourceKey,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            title: title,
+            summary: summary,
+            applications: applications,
+            urls: urls,
+            topics: topics,
+            entities: entities,
+            sourceActivityIds: sourceActivityIds,
+            embedding: embedding,
+            embeddingProviderId: embeddingProviderId,
+            createdAt: createdAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String sourceKey,
+            required DateTime startedAt,
+            required DateTime endedAt,
+            required String title,
+            required String summary,
+            Value<List<String>> applications = const Value.absent(),
+            Value<List<String>> urls = const Value.absent(),
+            Value<List<String>> topics = const Value.absent(),
+            Value<List<String>> entities = const Value.absent(),
+            Value<List<int>> sourceActivityIds = const Value.absent(),
+            Value<List<double>?> embedding = const Value.absent(),
+            Value<String?> embeddingProviderId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              MemoryEpisodesCompanion.insert(
+            id: id,
+            sourceKey: sourceKey,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            title: title,
+            summary: summary,
+            applications: applications,
+            urls: urls,
+            topics: topics,
+            entities: entities,
+            sourceActivityIds: sourceActivityIds,
+            embedding: embedding,
+            embeddingProviderId: embeddingProviderId,
+            createdAt: createdAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$MemoryEpisodesTableProcessedTableManager = ProcessedTableManager<
+    _$KangoosDatabase,
+    $MemoryEpisodesTable,
+    MemoryEpisode,
+    $$MemoryEpisodesTableFilterComposer,
+    $$MemoryEpisodesTableOrderingComposer,
+    $$MemoryEpisodesTableAnnotationComposer,
+    $$MemoryEpisodesTableCreateCompanionBuilder,
+    $$MemoryEpisodesTableUpdateCompanionBuilder,
+    (
+      MemoryEpisode,
+      BaseReferences<_$KangoosDatabase, $MemoryEpisodesTable, MemoryEpisode>
+    ),
+    MemoryEpisode,
+    PrefetchHooks Function()>;
 
 class $KangoosDatabaseManager {
   final _$KangoosDatabase _db;
@@ -3160,4 +4247,6 @@ class $KangoosDatabaseManager {
       $$ConversationMessagesTableTableManager(_db, _db.conversationMessages);
   $$DeletedSnippetsTableTableManager get deletedSnippets =>
       $$DeletedSnippetsTableTableManager(_db, _db.deletedSnippets);
+  $$MemoryEpisodesTableTableManager get memoryEpisodes =>
+      $$MemoryEpisodesTableTableManager(_db, _db.memoryEpisodes);
 }
