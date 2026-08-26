@@ -6,14 +6,17 @@ import 'package:kangoos_core/kangoos_core.dart';
 
 import '../copy_button.dart';
 import 'relative_time.dart';
+import 'timeline_service.dart';
+import 'timeline_view.dart';
 
-enum SidebarTab { snippets, activity, timeline }
+enum SidebarTab { snippets, timeline }
 
 class Sidebar extends StatefulWidget {
   const Sidebar({
     super.key,
     required this.snippets,
     required this.memory,
+    required this.conversations,
     required this.onSelectSnippet,
     required this.onCreateSnippet,
     required this.onGenerateDayRecap,
@@ -22,10 +25,11 @@ class Sidebar extends StatefulWidget {
 
   final SnippetService snippets;
   final MemoryService memory;
+  final ConversationRepository conversations;
   final void Function(Snippet snippet) onSelectSnippet;
   final VoidCallback onCreateSnippet;
   final Future<SummaryResult> Function(CancelToken cancelToken)
-      onGenerateDayRecap;
+  onGenerateDayRecap;
   final double? width;
 
   @override
@@ -42,6 +46,10 @@ class _SidebarState extends State<Sidebar> {
   Timer? _searchDebounceTimer;
   Future<List<Snippet>>? _search;
   CancelToken? _recapCancelToken;
+  late final _timeline = TimelineService(
+    memory: widget.memory,
+    conversations: widget.conversations,
+  );
 
   @override
   void dispose() {
@@ -52,8 +60,10 @@ class _SidebarState extends State<Sidebar> {
 
   void _onQueryChanged(String value) {
     _searchDebounceTimer?.cancel();
-    _searchDebounceTimer =
-        Timer(_searchDebounce, () => _applyQuery(value.trim()));
+    _searchDebounceTimer = Timer(
+      _searchDebounce,
+      () => _applyQuery(value.trim()),
+    );
   }
 
   void _applyQuery(String query) {
@@ -113,7 +123,6 @@ class _SidebarState extends State<Sidebar> {
     final l10n = AppLocalizations.of(context);
     final title = switch (_tab) {
       SidebarTab.snippets => l10n.tabSnippets,
-      SidebarTab.activity => l10n.tabActivity,
       SidebarTab.timeline => l10n.tabTimeline,
     };
     return Container(
@@ -137,9 +146,9 @@ class _SidebarState extends State<Sidebar> {
                   child: Text(
                     'K',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: colors.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: colors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 26),
@@ -151,13 +160,6 @@ class _SidebarState extends State<Sidebar> {
                 ),
                 const SizedBox(height: 8),
                 _SidebarRailButton(
-                  icon: Icons.monitor_heart_outlined,
-                  label: l10n.tabActivity,
-                  selected: _tab == SidebarTab.activity,
-                  onTap: () => setState(() => _tab = SidebarTab.activity),
-                ),
-                const SizedBox(height: 8),
-                _SidebarRailButton(
                   icon: Icons.route_outlined,
                   label: l10n.tabTimeline,
                   selected: _tab == SidebarTab.timeline,
@@ -166,8 +168,11 @@ class _SidebarState extends State<Sidebar> {
                 const Spacer(),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 18),
-                  child: Icon(Icons.lock_outline,
-                      size: 18, color: colors.onSurfaceVariant),
+                  child: Icon(
+                    Icons.lock_outline,
+                    size: 18,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -187,13 +192,15 @@ class _SidebarState extends State<Sidebar> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(l10n.personalArchive,
-                                  style:
-                                      Theme.of(context).textTheme.labelSmall),
+                              Text(
+                                l10n.personalArchive,
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
                               const SizedBox(height: 4),
-                              Text(title,
-                                  style:
-                                      Theme.of(context).textTheme.titleLarge),
+                              Text(
+                                title,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
                             ],
                           ),
                         ),
@@ -205,15 +212,19 @@ class _SidebarState extends State<Sidebar> {
                           ),
                         if (_tab == SidebarTab.timeline)
                           IconButton(
-                            onPressed: _generatingRecap
-                                ? () => _recapCancelToken?.cancel()
-                                : _generateDayRecap,
-                            icon: Icon(_generatingRecap
-                                ? Icons.stop
-                                : Icons.auto_awesome),
-                            tooltip: _generatingRecap
-                                ? l10n.stopGenerating
-                                : l10n.generateDayRecap,
+                            onPressed:
+                                _generatingRecap
+                                    ? () => _recapCancelToken?.cancel()
+                                    : _generateDayRecap,
+                            icon: Icon(
+                              _generatingRecap
+                                  ? Icons.stop
+                                  : Icons.auto_awesome,
+                            ),
+                            tooltip:
+                                _generatingRecap
+                                    ? l10n.stopGenerating
+                                    : l10n.generateDayRecap,
                           ),
                       ],
                     ),
@@ -225,19 +236,20 @@ class _SidebarState extends State<Sidebar> {
                     child: TextField(
                       decoration: InputDecoration(
                         isDense: true,
-                        hintText: _semantic
-                            ? l10n.filterSnippetsSemantic
-                            : l10n.filterSnippets,
+                        hintText:
+                            _semantic
+                                ? l10n.filterSnippetsSemantic
+                                : l10n.filterSnippets,
                         prefixIcon: const Icon(Icons.search, size: 18),
                         suffixIcon: IconButton(
                           icon: Icon(
+                            _semantic ? Icons.auto_awesome : Icons.text_fields,
+                            size: 17,
+                          ),
+                          tooltip:
                               _semantic
-                                  ? Icons.auto_awesome
-                                  : Icons.text_fields,
-                              size: 17),
-                          tooltip: _semantic
-                              ? l10n.switchToKeywordSearch
-                              : l10n.switchToSemanticSearch,
+                                  ? l10n.switchToKeywordSearch
+                                  : l10n.switchToSemanticSearch,
                           onPressed: _toggleSemantic,
                         ),
                       ),
@@ -248,8 +260,10 @@ class _SidebarState extends State<Sidebar> {
                 Expanded(
                   child: switch (_tab) {
                     SidebarTab.snippets => _buildSnippets(context),
-                    SidebarTab.activity => _buildActivity(context),
-                    SidebarTab.timeline => _buildTimeline(context),
+                    SidebarTab.timeline => TimelineView(
+                      service: _timeline,
+                      memory: widget.memory,
+                    ),
                   },
                 ),
               ],
@@ -266,10 +280,11 @@ class _SidebarState extends State<Sidebar> {
     if (search == null) {
       return StreamBuilder<List<Snippet>>(
         stream: widget.snippets.watchAll(),
-        builder: (context, snapshot) => _SnippetList(
-          snippets: snapshot.data,
-          onTap: widget.onSelectSnippet,
-        ),
+        builder:
+            (context, snapshot) => _SnippetList(
+              snippets: snapshot.data,
+              onTap: widget.onSelectSnippet,
+            ),
       );
     }
     return FutureBuilder<List<Snippet>>(
@@ -277,118 +292,15 @@ class _SidebarState extends State<Sidebar> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _SidebarMessage(
-            text: _semantic
-                ? l10n.semanticSearchFailed('${snapshot.error}')
-                : '${snapshot.error}',
+            text:
+                _semantic
+                    ? l10n.semanticSearchFailed('${snapshot.error}')
+                    : '${snapshot.error}',
           );
         }
         return _SnippetList(
           snippets: snapshot.data,
           onTap: widget.onSelectSnippet,
-        );
-      },
-    );
-  }
-
-  Widget _buildActivity(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return StreamBuilder<List<Activity>>(
-      stream: widget.memory.watchRecentActivities(),
-      builder: (context, snapshot) {
-        final activities = snapshot.data;
-        if (activities == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (activities.isEmpty) {
-          return _SidebarMessage(text: l10n.noActivityYet);
-        }
-        final rows = groupByDay(activities, (a) => a.capturedAt);
-        return ListView.builder(
-          itemCount: rows.length,
-          itemBuilder: (context, index) {
-            final row = rows[index];
-            if (row is DateTime) return _DayHeader(day: row);
-            final activity = row as Activity;
-            return Dismissible(
-              key: ValueKey(activity.id),
-              direction: DismissDirection.endToStart,
-              background: Container(
-                color: Theme.of(context).colorScheme.errorContainer,
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: 16),
-                child: Icon(Icons.delete_outline,
-                    color: Theme.of(context).colorScheme.onErrorContainer),
-              ),
-              onDismissed: (_) => _deleteActivityWithUndo(context, activity),
-              child: ListTile(
-                dense: true,
-                title: Text(
-                  activity.windowTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(activity.appName,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: Text(
-                  formatClockTime(l10n, activity.capturedAt),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteActivityWithUndo(
-      BuildContext context, Activity activity) async {
-    final l10n = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    await widget.memory.deleteActivity(activity.id);
-
-    messenger.showSnackBar(SnackBar(
-      content: Text(l10n.activityDeleted),
-      action: SnackBarAction(
-        label: l10n.commonUndo,
-        onPressed: () => widget.memory.record(
-          NewActivity(
-            appName: activity.appName,
-            windowTitle: activity.windowTitle,
-            capturedText: activity.capturedText,
-            capturedUrl: activity.capturedUrl,
-            capturedClipboard: activity.capturedClipboard,
-            capturedScreenText: activity.capturedScreenText,
-            capturedAudioText: activity.capturedAudioText,
-            capturedAt: activity.capturedAt,
-          ),
-        ),
-      ),
-    ));
-  }
-
-  Widget _buildTimeline(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return StreamBuilder<List<ActivitySummary>>(
-      stream: widget.memory.watchRecentSummaries(),
-      builder: (context, snapshot) {
-        final summaries = snapshot.data;
-        if (summaries == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (summaries.isEmpty) {
-          return _SidebarMessage(text: l10n.noSummariesYet);
-        }
-        final rows = groupByDay(summaries, (s) => s.periodEnd);
-        return ListView.builder(
-          itemCount: rows.length,
-          itemBuilder: (context, index) {
-            final row = rows[index];
-            return row is DateTime
-                ? _DayHeader(day: row)
-                : _SummaryTile(summary: row as ActivitySummary);
-          },
         );
       },
     );
@@ -434,71 +346,6 @@ class _SidebarRailButton extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.day});
-
-  final DateTime day;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-      child: Text(
-        formatDayHeader(l10n, day),
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-}
-
-class _SummaryTile extends StatelessWidget {
-  const _SummaryTile({required this.summary});
-
-  final ActivitySummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final l10n = AppLocalizations.of(context);
-    final label = switch (summary.kind) {
-      SummaryKind.periodic || SummaryKind.session => l10n.summaryAutoRecap,
-      SummaryKind.dayRecap ||
-      SummaryKind.daily ||
-      SummaryKind.weekly =>
-        l10n.summaryDayRecap,
-      SummaryKind.manual || SummaryKind.durable => l10n.summaryMemory,
-    };
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom:
-              BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(label, style: textTheme.labelSmall),
-              const Spacer(),
-              Text(formatClockTime(l10n, summary.periodEnd),
-                  style: textTheme.labelSmall),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(summary.content, style: textTheme.bodySmall),
-        ],
       ),
     );
   }
@@ -578,8 +425,9 @@ class _SnippetList extends StatelessWidget {
                           snippet.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodyLarge
-                              ?.copyWith(fontWeight: FontWeight.w600),
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       CopyIconButton(text: snippet.content),
@@ -588,9 +436,12 @@ class _SnippetList extends StatelessWidget {
                   if (snippet.language != null && snippet.language!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(snippet.language!.toUpperCase(),
-                          style: textTheme.labelSmall
-                              ?.copyWith(color: colors.primary)),
+                      child: Text(
+                        snippet.language!.toUpperCase(),
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colors.primary,
+                        ),
+                      ),
                     ),
                   const SizedBox(height: 4),
                   Text(
@@ -600,8 +451,10 @@ class _SnippetList extends StatelessWidget {
                     style: textTheme.bodySmall,
                   ),
                   const SizedBox(height: 4),
-                  Text(formatRelativeTime(l10n, snippet.updatedAt),
-                      style: textTheme.labelSmall),
+                  Text(
+                    formatRelativeTime(l10n, snippet.updatedAt),
+                    style: textTheme.labelSmall,
+                  ),
                 ],
               ),
             ),

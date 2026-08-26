@@ -1,27 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:kangoos_core/kangoos_core.dart';
 
 import '../capture/capture_settings_repository.dart';
+import '../capture/capture_settings_screen.dart';
 import '../capture/capture_status.dart';
 import '../capture/capture_status_indicator.dart';
+import '../capture/memory_deletion_dialog.dart';
 import '../theme/kangoos_theme.dart';
 
 class TrayPanel extends StatefulWidget {
   const TrayPanel({
     super.key,
     required this.captureSettingsRepository,
+    this.memory,
     this.captureStatus,
     required this.onOpen,
     required this.onHide,
     required this.onToggleCapture,
+    this.onPauseFor,
     required this.onQuickCapture,
     required this.onQuit,
   });
 
   final CaptureSettingsRepository captureSettingsRepository;
+  final MemoryService? memory;
   final CaptureStatusController? captureStatus;
   final Future<void> Function() onOpen;
   final Future<void> Function() onHide;
   final Future<void> Function() onToggleCapture;
+  final Future<void> Function(Duration duration)? onPauseFor;
   final Future<bool> Function() onQuickCapture;
   final Future<void> Function() onQuit;
 
@@ -52,9 +59,11 @@ class _TrayPanelState extends State<TrayPanel> {
       await widget.onToggleCapture();
       await _loadSettings();
       if (mounted) setState(() => _feedback = null);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _feedback = 'Não foi possível alterar a captura.');
+        setState(
+          () => _feedback = 'Não foi possível alterar a captura: $error',
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -68,18 +77,61 @@ class _TrayPanelState extends State<TrayPanel> {
       final saved = await widget.onQuickCapture();
       if (mounted) {
         setState(
-          () => _feedback = saved
-              ? 'Snippet salvo a partir da área de transferência.'
-              : 'A área de transferência não contém texto.',
+          () =>
+              _feedback =
+                  saved
+                      ? 'Snippet salvo a partir da área de transferência.'
+                      : 'A área de transferência não contém texto.',
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _feedback = 'Não foi possível salvar o snippet.');
+        setState(() => _feedback = 'Não foi possível salvar o snippet: $error');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _pauseFor(Duration duration) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await widget.onPauseFor?.call(duration);
+      await _loadSettings();
+      if (mounted) {
+        setState(() => _feedback = 'Captura pausada temporariamente.');
+      }
+    } catch (error) {
+      if (mounted) setState(() => _feedback = 'Falha ao pausar: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _openMemorySettings() async {
+    final memory = widget.memory;
+    if (memory == null) return;
+    await widget.onOpen();
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => CaptureSettingsScreen(
+              repository: widget.captureSettingsRepository,
+              memory: memory,
+            ),
+      ),
+    );
+    await _loadSettings();
+  }
+
+  Future<void> _deleteMemory() async {
+    final memory = widget.memory;
+    if (memory == null) return;
+    await widget.onOpen();
+    if (!mounted) return;
+    await showMemoryDeletionDialog(context: context, memory: memory);
   }
 
   @override
@@ -174,9 +226,10 @@ class _TrayPanelState extends State<TrayPanel> {
                                 width: 8,
                                 height: 8,
                                 decoration: BoxDecoration(
-                                  color: active
-                                      ? statusColors.done
-                                      : colors.secondary,
+                                  color:
+                                      active
+                                          ? statusColors.done
+                                          : colors.secondary,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -186,16 +239,17 @@ class _TrayPanelState extends State<TrayPanel> {
                                   settings == null
                                       ? 'Carregando…'
                                       : active
-                                          ? 'Captura ativa'
-                                          : 'Captura pausada',
+                                      ? 'Captura ativa'
+                                      : 'Captura pausada',
                                   style: theme.textTheme.labelLarge,
                                 ),
                               ),
                               Switch(
                                 value: active,
-                                onChanged: settings == null || _busy
-                                    ? null
-                                    : (_) => _toggleCapture(),
+                                onChanged:
+                                    settings == null || _busy
+                                        ? null
+                                        : (_) => _toggleCapture(),
                               ),
                             ],
                           ),
@@ -203,6 +257,33 @@ class _TrayPanelState extends State<TrayPanel> {
                             'A atividade permanece neste dispositivo e alimenta sua memória de trabalho.',
                             style: theme.textTheme.bodySmall,
                           ),
+                          if (widget.onPauseFor != null) ...[
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                OutlinedButton(
+                                  onPressed:
+                                      _busy
+                                          ? null
+                                          : () => _pauseFor(
+                                            const Duration(minutes: 15),
+                                          ),
+                                  child: const Text('Pausar 15 min'),
+                                ),
+                                OutlinedButton(
+                                  onPressed:
+                                      _busy
+                                          ? null
+                                          : () => _pauseFor(
+                                            const Duration(hours: 1),
+                                          ),
+                                  child: const Text('Pausar 1 h'),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -213,6 +294,22 @@ class _TrayPanelState extends State<TrayPanel> {
                       subtitle: 'Criar um snippet com o texto copiado',
                       onTap: _busy ? null : _quickCapture,
                     ),
+                    if (widget.memory != null) ...[
+                      const SizedBox(height: 12),
+                      _TrayAction(
+                        icon: Icons.memory_outlined,
+                        title: 'Configurações LTM',
+                        subtitle: 'Fontes, modalidades, retenção e privacidade',
+                        onTap: _busy ? null : _openMemorySettings,
+                      ),
+                      const SizedBox(height: 12),
+                      _TrayAction(
+                        icon: Icons.delete_sweep_outlined,
+                        title: 'Excluir memórias',
+                        subtitle: 'Escolher período, fonte e modalidade',
+                        onTap: _busy ? null : _deleteMemory,
+                      ),
+                    ],
                     if (_feedback case final feedback?) ...[
                       const SizedBox(height: 10),
                       Text(
@@ -305,8 +402,8 @@ class _TrayAction extends StatelessWidget {
                       Text(
                         subtitle,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: contentColor.withValues(alpha: 0.72),
-                            ),
+                          color: contentColor.withValues(alpha: 0.72),
+                        ),
                       ),
                     ],
                   ),

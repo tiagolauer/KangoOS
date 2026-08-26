@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Unified Timeline for events, episodes, summaries, manual memories,
+  conversations and DeepStudy reports, with lexical/semantic search, filters,
+  favorites, source review and granular deletion.
+- Conversation-scoped memory filters and file/folder attachments, inspectable
+  evidence, retry controls and explicit Reflection/DeepStudy modes.
+- Timed capture pause, LTM settings and granular deletion in the Windows tray
+  panel.
+
 ## 1.1.0
 
 ### Fixed

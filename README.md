@@ -61,9 +61,10 @@ KangoOS stores the code you keep re-writing, remembers what you were working on,
 ### Long-term memory
 
 - **Activity capture** — foreground application and window title, with opt-in first-run consent, retention and purge policies, a per-application denylist, swipe-to-delete and clear-all.
-- **Timeline** — deterministic memory episodes, automatic activity summaries every 20 minutes, an on-demand day recap, day-grouped history and a sparkline of today's activity.
-- **Hybrid memory search** — FTS5, semantic similarity and temporal filters over captured work episodes.
+- **Unified Timeline** — events, episodes, summaries, manual memories, conversations and DeepStudy reports in one searchable view, with favorites, source details and granular deletion.
+- **Hybrid memory search** — FTS5, semantic similarity and shared filters for type, application, modality, period and project across Timeline and chat.
 - **Agentic retrieval and DeepStudy** — bounded multi-source investigation over episodes, summaries, snippets and conversations, with evidence trails, coverage, confidence and missing-evidence markers.
+- **Conversation workspace** — recent-activity suggestions, file/folder attachments, persistent memory filters, inspectable evidence, stop/retry and explicit Reflection/DeepStudy modes.
 - Chat and MCP tools answer over structured episodes using plain-English time ranges in English and Portuguese.
 
 ### LLM providers
@@ -82,6 +83,8 @@ KangoOS stores the code you keep re-writing, remembers what you were working on,
 ### Interface
 
 - English and Brazilian Portuguese, following the OS language and falling back to English. Dates and weekday/month names are locale-aware, and summary prompts are localized so the assistant answers in the language of the UI.
+- Capture status, timed pause, LTM settings and granular deletion are available from both the main window and the Windows tray panel.
+- Keyboard focus, semantic labels and explicit loading, empty, error and cancellation states cover the primary memory workflow.
 - Translation files live in `app/lib/l10n/*.arb`. A test asserts the two files never drift apart: adding a key to `app_en.arb` without translating it fails the suite.
 
 ## Platform support

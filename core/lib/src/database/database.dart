@@ -788,6 +788,9 @@ END;
       (select(activitySummaries)
         ..where((row) => row.id.equals(id))).getSingleOrNull();
 
+  Future<int> deleteActivitySummary(int id) =>
+      (delete(activitySummaries)..where((row) => row.id.equals(id))).go();
+
   Future<List<ActivitySummary>> summariesBetween(
     DateTime start,
     DateTime end, {

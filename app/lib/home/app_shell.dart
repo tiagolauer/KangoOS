@@ -175,6 +175,7 @@ class _AppShellState extends State<AppShell> {
       width: width,
       snippets: widget.snippets,
       memory: widget.memory,
+      conversations: widget.conversations,
       onSelectSnippet: (snippet) {
         closeDrawer();
         _openEditor(snippet);

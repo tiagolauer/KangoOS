@@ -80,6 +80,9 @@ class SqliteSummaryRepository implements SummaryRepository {
   ) => database.setActivitySummaryEmbedding(id, embedding, providerId);
 
   @override
+  Future<int> delete(int id) => database.deleteActivitySummary(id);
+
+  @override
   Future<int> purgeOlderThan(DateTime cutoff) =>
       database.purgeSummariesOlderThan(cutoff);
 

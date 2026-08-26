@@ -135,6 +135,13 @@ class TrayService with TrayListener, WindowListener implements RuntimeService {
     );
   }
 
+  Future<void> pauseFor(Duration duration) async {
+    final current = await captureSettingsRepository.load();
+    await captureSettingsRepository.save(
+      current.copyWith(paused: true, resumeAt: DateTime.now().add(duration)),
+    );
+  }
+
   Future<bool> saveClipboardAsSnippet() async {
     final save = onSaveClipboardAsSnippet;
     return save != null && await save() != null;

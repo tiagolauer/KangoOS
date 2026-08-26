@@ -23,6 +23,7 @@ class RagChat {
     this.maxContextSummaries = 5,
     this.maxHistoryMessages = 20,
     this.onSemanticSearchError,
+    this.onInvestigation,
   });
 
   final SnippetService snippets;
@@ -36,6 +37,7 @@ class RagChat {
   final int maxHistoryMessages;
 
   final void Function(Object error)? onSemanticSearchError;
+  final void Function(MemoryInvestigation investigation)? onInvestigation;
 
   static const _queryBoundarySlack = Duration(seconds: 1);
 
@@ -173,6 +175,8 @@ class RagChat {
     int? conversationId,
     ConnectorPermissionChecker? connectorPermissionChecker,
     ConnectorApprovalRequester? connectorApprovalRequester,
+    MemorySearchFilters memoryFilters = const MemorySearchFilters(),
+    String? untrustedAttachmentContext,
   }) async* {
     final safeHistory = history
         .where(
@@ -199,7 +203,10 @@ class RagChat {
         conversationId: conversationId,
         connectorPermissionChecker: connectorPermissionChecker,
         connectorApprovalRequester: connectorApprovalRequester,
+        filters: memoryFilters,
+        untrustedContext: untrustedAttachmentContext,
       );
+      onInvestigation?.call(run.investigation);
       if (run.answer.isNotEmpty) yield run.answer;
       return;
     }
@@ -225,11 +232,19 @@ class RagChat {
       summaries = const [];
       episodes = const [];
       if (deepStudy) {
-        investigationContext =
-            (await memoryAgent.deepStudy(userMessage)).markdown;
+        final report = await memoryAgent.deepStudy(
+          userMessage,
+          filters: memoryFilters,
+        );
+        onInvestigation?.call(report.investigation);
+        investigationContext = report.markdown;
       } else {
-        investigationContext =
-            (await memoryAgent.investigate(userMessage)).toPrompt();
+        final investigation = await memoryAgent.investigate(
+          userMessage,
+          filters: memoryFilters,
+        );
+        onInvestigation?.call(investigation);
+        investigationContext = investigation.toPrompt();
       }
     }
     persona = await personaProvider?.call();
@@ -241,6 +256,16 @@ class RagChat {
       episodes,
       investigationContext,
     );
+    final contextWithAttachments =
+        untrustedAttachmentContext == null ||
+                untrustedAttachmentContext.trim().isEmpty
+            ? untrustedContext
+            : jsonEncode({
+              'kind': 'untrusted_context_data',
+              'untrusted': true,
+              if (untrustedContext != null) 'memory': untrustedContext,
+              'attachments': untrustedAttachmentContext,
+            });
     final requestMessages = [
       LlmMessage(role: LlmRole.system, content: buildSystemPrompt()),
       if (persona != null && persona.trim().isNotEmpty)
@@ -251,8 +276,8 @@ class RagChat {
             'content': persona.trim(),
           }),
         ),
-      if (untrustedContext != null)
-        LlmMessage(role: LlmRole.user, content: untrustedContext),
+      if (contextWithAttachments != null)
+        LlmMessage(role: LlmRole.user, content: contextWithAttachments),
       ...recentHistory,
       LlmMessage(role: LlmRole.user, content: userMessage),
     ];

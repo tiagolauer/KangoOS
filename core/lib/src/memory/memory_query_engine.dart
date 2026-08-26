@@ -43,6 +43,24 @@ class MemorySearchFilters {
   final DateTime? start;
   final DateTime? end;
 
+  MemorySearchFilters copyWith({
+    Set<MemoryEvidenceSource>? sources,
+    Set<String>? applications,
+    Set<MemoryModality>? modalities,
+    Set<String>? projects,
+    DateTime? start,
+    DateTime? end,
+    bool clearStart = false,
+    bool clearEnd = false,
+  }) => MemorySearchFilters(
+    sources: sources ?? this.sources,
+    applications: applications ?? this.applications,
+    modalities: modalities ?? this.modalities,
+    projects: projects ?? this.projects,
+    start: clearStart ? null : start ?? this.start,
+    end: clearEnd ? null : end ?? this.end,
+  );
+
   void validate() {
     if (start != null && end != null && !start!.isBefore(end!)) {
       throw ArgumentError.value(end, 'end', 'must be after start');
@@ -844,7 +862,8 @@ class MemoryQueryEngine {
   _MemoryDocument _summaryDocument(ActivitySummary summary) => _MemoryDocument(
     key: 'summary:${summary.id}',
     source:
-        summary.kind == SummaryKind.durable
+        summary.kind == SummaryKind.durable ||
+                summary.kind == SummaryKind.manual
             ? MemoryEvidenceSource.durableMemory
             : MemoryEvidenceSource.summary,
     sourceId: summary.id,

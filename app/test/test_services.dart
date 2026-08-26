@@ -25,12 +25,24 @@ class TestServices {
       repository: snippetRepository,
       semanticSearch: semanticSearch,
     );
+    conversations = SqliteConversationRepository(database);
+    episodes = SqliteEpisodeRepository(database);
+    activities = SqliteActivityRepository(database);
+    summaries = SqliteSummaryRepository(database);
     memory = MemoryService(
       database: database,
-      activities: SqliteActivityRepository(database),
-      summaries: SqliteSummaryRepository(database),
+      activities: activities,
+      summaries: summaries,
+      episodes: episodes,
+      queryEngine: MemoryQueryEngine(
+        episodes: episodes,
+        summaries: summaries,
+        conversations: conversations,
+        snippets: snippetRepository,
+        activities: activities,
+        embeddingProvider: embeddingProvider,
+      ),
     );
-    conversations = SqliteConversationRepository(database);
   }
 
   final KangoosDatabase database;
@@ -39,4 +51,7 @@ class TestServices {
   late final SnippetService snippets;
   late final MemoryService memory;
   late final ConversationRepository conversations;
+  late final EpisodeRepository episodes;
+  late final ActivityRepository activities;
+  late final SummaryRepository summaries;
 }

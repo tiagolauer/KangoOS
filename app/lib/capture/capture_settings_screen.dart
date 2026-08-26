@@ -301,7 +301,7 @@ class _CaptureSettingsScreenState extends State<CaptureSettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.activityCapture)),
+      appBar: AppBar(title: const Text('Configurações LTM')),
       body: Align(
         alignment: Alignment.topCenter,
         child: SizedBox(

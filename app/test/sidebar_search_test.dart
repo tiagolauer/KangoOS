@@ -48,6 +48,7 @@ void main() {
         body: Sidebar(
           snippets: services.snippets,
           memory: services.memory,
+          conversations: services.conversations,
           onSelectSnippet: (_) {},
           onCreateSnippet: () {},
           onGenerateDayRecap: (_) async =>

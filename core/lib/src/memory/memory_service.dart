@@ -90,6 +90,8 @@ class MemoryService {
     return created;
   }
 
+  Future<int> forgetSummary(int id) => summaries.delete(id);
+
   Future<int> deleteActivity(int id) async =>
       (await delete(MemoryDeletionFilter(activityIds: {id}))).activities;
 

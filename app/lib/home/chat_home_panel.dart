@@ -20,7 +20,10 @@ import '../sync/sync_settings_repository.dart';
 import '../sync/sync_settings_screen.dart';
 import '../theme/kangoos_theme.dart';
 import 'activity_sparkline.dart';
+import 'conversation_ui_state_repository.dart';
 import 'markdown_message.dart';
+import 'memory_filter_dialog.dart';
+import 'timeline_service.dart';
 
 enum _AccentRole { primary, done, next, later }
 
@@ -152,6 +155,7 @@ class ChatHomePanel extends StatefulWidget {
 
 class _ChatHomePanelState extends State<ChatHomePanel> {
   final _syncSettingsRepository = SyncSettingsRepository();
+  final _conversationUiStateRepository = ConversationUiStateRepository();
 
   final _history = <LlmMessage>[];
   final _inputController = TextEditingController();
@@ -162,6 +166,9 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
   var _capturing = true;
   var _semanticDegraded = false;
   var _deepStudy = false;
+  var _memoryFilters = const MemorySearchFilters();
+  var _attachmentPaths = <String>[];
+  var _lastEvidence = <MemoryEvidence>[];
   CancelToken? _replyCancelToken;
   int? _conversationId;
   String? _error;
@@ -194,14 +201,23 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     final id = await widget.conversations.latestId();
     if (id == null || !mounted) return;
     final messages = await widget.conversations.messages(id);
+    final uiState = await _conversationUiStateRepository.load(id);
     if (!mounted) return;
     setState(() {
       _conversationId = id;
       _history
         ..clear()
         ..addAll(
-          messages.map((m) => LlmMessage(role: m.role, content: m.content)),
+          messages.map(
+            (m) => LlmMessage(
+              role: m.role,
+              content: _displayMessageContent(m.content),
+            ),
+          ),
         );
+      _memoryFilters = uiState.filters;
+      _attachmentPaths = uiState.attachmentPaths;
+      _lastEvidence = uiState.evidence;
     });
   }
 
@@ -211,12 +227,16 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       _conversationId = null;
       _history.clear();
       _error = null;
+      _memoryFilters = const MemorySearchFilters();
+      _attachmentPaths = [];
+      _lastEvidence = [];
     });
   }
 
   Future<void> _loadConversationById(int id) async {
     _replyCancelToken?.cancel();
     final messages = await widget.conversations.messages(id);
+    final uiState = await _conversationUiStateRepository.load(id);
     if (!mounted) return;
     setState(() {
       _conversationId = id;
@@ -224,8 +244,16 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       _history
         ..clear()
         ..addAll(
-          messages.map((m) => LlmMessage(role: m.role, content: m.content)),
+          messages.map(
+            (m) => LlmMessage(
+              role: m.role,
+              content: _displayMessageContent(m.content),
+            ),
+          ),
         );
+      _memoryFilters = uiState.filters;
+      _attachmentPaths = uiState.attachmentPaths;
+      _lastEvidence = uiState.evidence;
     });
     _scrollToEnd();
   }
@@ -362,6 +390,7 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     final priorHistory = List<LlmMessage>.of(_history);
     final conversationId =
         _conversationId ??= await widget.conversations.create();
+    await _saveConversationUiState(conversationId);
     final userMessageId = await widget.conversations.appendMessage(
       conversationId,
       LlmRole.user,
@@ -381,8 +410,11 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
 
     final buildProvider = widget.providerBuilder ?? (s) => s.buildProvider();
     final provider = buildProvider(settings);
+    final attachmentContext = await buildAttachmentContext(_attachmentPaths);
+    final deepStudyRequested = _deepStudy;
 
     var reply = '';
+    var evidence = <MemoryEvidence>[];
     ConnectorSession? connectorSession;
     try {
       connectorSession = await widget.connectorRuntime?.open();
@@ -399,6 +431,12 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
         onSemanticSearchError: (_) {
           if (mounted) setState(() => _semanticDegraded = true);
         },
+        onInvestigation: (investigation) {
+          evidence = investigation.evidence;
+          if (mounted && _conversationId == conversationId) {
+            setState(() => _lastEvidence = evidence);
+          }
+        },
       );
       reply = await collectLlmReply(
         ragChat.reply(
@@ -410,6 +448,8 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           conversationId: conversationId,
           connectorPermissionChecker: connectorSession?.permissionChecker,
           connectorApprovalRequester: _requestConnectorApproval,
+          memoryFilters: _memoryFilters,
+          untrustedAttachmentContext: attachmentContext,
         ),
         cancelToken: cancelToken,
         onPartial: (partial) {
@@ -432,7 +472,14 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       }
     } finally {
       connectorSession?.close();
-      await _persistReply(conversationId, userMessageId, reply, trimmed);
+      await _persistReply(
+        conversationId,
+        userMessageId,
+        reply,
+        trimmed,
+        deepStudyRequested,
+      );
+      await _saveConversationUiState(conversationId, evidence: evidence);
       if (mounted) {
         setState(() {
           _sending = false;
@@ -497,12 +544,13 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     int userMessageId,
     String reply,
     String userMessage,
+    bool deepStudy,
   ) async {
     if (reply.isNotEmpty) {
       await widget.conversations.appendMessage(
         conversationId,
         LlmRole.assistant,
-        reply,
+        deepStudy ? '$deepStudyMessageMarker\n$reply' : reply,
       );
       return;
     }
@@ -514,6 +562,75 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
       _history.removeLast();
       _inputController.text = userMessage;
     });
+  }
+
+  Future<void> _saveConversationUiState(
+    int conversationId, {
+    List<MemoryEvidence>? evidence,
+  }) => _conversationUiStateRepository.save(
+    conversationId,
+    ConversationUiState(
+      filters: _memoryFilters,
+      attachmentPaths: _attachmentPaths,
+      evidence: evidence ?? _lastEvidence,
+    ),
+  );
+
+  Future<void> _openMemoryFilters() async {
+    final filters = await showMemoryFilterDialog(
+      context: context,
+      memory: widget.memory,
+      initial: _memoryFilters,
+    );
+    if (filters == null || !mounted) return;
+    setState(() => _memoryFilters = filters);
+    if (_conversationId case final conversationId?) {
+      await _saveConversationUiState(conversationId);
+    }
+  }
+
+  Future<void> _attachFile() async {
+    final files = await openFiles();
+    if (files.isEmpty || !mounted) return;
+    await _addAttachments(files.map((file) => file.path));
+  }
+
+  Future<void> _attachFolder() async {
+    final selected = await getDirectoryPath();
+    if (selected == null || !mounted) return;
+    await _addAttachments([selected]);
+  }
+
+  Future<void> _addAttachments(Iterable<String> paths) async {
+    setState(() {
+      _attachmentPaths =
+          {
+            ..._attachmentPaths,
+            ...paths.where((item) => item.trim().isNotEmpty),
+          }.take(maxChatAttachmentRoots).toList();
+    });
+    if (_conversationId case final conversationId?) {
+      await _saveConversationUiState(conversationId);
+    }
+  }
+
+  Future<void> _removeAttachment(String path) async {
+    setState(() => _attachmentPaths.remove(path));
+    if (_conversationId case final conversationId?) {
+      await _saveConversationUiState(conversationId);
+    }
+  }
+
+  void _retryLast() {
+    if (_sending) return;
+    LlmMessage? lastUser;
+    for (final message in _history.reversed) {
+      if (message.role == LlmRole.user) {
+        lastUser = message;
+        break;
+      }
+    }
+    if (lastUser != null) _send(lastUser.content);
   }
 
   void _scrollToEnd() {
@@ -581,11 +698,22 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
             width: double.infinity,
             color: Theme.of(context).colorScheme.errorContainer,
             padding: const EdgeInsets.all(8),
-            child: Text(
-              _error!,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onErrorContainer,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _sending ? null : _retryLast,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Tentar novamente'),
+                ),
+              ],
             ),
           ),
         if (_semanticDegraded)
@@ -622,12 +750,26 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           sending: _sending,
           deepStudy: _deepStudy,
           onDeepStudyChanged: (value) => setState(() => _deepStudy = value),
+          filtersActive: _hasMemoryFilters,
+          attachmentPaths: _attachmentPaths,
+          onOpenFilters: _openMemoryFilters,
+          onAttachFile: _attachFile,
+          onAttachFolder: _attachFolder,
+          onRemoveAttachment: _removeAttachment,
           onSubmit: _send,
           onStop: _stopReply,
         ),
       ],
     );
   }
+
+  bool get _hasMemoryFilters =>
+      _memoryFilters.sources.isNotEmpty ||
+      _memoryFilters.applications.isNotEmpty ||
+      _memoryFilters.modalities.isNotEmpty ||
+      _memoryFilters.projects.isNotEmpty ||
+      _memoryFilters.start != null ||
+      _memoryFilters.end != null;
 
   Widget _buildGreeting(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -758,26 +900,39 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
           ],
         ),
         const SizedBox(height: 6),
-        StreamBuilder<List<Snippet>>(
-          stream: widget.snippets.watchAll(),
-          builder: (context, snapshot) {
-            final snippets = snapshot.data;
-            final mostRecent =
-                (snippets != null && snippets.isNotEmpty)
-                    ? snippets.first
-                    : null;
-            final prompts = [
-              if (mostRecent != null) l10n.explainSnippet(mostRecent.title),
-              ...suggestions,
-            ];
-            return Column(
-              children: [
-                for (final prompt in prompts)
-                  _FreeformChip(text: prompt, onTap: () => _send(prompt)),
-                _StartNewChatChip(onTap: () => _inputFocusNode.requestFocus()),
-              ],
-            );
-          },
+        StreamBuilder<List<Activity>>(
+          stream: widget.memory.watchRecentActivities(limit: 5),
+          builder:
+              (context, activitySnapshot) => StreamBuilder<List<Snippet>>(
+                stream: widget.snippets.watchAll(),
+                builder: (context, snippetSnapshot) {
+                  final snippets = snippetSnapshot.data;
+                  final mostRecent =
+                      (snippets != null && snippets.isNotEmpty)
+                          ? snippets.first
+                          : null;
+                  final activities = activitySnapshot.data ?? const [];
+                  final recentApplication =
+                      activities.isEmpty ? null : activities.first.appName;
+                  final prompts = [
+                    if (recentApplication != null &&
+                        recentApplication.isNotEmpty)
+                      'O que eu estava fazendo recentemente no $recentApplication?',
+                    if (mostRecent != null)
+                      l10n.explainSnippet(mostRecent.title),
+                    ...suggestions,
+                  ].take(3);
+                  return Column(
+                    children: [
+                      for (final prompt in prompts)
+                        _FreeformChip(text: prompt, onTap: () => _send(prompt)),
+                      _StartNewChatChip(
+                        onTap: () => _inputFocusNode.requestFocus(),
+                      ),
+                    ],
+                  );
+                },
+              ),
         ),
       ],
     );
@@ -866,23 +1021,43 @@ class _ChatHomePanelState extends State<ChatHomePanel> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-      itemCount: _history.length,
-      itemBuilder:
-          (context, index) => Center(
+      itemCount: _history.length + (_lastEvidence.isEmpty ? 0 : 1),
+      itemBuilder: (context, index) {
+        if (index == _history.length) {
+          return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 920),
-              child: _ChatBubble(
-                message: _history[index],
-                pending:
-                    _sending &&
-                    index == _history.length - 1 &&
-                    _history[index].content.isEmpty,
-              ),
+              child: _EvidencePanel(evidence: _lastEvidence),
+            ),
+          );
+        }
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 920),
+            child: _ChatBubble(
+              message: _history[index],
+              pending:
+                  _sending &&
+                  index == _history.length - 1 &&
+                  _history[index].content.isEmpty,
+              onRetry:
+                  !_sending &&
+                          index == _history.length - 1 &&
+                          _history[index].role == LlmRole.assistant
+                      ? _retryLast
+                      : null,
             ),
           ),
+        );
+      },
     );
   }
 }
+
+String _displayMessageContent(String content) =>
+    content.startsWith(deepStudyMessageMarker)
+        ? content.substring(deepStudyMessageMarker.length).trim()
+        : content;
 
 enum _HeaderAction {
   indexSnippets,
@@ -1160,6 +1335,9 @@ class ConversationHistorySheet extends StatelessWidget {
                       );
                       if (confirmed) {
                         await this.conversations.delete(conversation.id);
+                        await ConversationUiStateRepository().delete(
+                          conversation.id,
+                        );
                       }
                     },
                   ),
@@ -1324,6 +1502,12 @@ class _Composer extends StatelessWidget {
     required this.sending,
     required this.deepStudy,
     required this.onDeepStudyChanged,
+    required this.filtersActive,
+    required this.attachmentPaths,
+    required this.onOpenFilters,
+    required this.onAttachFile,
+    required this.onAttachFolder,
+    required this.onRemoveAttachment,
     required this.onSubmit,
     required this.onStop,
   });
@@ -1333,6 +1517,12 @@ class _Composer extends StatelessWidget {
   final bool sending;
   final bool deepStudy;
   final ValueChanged<bool> onDeepStudyChanged;
+  final bool filtersActive;
+  final List<String> attachmentPaths;
+  final Future<void> Function() onOpenFilters;
+  final Future<void> Function() onAttachFile;
+  final Future<void> Function() onAttachFolder;
+  final Future<void> Function(String path) onRemoveAttachment;
   final void Function(String text) onSubmit;
   final VoidCallback onStop;
 
@@ -1351,48 +1541,129 @@ class _Composer extends StatelessWidget {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 980),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Tooltip(
-                  message:
-                      deepStudy
-                          ? l10n.deepStudyEnabled
-                          : l10n.deepStudyDisabled,
-                  child: IconButton.filledTonal(
-                    isSelected: deepStudy,
-                    selectedIcon: const Icon(Icons.manage_search),
-                    icon: const Icon(Icons.search),
-                    onPressed:
-                        sending ? null : () => onDeepStudyChanged(!deepStudy),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: colors.outlineVariant),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Reflection'),
+                      avatar: const Icon(Icons.search, size: 17),
+                      selected: !deepStudy,
+                      onSelected:
+                          sending
+                              ? null
+                              : (selected) => onDeepStudyChanged(false),
                     ),
-                    child: TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      decoration: InputDecoration(
-                        hintText: l10n.askAboutSnippets,
-                        filled: false,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
+                    Tooltip(
+                      message:
+                          deepStudy
+                              ? l10n.deepStudyEnabled
+                              : l10n.deepStudyDisabled,
+                      child: ChoiceChip(
+                        label: const Text('DeepStudy'),
+                        avatar: const Icon(Icons.manage_search, size: 17),
+                        selected: deepStudy,
+                        onSelected:
+                            sending
+                                ? null
+                                : (selected) => onDeepStudyChanged(true),
                       ),
-                      onSubmitted: onSubmit,
                     ),
-                  ),
+                    for (final attachment in attachmentPaths)
+                      InputChip(
+                        avatar: Icon(
+                          FileSystemEntity.isDirectorySync(attachment)
+                              ? Icons.folder_outlined
+                              : Icons.description_outlined,
+                          size: 17,
+                        ),
+                        label: Text(
+                          attachment.split(Platform.pathSeparator).last,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onDeleted:
+                            sending
+                                ? null
+                                : () async => onRemoveAttachment(attachment),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                IconButton.filled(
-                  onPressed: sending ? onStop : () => onSubmit(controller.text),
-                  tooltip: sending ? l10n.stopGenerating : null,
-                  icon: Icon(sending ? Icons.stop : Icons.arrow_upward),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    PopupMenuButton<String>(
+                      enabled: !sending,
+                      tooltip: 'Anexar arquivo ou pasta',
+                      icon: const Icon(Icons.attach_file),
+                      onSelected: (value) async {
+                        if (value == 'file') {
+                          await onAttachFile();
+                        } else {
+                          await onAttachFolder();
+                        }
+                      },
+                      itemBuilder:
+                          (context) => const [
+                            PopupMenuItem(
+                              value: 'file',
+                              child: ListTile(
+                                leading: Icon(Icons.description_outlined),
+                                title: Text('Anexar arquivo'),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'folder',
+                              child: ListTile(
+                                leading: Icon(Icons.folder_outlined),
+                                title: Text('Anexar pasta'),
+                              ),
+                            ),
+                          ],
+                    ),
+                    IconButton(
+                      isSelected: filtersActive,
+                      onPressed: sending ? null : onOpenFilters,
+                      icon: Badge(
+                        isLabelVisible: filtersActive,
+                        child: const Icon(Icons.filter_alt_outlined),
+                      ),
+                      tooltip: 'Filtros persistentes desta conversa',
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: colors.outlineVariant),
+                        ),
+                        child: TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            hintText: l10n.askAboutSnippets,
+                            filled: false,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                          ),
+                          onSubmitted: onSubmit,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton.filled(
+                      onPressed:
+                          sending ? onStop : () => onSubmit(controller.text),
+                      tooltip: sending ? l10n.stopGenerating : 'Enviar',
+                      icon: Icon(sending ? Icons.stop : Icons.arrow_upward),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1404,10 +1675,15 @@ class _Composer extends StatelessWidget {
 }
 
 class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({required this.message, this.pending = false});
+  const _ChatBubble({
+    required this.message,
+    this.pending = false,
+    this.onRetry,
+  });
 
   final LlmMessage message;
   final bool pending;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -1432,6 +1708,15 @@ class _ChatBubble extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _AssistantContent(content: message.content, pending: pending),
+            if (onRetry != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh, size: 17),
+                  label: const Text('Gerar novamente'),
+                ),
+              ),
           ],
         ),
       );
@@ -1448,6 +1733,70 @@ class _ChatBubble extends StatelessWidget {
           border: Border.all(color: colors.outlineVariant),
         ),
         child: SelectableText(message.content),
+      ),
+    );
+  }
+}
+
+class _EvidencePanel extends StatelessWidget {
+  const _EvidencePanel({required this.evidence});
+
+  final List<MemoryEvidence> evidence;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: '${evidence.length} evidências utilizadas',
+      child: Card(
+        margin: const EdgeInsets.only(top: 4, bottom: 18),
+        child: ExpansionTile(
+          leading: const Icon(Icons.fact_check_outlined),
+          title: Text('Evidências utilizadas (${evidence.length})'),
+          subtitle: const Text('Revise as fontes que fundamentaram a resposta'),
+          children: [
+            for (final item in evidence)
+              ListTile(
+                dense: true,
+                title: Text(item.title),
+                subtitle: Text(
+                  '${item.id}\n${item.content}',
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.open_in_new, size: 18),
+                onTap:
+                    () => showDialog<void>(
+                      context: context,
+                      builder:
+                          (context) => AlertDialog(
+                            title: Text(item.title),
+                            content: SizedBox(
+                              width: 620,
+                              child: SingleChildScrollView(
+                                child: SelectableText(
+                                  [
+                                    item.id,
+                                    '${item.startedAt.toLocal()} — ${item.endedAt.toLocal()}',
+                                    if (item.sourceUri != null)
+                                      '${item.sourceUri}',
+                                    '',
+                                    item.content,
+                                  ].join('\n'),
+                                ),
+                              ),
+                            ),
+                            actions: [
+                              FilledButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('Fechar'),
+                              ),
+                            ],
+                          ),
+                    ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -372,10 +372,12 @@ class KangoosApp extends StatelessWidget {
       data: KangoosTheme.dark,
       child: TrayPanel(
         captureSettingsRepository: captureSettingsRepository,
+        memory: memory,
         captureStatus: captureStatus,
         onOpen: tray.showMainWindow,
         onHide: tray.hideTrayPanel,
         onToggleCapture: tray.toggleCapture,
+        onPauseFor: tray.pauseFor,
         onQuickCapture: tray.saveClipboardAsSnippet,
         onQuit: tray.quit,
       ),

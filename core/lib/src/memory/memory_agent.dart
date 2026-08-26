@@ -4,7 +4,6 @@ import 'dart:math' as math;
 
 import '../connectors/agent_connector.dart';
 import '../database/database.dart';
-import '../database/tables/activity_summaries_table.dart';
 import '../llm/llm_provider.dart';
 import '../llm/llm_stream.dart';
 import 'memory_query_engine.dart';
@@ -64,6 +63,25 @@ class MemoryEvidence {
   final List<String> terms;
   final Uri? sourceUri;
   final bool untrusted;
+
+  factory MemoryEvidence.fromJson(Map<String, Object?> json) => MemoryEvidence(
+    id: json['id']! as String,
+    kind: MemoryEvidenceKind.values.byName(json['kind']! as String),
+    title: json['title']! as String,
+    content: json['content']! as String,
+    startedAt: DateTime.parse(json['startedAt']! as String),
+    endedAt: DateTime.parse(json['endedAt']! as String),
+    score: (json['score'] as num?)?.toDouble() ?? 0,
+    terms:
+        (json['terms'] as List<Object?>? ?? const [])
+            .whereType<String>()
+            .toList(),
+    sourceUri:
+        json['sourceUri'] == null
+            ? null
+            : Uri.parse(json['sourceUri']! as String),
+    untrusted: json['untrusted'] as bool? ?? false,
+  );
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -413,6 +431,8 @@ class MemoryAgent {
     int? conversationId,
     ConnectorPermissionChecker? connectorPermissionChecker,
     ConnectorApprovalRequester? connectorApprovalRequester,
+    MemorySearchFilters filters = const MemorySearchFilters(),
+    String? untrustedContext,
   }) async {
     final normalized = query.trim();
     if (normalized.isEmpty) throw ArgumentError.value(query, 'query');
@@ -435,6 +455,15 @@ class MemoryAgent {
           content: jsonEncode({
             'kind': 'untrusted_persona_data',
             'content': persona.trim(),
+          }),
+        ),
+      if (untrustedContext != null && untrustedContext.trim().isNotEmpty)
+        LlmMessage(
+          role: LlmRole.user,
+          content: jsonEncode({
+            'kind': 'untrusted_attachment_data',
+            'untrusted': true,
+            'content': untrustedContext,
           }),
         ),
       ...history.where(
@@ -611,6 +640,7 @@ class MemoryAgent {
             steps,
             issues,
             connectorContext,
+            filters,
           );
         } on ConnectorCancelledException {
           return _interruptedRun(
@@ -664,6 +694,7 @@ class MemoryAgent {
   Future<MemoryInvestigation> investigate(
     String query, {
     MemoryInvestigationDepth depth = MemoryInvestigationDepth.standard,
+    MemorySearchFilters filters = const MemorySearchFilters(),
   }) async {
     final normalized = query.trim();
     if (normalized.isEmpty) throw ArgumentError.value(query, 'query');
@@ -679,6 +710,7 @@ class MemoryAgent {
       evidence,
       steps,
       issues,
+      filters,
     );
     var reflection = _reflect(
       evidence.values.toList(),
@@ -694,6 +726,7 @@ class MemoryAgent {
         evidence,
         steps,
         issues,
+        filters,
       );
       if (depth == MemoryInvestigationDepth.deep) {
         await _search(
@@ -703,6 +736,7 @@ class MemoryAgent {
           evidence,
           steps,
           issues,
+          filters,
         );
       }
       reflection = _reflect(evidence.values.toList(), depth, query: normalized);
@@ -727,10 +761,14 @@ class MemoryAgent {
     );
   }
 
-  Future<DeepStudyReport> deepStudy(String query) async {
+  Future<DeepStudyReport> deepStudy(
+    String query, {
+    MemorySearchFilters filters = const MemorySearchFilters(),
+  }) async {
     final investigation = await investigate(
       query,
       depth: MemoryInvestigationDepth.deep,
+      filters: filters,
     );
     return DeepStudyReport(
       investigation: investigation,
@@ -789,6 +827,7 @@ class MemoryAgent {
     List<MemorySearchStep> steps,
     List<String> issues,
     ConnectorRunContext connectorContext,
+    MemorySearchFilters filters,
   ) async {
     try {
       final registry = connectors;
@@ -806,7 +845,7 @@ class MemoryAgent {
           call,
           _query(call.arguments),
           _mode(call.arguments),
-          const MemorySearchFilters(),
+          filters,
           evidence,
           steps,
           issues,
@@ -815,44 +854,56 @@ class MemoryAgent {
           call,
           _query(call.arguments),
           MemorySearchMode.temporal,
-          const MemorySearchFilters(),
+          filters,
           evidence,
           steps,
           issues,
         ),
-        'search_conversations' => await _searchTool(
+        'search_conversations' => await _searchToolForSources(
           call,
           _query(call.arguments),
           MemorySearchMode.hybrid,
-          const MemorySearchFilters(
-            sources: {MemoryEvidenceSource.conversation},
-          ),
+          filters,
+          const {MemoryEvidenceSource.conversation},
           evidence,
           steps,
           issues,
         ),
-        'search_snippets' => await _searchTool(
+        'search_snippets' => await _searchToolForSources(
           call,
           _query(call.arguments),
           MemorySearchMode.hybrid,
-          const MemorySearchFilters(sources: {MemoryEvidenceSource.snippet}),
+          filters,
+          const {MemoryEvidenceSource.snippet},
           evidence,
           steps,
           issues,
         ),
-        'get_memory_episode' => await _episodeTool(call, evidence, steps),
-        'list_memory_summaries' => await _summaryTool(call, evidence, steps),
+        'get_memory_episode' => await _episodeTool(
+          call,
+          evidence,
+          steps,
+          filters,
+        ),
+        'list_memory_summaries' => await _summaryTool(
+          call,
+          evidence,
+          steps,
+          filters,
+        ),
         'search_entities' => await _entityTool(
           call,
           projectsOnly: false,
           evidence: evidence,
           steps: steps,
+          filters: filters,
         ),
         'search_projects' => await _entityTool(
           call,
           projectsOnly: true,
           evidence: evidence,
           steps: steps,
+          filters: filters,
         ),
         'reflect_memory' => _reflectionTool(
           call,
@@ -986,14 +1037,64 @@ class MemoryAgent {
     );
   }
 
+  Future<_AgentToolOutcome> _searchToolForSources(
+    LlmToolCall call,
+    String query,
+    MemorySearchMode mode,
+    MemorySearchFilters filters,
+    Set<MemoryEvidenceSource> sources,
+    Map<String, MemoryEvidence> evidence,
+    List<MemorySearchStep> steps,
+    List<String> issues,
+  ) {
+    final selected =
+        filters.sources.isEmpty
+            ? sources
+            : filters.sources.intersection(sources);
+    if (selected.isEmpty) {
+      steps.add(
+        MemorySearchStep(
+          tool: call.name,
+          query: query,
+          resultCount: 0,
+          arguments: call.arguments,
+        ),
+      );
+      return Future.value(const _AgentToolOutcome(content: '{"evidence":[]}'));
+    }
+    return _searchTool(
+      call,
+      query,
+      mode,
+      filters.copyWith(sources: selected),
+      evidence,
+      steps,
+      issues,
+    );
+  }
+
   Future<_AgentToolOutcome> _episodeTool(
     LlmToolCall call,
     Map<String, MemoryEvidence> evidence,
     List<MemorySearchStep> steps,
+    MemorySearchFilters filters,
   ) async {
     final id = _integer(call.arguments, 'id');
+    if (filters.sources.isNotEmpty &&
+        !filters.sources.contains(MemoryEvidenceSource.episode)) {
+      return _emptyToolOutcome(call, '$id', steps);
+    }
     final episode = await memory.getEpisode(id);
     if (episode == null) throw StateError('episode #$id not found');
+    final visible = await memory.searchMemory(
+      episode.title,
+      limit: 50,
+      mode: MemorySearchMode.lexical,
+      filters: filters.copyWith(sources: const {MemoryEvidenceSource.episode}),
+    );
+    if (!visible.evidence.any((item) => item.sourceId == id)) {
+      return _emptyToolOutcome(call, '$id', steps);
+    }
     final item = _episodeEvidence(episode);
     evidence[item.id] = item;
     steps.add(
@@ -1011,6 +1112,7 @@ class MemoryAgent {
     LlmToolCall call,
     Map<String, MemoryEvidence> evidence,
     List<MemorySearchStep> steps,
+    MemorySearchFilters filters,
   ) async {
     final start = _date(call.arguments['start']);
     final end = _date(call.arguments['end']);
@@ -1021,11 +1123,43 @@ class MemoryAgent {
       throw const FormatException('end must be after start');
     }
     final limit = _limit(call.arguments);
-    final summaries =
-        start == null
-            ? await memory.recentSummaries(limit: limit)
-            : (await memory.summariesBetween(start, end!)).take(limit).toList();
-    final found = summaries.map(_summaryEvidence).toList();
+    const summarySources = {
+      MemoryEvidenceSource.summary,
+      MemoryEvidenceSource.durableMemory,
+    };
+    final sources =
+        filters.sources.isEmpty
+            ? summarySources
+            : filters.sources.intersection(summarySources);
+    if (sources.isEmpty) {
+      return _emptyToolOutcome(
+        call,
+        start == null ? 'recent' : '$start/$end',
+        steps,
+      );
+    }
+    final effectiveStart = _later(
+      filters.start,
+      start ?? DateTime.fromMillisecondsSinceEpoch(0),
+    );
+    final effectiveEnd = _earlier(
+      filters.end,
+      end ?? DateTime.now().add(const Duration(minutes: 1)),
+    );
+    if (!effectiveStart.isBefore(effectiveEnd)) {
+      return _emptyToolOutcome(call, '$effectiveStart/$effectiveEnd', steps);
+    }
+    final result = await memory.searchMemory(
+      '',
+      limit: limit,
+      mode: MemorySearchMode.temporal,
+      filters: filters.copyWith(
+        sources: sources,
+        start: effectiveStart,
+        end: effectiveEnd,
+      ),
+    );
+    final found = result.evidence.map(_fromSearchEvidence).toList();
     for (final item in found) {
       evidence[item.id] = item;
     }
@@ -1049,11 +1183,17 @@ class MemoryAgent {
     required bool projectsOnly,
     required Map<String, MemoryEvidence> evidence,
     required List<MemorySearchStep> steps,
+    required MemorySearchFilters filters,
   }) async {
     final query = _query(call.arguments);
+    if (filters.sources.isNotEmpty &&
+        !filters.sources.contains(MemoryEvidenceSource.episode)) {
+      return _emptyToolOutcome(call, query, steps);
+    }
     final result = await memory.searchEpisodes(
       query,
       limit: _limit(call.arguments),
+      filters: filters,
     );
     final entities = <String>{};
     final found = <MemoryEvidence>[];
@@ -1084,6 +1224,28 @@ class MemoryAgent {
       }),
     );
   }
+
+  _AgentToolOutcome _emptyToolOutcome(
+    LlmToolCall call,
+    String query,
+    List<MemorySearchStep> steps,
+  ) {
+    steps.add(
+      MemorySearchStep(
+        tool: call.name,
+        query: query,
+        resultCount: 0,
+        arguments: call.arguments,
+      ),
+    );
+    return const _AgentToolOutcome(content: '{"evidence":[]}');
+  }
+
+  DateTime _later(DateTime? left, DateTime right) =>
+      left != null && left.isAfter(right) ? left : right;
+
+  DateTime _earlier(DateTime? left, DateTime right) =>
+      left != null && left.isBefore(right) ? left : right;
 
   _AgentToolOutcome _reflectionTool(
     LlmToolCall call,
@@ -1297,20 +1459,6 @@ class MemoryAgent {
         ],
       );
 
-  MemoryEvidence _summaryEvidence(ActivitySummary summary) => MemoryEvidence(
-    id: 'summary:${summary.id}',
-    kind:
-        summary.kind == SummaryKind.durable
-            ? MemoryEvidenceKind.durableMemory
-            : MemoryEvidenceKind.summary,
-    title: summary.kind.name,
-    content: _content(summary.content),
-    startedAt: summary.periodStart,
-    endedAt: summary.periodEnd,
-    score: 1,
-    terms: _tokens(summary.content).take(8).toList(),
-  );
-
   String _query(Map<String, Object?> arguments) {
     final query = (arguments['query'] as String? ?? '').trim();
     if (query.isEmpty) throw const FormatException('query is required');
@@ -1421,8 +1569,14 @@ class MemoryAgent {
     Map<String, MemoryEvidence> evidence,
     List<MemorySearchStep> steps,
     List<String> issues,
+    MemorySearchFilters filters,
   ) async {
-    final result = await memory.searchMemory(query, limit: limit, mode: mode);
+    final result = await memory.searchMemory(
+      query,
+      limit: limit,
+      mode: mode,
+      filters: filters,
+    );
     steps.add(
       MemorySearchStep(
         tool: 'search_memory_${mode.name}',

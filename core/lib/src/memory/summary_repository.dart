@@ -52,6 +52,8 @@ abstract interface class SummaryRepository {
 
   Future<void> setEmbedding(int id, List<double> embedding, String providerId);
 
+  Future<int> delete(int id);
+
   Future<int> purgeOlderThan(DateTime cutoff);
 
   Future<int> clear();
