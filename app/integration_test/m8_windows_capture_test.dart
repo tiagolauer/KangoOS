@@ -181,7 +181,10 @@ void main() {
       );
       expect(await helper.exists(), isTrue);
       final audio = await Process.run(helper.path, [audioFile.path, '1']);
-      expect(audio.exitCode, anyOf(0, audioCaptureSilentExitCode));
+      expect(
+        audio.exitCode,
+        anyOf(0, audioCaptureNoDeviceExitCode, audioCaptureSilentExitCode),
+      );
       if (audio.exitCode == 0) {
         expect(await audioFile.length(), greaterThan(44));
       }

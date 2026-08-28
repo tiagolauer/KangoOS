@@ -19,6 +19,7 @@ const audioCaptureTimeout = Duration(seconds: 60);
 const audioTranscribeTimeout = Duration(minutes: 5);
 const audioSessionInactivityGap = Duration(minutes: 15);
 const maxAudioSessionSummaryLength = 4000;
+const audioCaptureNoDeviceExitCode = 2;
 const audioCaptureSilentExitCode = 4;
 
 enum AudioCaptureOutcome { captured, silent, disabled, unavailable, failed }
