@@ -179,7 +179,7 @@ Reliability varies significantly by platform:
 
 ### Microphone transcription (Windows)
 
-Every 10 minutes the app records a 30-second clip from the default input device and transcribes it locally with [whisper.cpp](https://github.com/ggml-org/whisper.cpp). The audio never leaves the machine and the clip is deleted immediately after transcription — only the text is stored, alongside the focused window, and indexed for full-text search.
+Every 10 seconds the app records a 10-second clip from the default input device and transcribes it locally with [whisper.cpp](https://github.com/ggml-org/whisper.cpp). The audio never leaves the machine and the clip is deleted immediately after transcription — only the text is stored, alongside the focused window, and indexed for full-text search.
 
 The native recorder applies voice activity detection before transcription. Timestamped transcripts are grouped by inactivity into session memories, and known conferencing applications mark meeting sessions. System-audio capture and speaker separation are not performed.
 
