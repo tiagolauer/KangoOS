@@ -6,9 +6,9 @@ import '../benchmark/m4_benchmark.dart' show m4RegressionLimitMs;
 import '../benchmark/m4_corpus.dart';
 
 void main() {
-  test('M4 benchmark keeps relative gates above timing noise', () {
-    expect(m4RegressionLimitMs(0.693), closeTo(2.693, 0.000001));
-    expect(m4RegressionLimitMs(18.254), closeTo(21.9048, 0.000001));
+  test('M4 benchmark adds timing noise to its relative regression gate', () {
+    expect(m4RegressionLimitMs(0.693), closeTo(2.8316, 0.000001));
+    expect(m4RegressionLimitMs(18.254), closeTo(23.9048, 0.000001));
   });
 
   test(
