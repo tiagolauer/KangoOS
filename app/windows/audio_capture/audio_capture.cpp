@@ -8,6 +8,7 @@
 #include <mmdeviceapi.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -26,7 +27,9 @@ constexpr int kChannels = 1;
 constexpr int kBitsPerSample = 16;
 constexpr int kMaxSeconds = 300;
 constexpr REFERENCE_TIME kBufferDuration = 10000000;
-constexpr double kSilenceThreshold = 0.002;
+constexpr int kVadFrameMilliseconds = 20;
+constexpr int kVadMinimumConsecutiveFrames = 3;
+constexpr double kVadRmsThreshold = 0.012;
 
 struct ComScope {
   bool ok = false;
@@ -88,18 +91,35 @@ bool WriteWav(const std::wstring& path, const std::vector<int16_t>& samples) {
   return true;
 }
 
-double PeakAmplitude(const std::vector<int16_t>& samples) {
-  int16_t peak = 0;
-  for (const int16_t sample : samples) {
-    const int16_t magnitude = sample == INT16_MIN
-                                  ? INT16_MAX
-                                  : static_cast<int16_t>(std::abs(sample));
-    peak = std::max(peak, magnitude);
+bool IsWorkstationUnlocked() {
+  HDESK desktop = OpenInputDesktop(0, FALSE, DESKTOP_SWITCHDESKTOP);
+  if (!desktop) return false;
+  const bool unlocked = SwitchDesktop(desktop) != FALSE;
+  CloseDesktop(desktop);
+  return unlocked;
+}
+
+bool HasVoiceActivity(const std::vector<int16_t>& samples) {
+  const size_t frameSamples =
+      static_cast<size_t>(kSampleRate * kVadFrameMilliseconds / 1000);
+  int consecutiveFrames = 0;
+  for (size_t start = 0; start < samples.size(); start += frameSamples) {
+    const size_t end = std::min(start + frameSamples, samples.size());
+    double squaredSum = 0;
+    for (size_t index = start; index < end; ++index) {
+      const double normalized =
+          static_cast<double>(samples[index]) / INT16_MAX;
+      squaredSum += normalized * normalized;
+    }
+    const double rms = std::sqrt(squaredSum / (end - start));
+    consecutiveFrames = rms >= kVadRmsThreshold ? consecutiveFrames + 1 : 0;
+    if (consecutiveFrames >= kVadMinimumConsecutiveFrames) return true;
   }
-  return static_cast<double>(peak) / INT16_MAX;
+  return false;
 }
 
 int Record(const std::wstring& path, int seconds) {
+  if (!IsWorkstationUnlocked()) return kExitFailed;
   IMMDeviceEnumerator* enumerator = nullptr;
   IMMDevice* device = nullptr;
   IAudioClient* client = nullptr;
@@ -141,8 +161,13 @@ int Record(const std::wstring& path, int seconds) {
     std::vector<int16_t> samples;
     samples.reserve(static_cast<size_t>(kSampleRate) * seconds);
     const size_t wanted = static_cast<size_t>(kSampleRate) * seconds;
+    bool interrupted = false;
 
     while (samples.size() < wanted) {
+      if (!IsWorkstationUnlocked()) {
+        interrupted = true;
+        break;
+      }
       UINT32 packetFrames = 0;
       if (FAILED(capture->GetNextPacketSize(&packetFrames))) break;
       if (packetFrames == 0) {
@@ -168,11 +193,12 @@ int Record(const std::wstring& path, int seconds) {
     }
 
     client->Stop();
+    if (interrupted) break;
     if (samples.empty()) break;
     if (samples.size() > wanted) samples.resize(wanted);
 
     if (!WriteWav(path, samples)) break;
-    result = PeakAmplitude(samples) < kSilenceThreshold ? kExitSilent : kExitOk;
+    result = HasVoiceActivity(samples) ? kExitOk : kExitSilent;
   } while (false);
 
   if (mixFormat) CoTaskMemFree(mixFormat);

@@ -30,6 +30,8 @@ The server speaks plain HTTP and has no TLS support of its own. It binds `0.0.0.
 |---|---|---|
 | `KANGOOS_API_TOKEN` | — | **Required**, minimum 32 characters. Generate with `openssl rand -hex 32`. |
 | `KANGOOS_DB_PATH` | `kangoos.db` | SQLite file path. Mount a volume here in Docker. |
+| `KANGOOS_DB_KEY` | — | SQLCipher key when opening an encrypted database. |
+| `KANGOOS_DB_KEY_FILE` | — | File containing the SQLCipher key; preferred over an inline value. |
 | `KANGOOS_LLM_PROVIDER` | `ollama` | `ollama`, `anthropic`, or `openAi`. |
 | `KANGOOS_LLM_MODEL` | `llama3` | Model id for the chosen provider. |
 | `KANGOOS_LLM_API_KEY` | (empty) | Required for `anthropic`/`openAi`. |

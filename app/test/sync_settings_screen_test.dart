@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kangoos_app/secure_credential_store.dart';
 import 'package:kangoos_app/sync/sync_settings_repository.dart';
 import 'package:kangoos_app/sync/sync_settings_screen.dart';
+
+import 'test_services.dart';
 
 class _FakeSecureCredentialStore implements SecureCredentialStore {
   final _values = <String, String>{};
@@ -23,10 +25,12 @@ class _FakeSecureCredentialStore implements SecureCredentialStore {
 
 void main() {
   late KangoosDatabase database;
+  late TestServices services;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     database = KangoosDatabase.memory();
+    services = TestServices(database);
   });
   tearDown(() => database.close());
 
@@ -37,8 +41,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
-      home: SyncSettingsScreen(repository: repository, database: database),
+      home: SyncSettingsScreen(
+        repository: repository,
+        snippetRepository: services.snippetRepository,
+        snippets: services.snippets,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -64,8 +71,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-
-      home: SyncSettingsScreen(repository: repository, database: database),
+      home: SyncSettingsScreen(
+        repository: repository,
+        snippetRepository: services.snippetRepository,
+        snippets: services.snippets,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -83,7 +93,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SyncSettingsScreen(repository: repository, database: database),
+      home: SyncSettingsScreen(
+        repository: repository,
+        snippetRepository: services.snippetRepository,
+        snippets: services.snippets,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -110,7 +124,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SyncSettingsScreen(repository: repository, database: database),
+      home: SyncSettingsScreen(
+        repository: repository,
+        snippetRepository: services.snippetRepository,
+        snippets: services.snippets,
+      ),
     ));
     await tester.pumpAndSettle();
 

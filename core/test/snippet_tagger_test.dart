@@ -1,7 +1,7 @@
 import 'package:kangoos_core/kangoos_core.dart';
 import 'package:test/test.dart';
 
-class _FakeLlmProvider implements LlmProvider {
+class _FakeLlmProvider extends LlmProvider {
   _FakeLlmProvider(this.chunks);
 
   final List<String> chunks;

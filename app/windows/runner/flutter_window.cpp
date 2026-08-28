@@ -1,8 +1,30 @@
 #include "flutter_window.h"
 
+#include <flutter/standard_method_codec.h>
+
+#include <cstdint>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+bool IsWorkstationLocked() {
+  HDESK desktop = OpenInputDesktop(0, FALSE, DESKTOP_SWITCHDESKTOP);
+  if (!desktop) return true;
+  const bool locked = SwitchDesktop(desktop) == FALSE;
+  CloseDesktop(desktop);
+  return locked;
+}
+
+int64_t IdleMilliseconds() {
+  LASTINPUTINFO input = {};
+  input.cbSize = sizeof(LASTINPUTINFO);
+  if (!GetLastInputInfo(&input)) return 0;
+  return static_cast<int64_t>(GetTickCount() - input.dwTime);
+}
+
+}
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -25,6 +47,30 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  window_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "kangoos/window",
+          &flutter::StandardMethodCodec::GetInstance());
+  window_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<
+                 flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() == "setCloseToTray") {
+          close_to_tray_ = std::get<bool>(*call.arguments());
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "getCaptureEnvironment") {
+          flutter::EncodableMap environment;
+          environment[flutter::EncodableValue("locked")] =
+              flutter::EncodableValue(IsWorkstationLocked());
+          environment[flutter::EncodableValue("idleMilliseconds")] =
+              flutter::EncodableValue(IdleMilliseconds());
+          result->Success(flutter::EncodableValue(environment));
+          return;
+        }
+        result->NotImplemented();
+      });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -40,6 +86,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  window_channel_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
@@ -51,6 +98,11 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == WM_CLOSE && close_to_tray_) {
+    ShowWindow(hwnd, SW_HIDE);
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

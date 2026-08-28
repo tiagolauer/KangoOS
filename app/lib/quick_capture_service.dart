@@ -5,15 +5,13 @@ import 'capture/window_capture_service.dart';
 
 class QuickCaptureService {
   QuickCaptureService({
-    required this.database,
-    required this.semanticSearch,
+    required this.snippets,
     Future<String?> Function()? readClipboard,
     WindowSnapshot? Function()? readWindow,
   })  : readClipboard = readClipboard ?? _readClipboardText,
         readWindow = readWindow ?? WindowCaptureService.defaultWindowReader();
 
-  final KangoosDatabase database;
-  final SemanticSearch semanticSearch;
+  final SnippetService snippets;
   final Future<String?> Function() readClipboard;
   final WindowSnapshot? Function() readWindow;
 
@@ -25,13 +23,8 @@ class QuickCaptureService {
       clipboard: clipboard,
       sourceApp: readWindow()?.appName,
     );
-    final id = await database.createSnippet(entry);
-
-    final saved = await database.getSnippetById(id);
-    if (saved != null) {
-      await semanticSearch.indexSnippet(saved).catchError((Object _) {});
-    }
-    return id;
+    final result = await snippets.create(entry);
+    return result.snippet.id;
   }
 
   static Future<String?> _readClipboardText() async {

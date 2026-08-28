@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:kangoos_core/kangoos_core.dart';
 
 /// Buckets today's activity into 24 hourly totals of focused minutes
@@ -35,21 +36,28 @@ class ActivitySparkline extends StatelessWidget {
     required this.hourlyMinutes,
     this.isCapturing = true,
     this.now,
+    this.foregroundColor,
+    this.backgroundColor,
   });
 
   final List<double> hourlyMinutes;
   final bool isCapturing;
   final DateTime? now;
+  final Color? foregroundColor;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context);
     final hasData = hourlyMinutes.any((minutes) => minutes > 0);
     final resolvedNow = now ?? DateTime.now();
+    final graphColor = foregroundColor ?? colors.primary;
+    final labelStyle = textTheme.bodySmall?.copyWith(color: foregroundColor);
     final nowFraction =
         (resolvedNow.hour * 60 + resolvedNow.minute) / (24 * 60);
-    final liveColor = isCapturing ? colors.primary : colors.onSurfaceVariant;
+    final liveColor = isCapturing ? graphColor : colors.onSurfaceVariant;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,8 +74,8 @@ class ActivitySparkline extends StatelessWidget {
                           size: Size.infinite,
                           painter: _SparklinePainter(
                             minutes: hourlyMinutes,
-                            lineColor: colors.primary,
-                            fillColor: colors.primary.withValues(alpha: 0.14),
+                            lineColor: graphColor,
+                            fillColor: graphColor.withValues(alpha: 0.18),
                           ),
                         ),
                         Positioned(
@@ -79,8 +87,9 @@ class ActivitySparkline extends StatelessWidget {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: liveColor,
-                              border:
-                                  Border.all(color: colors.surface, width: 1.5),
+                              border: Border.all(
+                                  color: backgroundColor ?? colors.surface,
+                                  width: 1.5),
                             ),
                           ),
                         ),
@@ -90,8 +99,8 @@ class ActivitySparkline extends StatelessWidget {
                 )
               : Center(
                   child: Text(
-                    'Activity will show up here as you work.',
-                    style: textTheme.bodySmall,
+                    l10n.activityEmptyHint,
+                    style: labelStyle,
                   ),
                 ),
         ),
@@ -100,11 +109,11 @@ class ActivitySparkline extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('12am', style: textTheme.bodySmall),
-              Text('6am', style: textTheme.bodySmall),
-              Text('12pm', style: textTheme.bodySmall),
-              Text('6pm', style: textTheme.bodySmall),
-              Text('12am', style: textTheme.bodySmall),
+              Text('00h', style: labelStyle),
+              Text('06h', style: labelStyle),
+              Text('12h', style: labelStyle),
+              Text('18h', style: labelStyle),
+              Text('24h', style: labelStyle),
             ],
           ),
         ],

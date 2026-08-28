@@ -1,0 +1,16 @@
+name: kangoos_mcp
+description: Official MCP transport for KangoOS.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.7.0 <4.0.0'
+
+dependencies:
+  dart_mcp: 0.5.2
+  kangoos_core:
+    path: ../core
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.24.0

@@ -26,10 +26,15 @@ class DoubleListConverter extends TypeConverter<List<double>, String> {
 }
 
 class SnippetVector {
-  const SnippetVector({required this.id, required this.embedding});
+  const SnippetVector({
+    required this.id,
+    required this.embedding,
+    required this.providerId,
+  });
 
   final int id;
   final List<double> embedding;
+  final String providerId;
 }
 
 class EmbeddingConverter extends TypeConverter<List<double>, Uint8List> {
@@ -50,10 +55,12 @@ class Snippets extends Table {
   TextColumn get title => text()();
   TextColumn get content => text()();
   TextColumn get language => text().nullable()();
-  TextColumn get tags =>
-      text().map(const StringListConverter()).withDefault(const Constant('[]'))();
+  TextColumn get tags => text()
+      .map(const StringListConverter())
+      .withDefault(const Constant('[]'))();
   BlobColumn get embedding =>
       blob().map(const EmbeddingConverter()).nullable()();
+  TextColumn get embeddingProviderId => text().nullable()();
   TextColumn get syncId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();

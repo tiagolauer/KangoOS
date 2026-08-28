@@ -8,6 +8,17 @@ import 'package:test/test.dart';
 
 void main() {
   const userMessages = [LlmMessage(role: LlmRole.user, content: 'hi')];
+  const memoryTool = LlmToolDefinition(
+    name: 'search_memory',
+    description: 'Search memory',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'query': {'type': 'string'},
+      },
+      'required': ['query'],
+    },
+  );
 
   test('OllamaProvider streams message content from NDJSON lines', () async {
     final client = MockClient((request) async {
@@ -74,6 +85,119 @@ void main() {
     final chunks = await provider.chat(userMessages).toList();
 
     expect(chunks.join(), 'Hello');
+  });
+
+  test('OpenAiProvider supports a keyless OpenAI-compatible local endpoint',
+      () async {
+    final client = MockClient((request) async {
+      expect(
+          request.url.toString(), 'http://127.0.0.1:1234/v1/chat/completions');
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      return http.Response('data: [DONE]\n\n', 200);
+    });
+
+    await OpenAiProvider(
+      apiKey: '',
+      model: 'qwen/qwen3-8b',
+      baseUrl: 'http://127.0.0.1:1234/v1/',
+      client: client,
+    ).chat(userMessages).drain<void>();
+  });
+
+  test('OpenAiProvider parses OpenAI-compatible tool calls', () async {
+    final client = MockClient((request) async {
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      expect(body['stream'], isFalse);
+      expect((body['tools'] as List).single['function']['name'], 'search_memory');
+      return http.Response(
+        '{"choices":[{"finish_reason":"tool_calls","message":'
+        '{"content":null,"tool_calls":[{"id":"call-1","type":"function",'
+        '"function":{"name":"search_memory",'
+        '"arguments":"{\\"query\\":\\"KangoOS\\"}"}}]}}]}',
+        200,
+      );
+    });
+
+    final response = await OpenAiProvider(
+      apiKey: '',
+      model: 'local-model',
+      baseUrl: 'http://127.0.0.1:1234/v1',
+      client: client,
+    ).complete(userMessages, tools: const [memoryTool]);
+
+    expect(response.stopReason, LlmStopReason.toolCalls);
+    expect(response.toolCalls.single.name, 'search_memory');
+    expect(response.toolCalls.single.arguments, {'query': 'KangoOS'});
+  });
+
+  test('OllamaProvider parses tool calls', () async {
+    final client = MockClient((request) async => http.Response(
+          '{"message":{"role":"assistant","content":"",'
+          '"tool_calls":[{"function":{"name":"search_memory",'
+          '"arguments":{"query":"KangoOS"}}}]},"done":true}',
+          200,
+        ));
+
+    final response = await OllamaProvider(model: 'llama3', client: client)
+        .complete(userMessages, tools: const [memoryTool]);
+
+    expect(response.stopReason, LlmStopReason.toolCalls);
+    expect(response.toolCalls.single.arguments, {'query': 'KangoOS'});
+  });
+
+  test('AnthropicProvider parses tool_use blocks', () async {
+    final client = MockClient((request) async => http.Response(
+          '{"content":[{"type":"tool_use","id":"tool-1",'
+          '"name":"search_memory","input":{"query":"KangoOS"}}],'
+          '"stop_reason":"tool_use"}',
+          200,
+        ));
+
+    final response = await AnthropicProvider(
+      apiKey: 'key',
+      model: 'claude',
+      client: client,
+    ).complete(userMessages, tools: const [memoryTool]);
+
+    expect(response.stopReason, LlmStopReason.toolCalls);
+    expect(response.toolCalls.single.id, 'tool-1');
+    expect(response.toolCalls.single.arguments, {'query': 'KangoOS'});
+  });
+
+  test('GeminiProvider parses functionCall parts', () async {
+    final client = MockClient((request) async => http.Response(
+          '{"candidates":[{"content":{"parts":[{"functionCall":'
+          '{"name":"search_memory","args":{"query":"KangoOS"}}}]},'
+          '"finishReason":"STOP"}]}',
+          200,
+        ));
+
+    final response = await GeminiProvider(
+      apiKey: 'key',
+      model: 'gemini',
+      client: client,
+    ).complete(userMessages, tools: const [memoryTool]);
+
+    expect(response.stopReason, LlmStopReason.toolCalls);
+    expect(response.toolCalls.single.arguments, {'query': 'KangoOS'});
+  });
+
+  test('OpenAiEmbeddingProvider reads OpenAI-compatible vectors', () async {
+    final client = MockClient((request) async {
+      expect(request.url.toString(), 'http://127.0.0.1:1234/v1/embeddings');
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      return http.Response(
+        '{"data":[{"embedding":[0.25,0.75]}]}',
+        200,
+      );
+    });
+    final provider = OpenAiEmbeddingProvider(
+      model: 'nomic-embed',
+      baseUrl: 'http://127.0.0.1:1234/v1',
+      client: client,
+    );
+
+    expect(await provider.embed('KangoOS'), [0.25, 0.75]);
   });
 
   test(

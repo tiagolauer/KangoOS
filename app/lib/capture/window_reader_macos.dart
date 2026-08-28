@@ -7,11 +7,12 @@ const _separator = '|||';
 const _frontmostWindowScript = '''
 tell application "System Events"
     set frontApp to name of first application process whose frontmost is true
+    set frontBundle to bundle identifier of first application process whose frontmost is true
     set winTitle to ""
     try
         set winTitle to name of front window of (first application process whose frontmost is true)
     end try
-    return frontApp & "$_separator" & winTitle
+    return frontApp & "$_separator" & frontBundle & "$_separator" & winTitle
 end tell
 ''';
 
@@ -24,15 +25,19 @@ WindowSnapshot? readForegroundWindowMacOS() {
     if (result.exitCode != 0) return null;
 
     final output = (result.stdout as String).trim();
-    final separatorIndex = output.indexOf(_separator);
-    if (separatorIndex == -1) return null;
+    final parts = output.split(_separator);
+    if (parts.length != 3) return null;
 
-    final appName = output.substring(0, separatorIndex).trim();
-    final windowTitle =
-        output.substring(separatorIndex + _separator.length).trim();
-    if (appName.isEmpty || windowTitle.isEmpty) return null;
+    final appName = parts[0].trim();
+    final bundleId = parts[1].trim();
+    final windowTitle = parts[2].trim();
+    if (appName.isEmpty || bundleId.isEmpty || windowTitle.isEmpty) return null;
 
-    return WindowSnapshot(appName: appName, windowTitle: windowTitle);
+    return WindowSnapshot(
+      appId: 'macos:$bundleId',
+      appName: appName,
+      windowTitle: windowTitle,
+    );
   } catch (_) {
     return null;
   }

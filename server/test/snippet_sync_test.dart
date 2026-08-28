@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:kangoos_server/kangoos_server.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:test/test.dart';
@@ -14,7 +15,7 @@ class _FakeEmbeddingProvider implements EmbeddingProvider {
   Future<List<double>> embed(String text) async => const [1, 0, 0];
 }
 
-class _FakeLlmProvider implements LlmProvider {
+class _FakeLlmProvider extends LlmProvider {
   @override
   String get id => 'fake';
 
@@ -30,24 +31,48 @@ void main() {
   late Uri baseUrl;
   late SnippetSyncClient syncClient;
 
+  setUpAll(() => driftRuntimeOptions.dontWarnAboutMultipleDatabases = true);
+  tearDownAll(() => driftRuntimeOptions.dontWarnAboutMultipleDatabases = false);
+
   setUp(() async {
     serverDatabase = KangoosDatabase.memory();
     clientDatabase = KangoosDatabase.memory();
+    final serverSnippetRepository = SqliteSnippetRepository(serverDatabase);
     final semanticSearch = SemanticSearch(
-        database: serverDatabase, embeddingProvider: _FakeEmbeddingProvider());
-    final ragChat =
-        RagChat(database: serverDatabase, semanticSearch: semanticSearch);
-    final server = KangoosServer(
-      database: serverDatabase,
+        repository: serverSnippetRepository,
+        embeddingProvider: _FakeEmbeddingProvider());
+    final serverSnippets = SnippetService(
+      repository: serverSnippetRepository,
       semanticSearch: semanticSearch,
+    );
+    final serverMemory = MemoryService(
+      database: serverDatabase,
+      activities: SqliteActivityRepository(serverDatabase),
+      summaries: SqliteSummaryRepository(serverDatabase),
+    );
+    final ragChat = RagChat(snippets: serverSnippets, memory: serverMemory);
+    final server = KangoosServer(
+      snippetRepository: serverSnippetRepository,
+      snippets: serverSnippets,
       ragChat: ragChat,
       llmProvider: _FakeLlmProvider(),
       apiToken: apiToken,
     );
     httpServer = await shelf_io.serve(server.build(), 'localhost', 0);
     baseUrl = Uri.parse('http://localhost:${httpServer.port}');
+    final clientSnippetRepository = SqliteSnippetRepository(clientDatabase);
+    final clientSemanticSearch = SemanticSearch(
+      repository: clientSnippetRepository,
+      embeddingProvider: _FakeEmbeddingProvider(),
+    );
     syncClient = SnippetSyncClient(
-        database: clientDatabase, baseUrl: baseUrl, apiToken: apiToken);
+      repository: clientSnippetRepository,
+      transport: HttpSyncTransport(baseUrl: baseUrl, apiToken: apiToken),
+      snippetService: SnippetService(
+        repository: clientSnippetRepository,
+        semanticSearch: clientSemanticSearch,
+      ),
+    );
   });
 
   tearDown(() async {

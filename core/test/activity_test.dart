@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
-import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -8,7 +8,8 @@ void main() {
   setUp(() => database = KangoosDatabase.memory());
   tearDown(() => database.close());
 
-  test('logActivity stores a row, lastActivity and watchRecentActivities read it back',
+  test(
+      'logActivity stores a row, lastActivity and watchRecentActivities read it back',
       () async {
     expect(await database.lastActivity(), isNull);
 
@@ -55,14 +56,16 @@ void main() {
       capturedAt: Value(DateTime.utc(2026, 1, 1)),
     ));
 
-    final deleted = await database.purgeActivitiesOlderThan(DateTime.utc(2025, 1, 1));
+    final deleted =
+        await database.purgeActivitiesOlderThan(DateTime.utc(2025, 1, 1));
     expect(deleted, 1);
 
     final remaining = await database.watchRecentActivities().first;
     expect(remaining.map((a) => a.windowTitle), ['recent']);
   });
 
-  test('summariesBetween returns only summaries overlapping the range', () async {
+  test('summariesBetween returns only summaries overlapping the range',
+      () async {
     await database.insertActivitySummary(ActivitySummariesCompanion.insert(
       kind: SummaryKind.periodic,
       periodStart: DateTime.utc(2026, 1, 1),
@@ -86,7 +89,8 @@ void main() {
   test('getSummaryById returns the matching row or null', () async {
     expect(await database.getSummaryById(999), isNull);
 
-    final id = await database.insertActivitySummary(ActivitySummariesCompanion.insert(
+    final id =
+        await database.insertActivitySummary(ActivitySummariesCompanion.insert(
       kind: SummaryKind.manual,
       periodStart: DateTime.utc(2026, 1, 1),
       periodEnd: DateTime.utc(2026, 1, 1),

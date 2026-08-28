@@ -1,7 +1,8 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
 class _FakeEmbeddingProvider implements EmbeddingProvider {
@@ -16,9 +17,26 @@ void main() {
   late KangoosDatabase database;
   late SnippetExchange exchange;
 
+  setUpAll(() => driftRuntimeOptions.dontWarnAboutMultipleDatabases = true);
+  tearDownAll(() => driftRuntimeOptions.dontWarnAboutMultipleDatabases = false);
+
+  SnippetExchange buildExchange(
+    KangoosDatabase target, {
+    SemanticSearch? semanticSearch,
+  }) {
+    final repository = SqliteSnippetRepository(target);
+    return SnippetExchange(
+      repository: repository,
+      snippets: SnippetService(
+        repository: repository,
+        semanticSearch: semanticSearch,
+      ),
+    );
+  }
+
   setUp(() {
     database = KangoosDatabase.memory();
-    exchange = SnippetExchange(database: database);
+    exchange = buildExchange(database);
   });
   tearDown(() => database.close());
 
@@ -34,7 +52,7 @@ void main() {
 
     final other = KangoosDatabase.memory();
     addTearDown(other.close);
-    final result = await SnippetExchange(database: other).importJson(json);
+    final result = await buildExchange(other).importJson(json);
 
     expect(result.imported, 1);
     expect(result.skipped, 0);
@@ -66,8 +84,8 @@ void main() {
   });
 
   test('import skips duplicates by title+content when no syncId', () async {
-    await database.createSnippet(
-        SnippetsCompanion.insert(title: 'Dup', content: 'same'));
+    await database
+        .createSnippet(SnippetsCompanion.insert(title: 'Dup', content: 'same'));
 
     final json = jsonEncode({
       'snippets': [
@@ -110,7 +128,7 @@ void main() {
 
     final other = KangoosDatabase.memory();
     addTearDown(other.close);
-    await SnippetExchange(database: other).importJson(json);
+    await buildExchange(other).importJson(json);
 
     final imported = (await other.allSnippets()).single;
     expect(imported.createdAt.toUtc(), createdAt);
@@ -136,11 +154,10 @@ void main() {
 
   test('imported snippets are indexed for semantic search', () async {
     final semanticSearch = SemanticSearch(
-      database: database,
+      repository: SqliteSnippetRepository(database),
       embeddingProvider: _FakeEmbeddingProvider(),
     );
-    final indexing =
-        SnippetExchange(database: database, semanticSearch: semanticSearch);
+    final indexing = buildExchange(database, semanticSearch: semanticSearch);
 
     await indexing.importJson(jsonEncode({
       'snippets': [
@@ -154,7 +171,6 @@ void main() {
   test('import rejects a non-KangoOS json', () async {
     expect(() => exchange.importJson('{"foo": "bar"}'),
         throwsA(isA<FormatException>()));
-    expect(() => exchange.importJson('[]'),
-        throwsA(isA<FormatException>()));
+    expect(() => exchange.importJson('[]'), throwsA(isA<FormatException>()));
   });
 }

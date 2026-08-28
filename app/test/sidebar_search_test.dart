@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_core/kangoos_core.dart';
+import 'package:kangoos_core/kangoos_core_storage.dart';
 
 import 'package:kangoos_app/home/sidebar.dart';
+
+import 'test_services.dart';
 
 const _pastDebounce = Duration(milliseconds: 400);
 
@@ -24,10 +27,12 @@ class _CountingEmbeddingProvider implements EmbeddingProvider {
 void main() {
   late KangoosDatabase database;
   late _CountingEmbeddingProvider embeddings;
+  late TestServices services;
 
   setUp(() async {
     database = KangoosDatabase.memory();
     embeddings = _CountingEmbeddingProvider();
+    services = TestServices(database, embeddingProvider: embeddings);
     await database.createSnippet(SnippetsCompanion.insert(
       title: 'Kubernetes probes',
       content: 'livenessProbe: ...',
@@ -41,9 +46,9 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Sidebar(
-          database: database,
-          semanticSearch:
-              SemanticSearch(database: database, embeddingProvider: embeddings),
+          snippets: services.snippets,
+          memory: services.memory,
+          conversations: services.conversations,
           onSelectSnippet: (_) {},
           onCreateSnippet: () {},
           onGenerateDayRecap: (_) async =>

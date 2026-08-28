@@ -21,11 +21,13 @@ Handler chatHandler({required RagChat ragChat, required LlmProvider provider}) {
       if (entry is! Map<String, dynamic>) {
         return _error('each history entry must be an object');
       }
-      final roles =
-          LlmRole.values.where((candidate) => candidate.name == entry['role']);
+      final roles = LlmRole.values.where(
+        (candidate) =>
+            (candidate == LlmRole.user || candidate == LlmRole.assistant) &&
+            candidate.name == entry['role'],
+      );
       if (roles.isEmpty) {
-        return _error(
-            'history role must be one of ${LlmRole.values.map((r) => r.name).join(', ')}');
+        return _error('history role must be user or assistant');
       }
       final role = roles.first;
       if (entry['content'] is! String) {
@@ -38,15 +40,19 @@ Handler chatHandler({required RagChat ragChat, required LlmProvider provider}) {
     ragChat
         .reply(provider: provider, history: history, userMessage: message)
         .listen(
-      (chunk) => controller
-          .add(utf8.encode('data: ${jsonEncode({'text': chunk})}\n\n')),
-      onDone: controller.close,
-      onError: (Object error, StackTrace stackTrace) {
-        controller.add(utf8.encode(
-            'event: error\ndata: ${jsonEncode({'error': '$error'})}\n\n'));
-        controller.close();
-      },
-    );
+          (chunk) => controller.add(
+            utf8.encode('data: ${jsonEncode({'text': chunk})}\n\n'),
+          ),
+          onDone: controller.close,
+          onError: (Object error, StackTrace stackTrace) {
+            controller.add(
+              utf8.encode(
+                'event: error\ndata: ${jsonEncode({'error': '$error'})}\n\n',
+              ),
+            );
+            controller.close();
+          },
+        );
 
     return Response.ok(
       controller.stream,
@@ -59,9 +65,11 @@ Handler chatHandler({required RagChat ragChat, required LlmProvider provider}) {
   };
 }
 
-Response _error(String message) => Response(400,
-    body: jsonEncode({'error': message}),
-    headers: {'content-type': 'application/json'});
+Response _error(String message) => Response(
+  400,
+  body: jsonEncode({'error': message}),
+  headers: {'content-type': 'application/json'},
+);
 
 Map<String, dynamic>? _decodeObject(String body) {
   try {

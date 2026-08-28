@@ -9,13 +9,13 @@ class SyncSettingsScreen extends StatefulWidget {
   const SyncSettingsScreen({
     super.key,
     required this.repository,
-    required this.database,
-    this.semanticSearch,
+    required this.snippetRepository,
+    required this.snippets,
   });
 
   final SyncSettingsRepository repository;
-  final KangoosDatabase database;
-  final SemanticSearch? semanticSearch;
+  final SnippetRepository snippetRepository;
+  final SnippetService snippets;
 
   @override
   State<SyncSettingsScreen> createState() => _SyncSettingsScreenState();
@@ -80,26 +80,31 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         break;
     }
 
-    await widget.repository
-        .save(SyncSettings(serverUrl: url, apiToken: token));
+    await widget.repository.save(SyncSettings(serverUrl: url, apiToken: token));
     setState(() {
       _syncing = true;
       _status = null;
     });
     try {
       final client = SnippetSyncClient(
-        database: widget.database,
-        baseUrl: Uri.parse(url),
-        apiToken: token,
-        semanticSearch: widget.semanticSearch,
+        repository: widget.snippetRepository,
+        transport: HttpSyncTransport(
+          baseUrl: Uri.parse(url),
+          apiToken: token,
+        ),
+        snippetService: widget.snippets,
       );
       final result = await client.sync();
-      setState(() => _status = l10n.syncSucceeded(
-            result.pushed,
-            result.pulled,
-            result.updated,
-            result.deletedLocally + result.deletedRemotely,
-          ));
+      final success = l10n.syncSucceeded(
+        result.pushed,
+        result.pulled,
+        result.updated,
+        result.deletedLocally + result.deletedRemotely,
+      );
+      final failures = result.indexingFailures;
+      setState(() => _status = failures.isEmpty
+          ? success
+          : '$success\n${l10n.semanticSearchFailed(l10n.failedItemCount(failures.length))}');
     } catch (e) {
       setState(() => _status = l10n.syncFailed('$e'));
     } finally {
@@ -156,41 +161,45 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
               tooltip: l10n.commonSave),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            Text(l10n.serverSyncDescription),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _urlController,
-              decoration: InputDecoration(
-                labelText: l10n.serverUrl,
-                hintText: 'http://localhost:8080',
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: 760,
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Text(l10n.serverSyncDescription),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _urlController,
+                decoration: InputDecoration(
+                  labelText: l10n.serverUrl,
+                  hintText: 'http://localhost:8080',
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _tokenController,
-              decoration: InputDecoration(labelText: l10n.serverApiToken),
-              obscureText: true,
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _syncing ? null : _syncNow,
-              icon: _syncing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.sync),
-              label: Text(l10n.syncNow),
-            ),
-            if (_status != null) ...[
               const SizedBox(height: 12),
-              Text(_status!),
+              TextField(
+                controller: _tokenController,
+                decoration: InputDecoration(labelText: l10n.serverApiToken),
+                obscureText: true,
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _syncing ? null : _syncNow,
+                icon: _syncing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.sync),
+                label: Text(l10n.syncNow),
+              ),
+              if (_status != null) ...[
+                const SizedBox(height: 12),
+                Text(_status!),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

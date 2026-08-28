@@ -11,15 +11,15 @@ import 'routes/snippets_routes.dart';
 
 class KangoosServer {
   KangoosServer({
-    required this.database,
-    required this.semanticSearch,
+    required this.snippetRepository,
+    required this.snippets,
     required this.ragChat,
     required this.llmProvider,
     required this.apiToken,
   });
 
-  final KangoosDatabase database;
-  final SemanticSearch semanticSearch;
+  final SnippetRepository snippetRepository;
+  final SnippetService snippets;
   final RagChat ragChat;
   final LlmProvider llmProvider;
   final String apiToken;
@@ -33,7 +33,7 @@ class KangoosServer {
       )
       ..mount(
         '/snippets',
-        snippetsRouter(database: database, semanticSearch: semanticSearch).call,
+        snippetsRouter(repository: snippetRepository, snippets: snippets).call,
       )
       ..post('/index/missing', _indexMissing)
       ..post('/chat', chatHandler(ragChat: ragChat, provider: llmProvider));
@@ -47,8 +47,16 @@ class KangoosServer {
 
   Future<Response> _indexMissing(Request request) async {
     try {
-      final count = await semanticSearch.indexMissing();
-      return Response.ok(jsonEncode({'indexed': count}), headers: jsonHeaders);
+      final report = await snippets.indexPending();
+      return Response.ok(
+        jsonEncode({
+          'indexed': report.indexed,
+          'failures': report.failures.map(
+            (id, error) => MapEntry('$id', '$error'),
+          ),
+        }),
+        headers: jsonHeaders,
+      );
     } catch (e) {
       return Response(502,
           body: jsonEncode({'error': 'indexing failed: $e'}),
