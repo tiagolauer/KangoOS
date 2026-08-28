@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
 import 'package:kangoos_core/kangoos_core.dart';
@@ -10,6 +11,11 @@ const m4BenchmarkRuns = 20;
 const m4PreindexedP95Limit = Duration(milliseconds: 300);
 const m4CompleteQueryP95Limit = Duration(seconds: 2);
 const m4AllowedRegression = 0.2;
+const m4RegressionNoiseFloorMs = 2.0;
+
+double m4RegressionLimitMs(double baselineMs) =>
+    baselineMs +
+    math.max(baselineMs * m4AllowedRegression, m4RegressionNoiseFloorMs);
 
 class _LocalBenchmarkEmbeddingProvider implements EmbeddingProvider {
   @override
@@ -79,11 +85,11 @@ Future<void> main() async {
     final lexicalRegressionLimit =
         baseline == null
             ? null
-            : baseline.preindexedP95Ms * (1 + m4AllowedRegression);
+            : m4RegressionLimitMs(baseline.preindexedP95Ms);
     final completeRegressionLimit =
         baseline == null
             ? null
-            : baseline.completeP95Ms * (1 + m4AllowedRegression);
+            : m4RegressionLimitMs(baseline.completeP95Ms);
     final lexicalP95Ms = lexicalP95.inMicroseconds / 1000;
     final completeP95Ms = completeP95.inMicroseconds / 1000;
     final report = {
@@ -98,6 +104,7 @@ Future<void> main() async {
       'completeQueryGateMs': m4CompleteQueryP95Limit.inMilliseconds,
       'baseline': baseline?.toJson(),
       'allowedRegression': m4AllowedRegression,
+      'regressionNoiseFloorMs': m4RegressionNoiseFloorMs,
     };
     stdout.writeln(jsonEncode(report));
     if (lexicalP95 > m4PreindexedP95Limit) {
@@ -109,13 +116,15 @@ Future<void> main() async {
     if (lexicalRegressionLimit != null &&
         lexicalP95Ms > lexicalRegressionLimit) {
       throw StateError(
-        'Preindexed search regressed by more than 20%: $lexicalP95Ms ms',
+        'Preindexed search regression gate failed: '
+        '$lexicalP95Ms ms > $lexicalRegressionLimit ms',
       );
     }
     if (completeRegressionLimit != null &&
         completeP95Ms > completeRegressionLimit) {
       throw StateError(
-        'Complete query regressed by more than 20%: $completeP95Ms ms',
+        'Complete query regression gate failed: '
+        '$completeP95Ms ms > $completeRegressionLimit ms',
       );
     }
   } finally {

@@ -54,7 +54,13 @@ function Invoke-PackageVerification {
   Write-Host "<== $Name passed in $([Math]::Round($stopwatch.Elapsed.TotalSeconds, 1))s"
 }
 
-$flutterInfo = Invoke-Native 'flutter' @('--version', '--machine') |
+$flutterVersionOutput =
+  (Invoke-Native 'flutter' @('--version', '--machine') | Out-String)
+$flutterJsonStart = $flutterVersionOutput.IndexOf('{')
+if ($flutterJsonStart -lt 0) {
+  throw "Could not determine the Flutter version: $flutterVersionOutput"
+}
+$flutterInfo = $flutterVersionOutput.Substring($flutterJsonStart) |
   ConvertFrom-Json
 if ($flutterInfo.frameworkVersion -ne $expectedFlutterVersion) {
   throw "Flutter $expectedFlutterVersion is required; found $($flutterInfo.frameworkVersion)."

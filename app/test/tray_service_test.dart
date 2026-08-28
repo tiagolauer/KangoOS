@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kangoos_app/capture/capture_settings_repository.dart';
@@ -55,5 +57,5 @@ void main() {
         'setPreventClose',
       ]),
     );
-  });
+  }, skip: !Platform.isWindows);
 }

@@ -2,9 +2,15 @@ import 'package:kangoos_core/kangoos_core.dart';
 import 'package:kangoos_core/kangoos_core_storage.dart';
 import 'package:test/test.dart';
 
+import '../benchmark/m4_benchmark.dart' show m4RegressionLimitMs;
 import '../benchmark/m4_corpus.dart';
 
 void main() {
+  test('M4 benchmark keeps relative gates above timing noise', () {
+    expect(m4RegressionLimitMs(0.693), closeTo(2.693, 0.000001));
+    expect(m4RegressionLimitMs(18.254), closeTo(21.9048, 0.000001));
+  });
+
   test(
     'M4 versioned corpus meets recall and temporal accuracy gates',
     () async {

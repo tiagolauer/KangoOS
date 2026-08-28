@@ -225,6 +225,7 @@ void main() {
 
       expect(captures, greaterThan(1));
     },
+    skip: !Platform.isWindows,
   );
 
   test('capture failures remain observable', () async {
